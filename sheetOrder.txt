@@ -1,0 +1,35 @@
+function api_saveOrder(order, originOrderId) {
+  const sheet = getSheet(SHEET_ORDERS); // เข้าถึงชีตที่ชื่อ 'Orders'
+  const productsJson = JSON.stringify(order.products);
+  
+  // แปลงข้อมูลจากหน้าระบบให้อยู่ในรูปแบบ Array เรียงตามคอลัมน์ของชีต
+  const rowData = [
+    order.id, 
+    order.date, 
+    order.customerName, 
+    order.address, 
+    "'" + order.phone, // ใส่ ' นำหน้าเพื่อให้เป็น Text ป้องกันเบอร์โทรศูนย์หาย
+    productsJson, 
+    order.totalPrice, 
+    order.status, 
+    order.paymentProofUrl || '', 
+    order.salesRepId, 
+    order.salesRepName,
+    order.source || 'FB_PROFILE',
+    order.packedDate || '',
+    '', 
+    order.gender || 'OTHER',
+    order.ageGroup || '35-44', 
+    order.province || '',
+    order.isInter || false,
+    order.note || '',
+    order.birthYear || '' 
+  ];
+  
+  sheet.appendRow(rowData); // คำสั่งต่อท้ายแถวใหม่ลงในชีตทันที
+  
+  // ... (ส่วนการจัดการแคชและสถานะเพิ่มเติม) ...
+  
+  CacheService.getScriptCache().remove("ALL_ORDERS"); // ลบแคชเพื่อให้แอดมินเห็นออเดอร์ทันที
+  return order;
+}

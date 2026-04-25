@@ -1,0 +1,306 @@
+import { getCurrentUser, getOrderFilter } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import Link from 'next/link';
+import { calculateStage, STAGE_LABELS } from '@/lib/customer';
+import DashboardCharts, { type DailyRevenue, type StageCount } from './DashboardCharts';
+
+export default async function DashboardPage() {
+  const user = (await getCurrentUser())!;
+  const orderFilter = (await getOrderFilter(user)) ?? {};
+
+  const now = new Date();
+  const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const d60 = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+  // Aggregate stats + recent orders
+  const [totalOrders, revenue, recentOrders, allOrdersForGroups] = await Promise.all([
+    prisma.sheetOrder.count({ where: orderFilter }),
+    prisma.sheetOrder.aggregate({ where: orderFilter, _sum: { totalPrice: true } }),
+    prisma.sheetOrder.findMany({
+      where: orderFilter,
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        customerName: true,
+        phone: true,
+        totalPrice: true,
+        status: true,
+        channel: true,
+        salesRepName: true,
+        createdAt: true,
+      },
+    }),
+    // All orders for chart + stage computation
+    prisma.sheetOrder.findMany({
+      where: { ...orderFilter, phone: { not: null } },
+      select: { phone: true, totalPrice: true, createdAt: true, customerName: true },
+    }),
+  ]);
+
+  const totalRevenue = Number(revenue._sum.totalPrice ?? 0);
+  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+  // 30-day vs prev-30-day
+  const [last30, prev30] = await Promise.all([
+    prisma.sheetOrder.aggregate({
+      where: { ...orderFilter, createdAt: { gte: d30 } },
+      _sum: { totalPrice: true },
+      _count: true,
+    }),
+    prisma.sheetOrder.aggregate({
+      where: { ...orderFilter, createdAt: { gte: d60, lt: d30 } },
+      _sum: { totalPrice: true },
+      _count: true,
+    }),
+  ]);
+
+  const last30Rev = Number(last30._sum.totalPrice ?? 0);
+  const prev30Rev = Number(prev30._sum.totalPrice ?? 0);
+  const revGrowth = prev30Rev > 0 ? ((last30Rev - prev30Rev) / prev30Rev) * 100 : 0;
+
+  // --- Chart data: daily revenue (last 30 days) ---
+  const dailyMap = new Map<string, { revenue: number; orders: number }>();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+    const key = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+    dailyMap.set(key, { revenue: 0, orders: 0 });
+  }
+
+  for (const o of allOrdersForGroups) {
+    if (o.createdAt < d30) continue;
+    const key = o.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+    const entry = dailyMap.get(key);
+    if (entry) {
+      entry.revenue += Number(o.totalPrice ?? 0);
+      entry.orders += 1;
+    }
+  }
+
+  const dailyRevenue: DailyRevenue[] = Array.from(dailyMap.entries()).map(([label, v]) => ({
+    label,
+    revenue: v.revenue,
+    orders: v.orders,
+  }));
+
+  // --- Stage distribution ---
+  type PhoneRow = { orderCount: number; totalSpent: number; lastOrderAt: Date };
+  const phoneMap = new Map<string, PhoneRow>();
+  for (const o of allOrdersForGroups) {
+    const ph = o.phone!;
+    const ex = phoneMap.get(ph);
+    if (!ex) {
+      phoneMap.set(ph, { orderCount: 1, totalSpent: Number(o.totalPrice ?? 0), lastOrderAt: o.createdAt });
+    } else {
+      ex.orderCount += 1;
+      ex.totalSpent += Number(o.totalPrice ?? 0);
+      if (o.createdAt > ex.lastOrderAt) ex.lastOrderAt = o.createdAt;
+    }
+  }
+
+  const stageTally: Record<string, number> = { VIP: 0, NEW: 0, ACTIVE: 0, AT_RISK: 0, LAPSED: 0, LOST: 0 };
+  for (const row of phoneMap.values()) {
+    const stage = calculateStage(row);
+    stageTally[stage] = (stageTally[stage] ?? 0) + 1;
+  }
+
+  const customerCount = phoneMap.size;
+
+  const stageColors: Record<string, string> = {
+    VIP: '#f6c90e', NEW: '#4e73df', ACTIVE: '#1cc88a',
+    AT_RISK: '#f8961e', LAPSED: '#6f42c1', LOST: '#e74a3b',
+  };
+
+  const stageCounts: StageCount[] = Object.entries(stageTally).map(([stage, count]) => ({
+    stage,
+    label: STAGE_LABELS[stage as keyof typeof STAGE_LABELS],
+    count,
+    color: stageColors[stage] ?? '#ccc',
+  }));
+
+  const teamLabel = user.role === 'ADMIN' ? 'ภาพรวมทั้งระบบ'
+    : user.role === 'LEADER' ? `ภาพรวม ${user.team?.name ?? ''}`
+    : `ลูกค้าของ ${user.fullName}`;
+
+  return (
+    <>
+      <div className="page-header flex-between mb-4">
+        <div>
+          <h1 className="page-title">แดชบอร์ด</h1>
+          <p className="text-sm text-muted mt-1">{teamLabel}</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Link href="/followup" className="btn btn-primary" style={{ fontSize: 13 }}>
+            <i className="ri-task-line"></i> งานวันนี้
+            {(stageTally.AT_RISK + stageTally.LAPSED) > 0 && (
+              <span style={{
+                background: '#fff', color: 'var(--primary)', borderRadius: 20,
+                fontSize: 11, fontWeight: 700, padding: '0 6px', marginLeft: 4,
+              }}>
+                {stageTally.AT_RISK + stageTally.LAPSED}
+              </span>
+            )}
+          </Link>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            <i className="ri-calendar-line text-blue"></i>{' '}
+            {new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+        <KpiCard
+          icon="ri-money-dollar-circle-line"
+          iconBg="var(--success-light)"
+          iconColor="var(--success)"
+          label="ยอดขายรวม"
+          value={`฿${totalRevenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`}
+          sub={revGrowth !== 0 ? `${revGrowth > 0 ? '↑' : '↓'} ${Math.abs(revGrowth).toFixed(1)}% เทียบ 30 วันก่อน` : 'เทียบ 30 วันก่อน'}
+          subColor={revGrowth > 0 ? 'var(--success)' : revGrowth < 0 ? 'var(--danger)' : 'var(--text-muted)'}
+        />
+        <KpiCard
+          icon="ri-shopping-bag-3-line"
+          iconBg="var(--blue-light)"
+          iconColor="var(--primary)"
+          label="จำนวนออเดอร์"
+          value={totalOrders.toLocaleString()}
+          sub={`${last30._count} รายการใน 30 วันล่าสุด`}
+        />
+        <KpiCard
+          icon="ri-group-line"
+          iconBg="var(--purple-light)"
+          iconColor="#6f42c1"
+          label="จำนวนลูกค้า"
+          value={customerCount.toLocaleString()}
+          sub="ไม่ซ้ำ (ตามเบอร์โทร)"
+        />
+        <KpiCard
+          icon="ri-line-chart-line"
+          iconBg="var(--orange-light)"
+          iconColor="var(--orange)"
+          label="เฉลี่ยต่อออเดอร์"
+          value={`฿${avgOrderValue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`}
+        />
+      </div>
+
+      {/* Charts */}
+      <DashboardCharts dailyRevenue={dailyRevenue} stageCounts={stageCounts} />
+
+      {/* Stage summary pills */}
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+        {stageCounts.filter(s => s.count > 0).map(s => (
+          <Link
+            key={s.stage}
+            href={`/customers?stage=${s.stage}`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.4rem',
+              background: stageColors[s.stage] + '18', color: stageColors[s.stage],
+              borderRadius: 20, padding: '0.3rem 0.85rem', fontSize: 12, fontWeight: 600,
+              textDecoration: 'none', border: `1px solid ${stageColors[s.stage]}44`,
+              transition: 'opacity 0.15s',
+            }}
+          >
+            {s.label} <span style={{ fontWeight: 700 }}>{s.count}</span>
+          </Link>
+        ))}
+      </div>
+
+      {/* Recent Orders */}
+      <div className="card" style={{ padding: 0 }}>
+        <div className="flex-between" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-light)' }}>
+          <h3 className="fw-600" style={{ fontSize: 15 }}>
+            <i className="ri-history-line text-blue"></i> ออเดอร์ล่าสุด
+          </h3>
+          <Link href="/orders" className="text-sm" style={{ color: 'var(--primary)' }}>
+            ดูทั้งหมด <i className="ri-arrow-right-line"></i>
+          </Link>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>ลูกค้า</th>
+                <th>เซลส์</th>
+                <th>ช่องทาง</th>
+                <th>สถานะ</th>
+                <th style={{ textAlign: 'right' }}>ยอด</th>
+                <th>วันที่</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                    ยังไม่มีออเดอร์
+                  </td>
+                </tr>
+              ) : (
+                recentOrders.map(o => (
+                  <tr key={o.id}>
+                    <td>
+                      {o.phone ? (
+                        <Link href={`/customers/${o.phone}`} style={{ color: 'var(--primary)', fontWeight: 500 }}>
+                          {o.customerName || '-'}
+                        </Link>
+                      ) : (
+                        o.customerName || '-'
+                      )}
+                      {o.phone && <div className="text-sm text-muted">{o.phone}</div>}
+                    </td>
+                    <td className="text-sm">{o.salesRepName || '-'}</td>
+                    <td className="text-sm">{o.channel || '-'}</td>
+                    <td><StatusBadge status={o.status} /></td>
+                    <td style={{ textAlign: 'right' }} className="fw-600">
+                      ฿{Number(o.totalPrice ?? 0).toLocaleString('th-TH', { maximumFractionDigits: 0 })}
+                    </td>
+                    <td className="text-sm text-muted">
+                      {o.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function KpiCard({ icon, iconBg, iconColor, label, value, sub, subColor }: {
+  icon: string; iconBg: string; iconColor: string;
+  label: string; value: string; sub?: string; subColor?: string;
+}) {
+  return (
+    <div className="card p-4">
+      <div className="flex-between mb-3">
+        <span className="text-sm text-muted fw-500">{label}</span>
+        <div className="icon-box rounded-circle" style={{ background: iconBg, color: iconColor, width: 40, height: 40, fontSize: '1.1rem' }}>
+          <i className={icon}></i>
+        </div>
+      </div>
+      <div className="fw-700" style={{ fontSize: 24, color: 'var(--text-dark)' }}>{value}</div>
+      {sub && <div className="text-sm mt-1" style={{ color: subColor ?? 'var(--text-muted)' }}>{sub}</div>}
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const config: Record<string, { bg: string; color: string; label: string }> = {
+    PAID: { bg: 'var(--success-light)', color: 'var(--success)', label: 'ชำระแล้ว' },
+    PACKED: { bg: 'var(--blue-light)', color: 'var(--primary)', label: 'แพ็คแล้ว' },
+    COD: { bg: 'var(--warning-light)', color: '#d39e00', label: 'COD' },
+    PENDING: { bg: 'var(--purple-light)', color: '#6f42c1', label: 'รอดำเนินการ' },
+    RETURNED: { bg: 'var(--danger-light)', color: 'var(--danger)', label: 'ตีกลับ' },
+    CANCELLED: { bg: 'var(--danger-light)', color: 'var(--danger)', label: 'ยกเลิก' },
+    OTHER: { bg: '#f1f5f9', color: '#64748b', label: 'อื่นๆ' },
+  };
+  const c = config[status] ?? config.OTHER;
+  return <span className="status-badge" style={{ background: c.bg, color: c.color }}>{c.label}</span>;
+}
+
+const stageColors: Record<string, string> = {
+  VIP: '#f6c90e', NEW: '#4e73df', ACTIVE: '#1cc88a',
+  AT_RISK: '#f8961e', LAPSED: '#6f42c1', LOST: '#e74a3b',
+};

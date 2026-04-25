@@ -1,0 +1,193 @@
+// Prisma Schema for Shizenhabu-CRM
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  ADMIN
+  LEADER
+  MEMBER
+  PACKER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum OrderStatus {
+  PACKED
+  PAID
+  COD
+  RETURNED
+  CANCELLED
+  PENDING
+  OTHER
+}
+
+enum NotificationType {
+  SUCCESS
+  INFO
+  WARNING
+  ERROR
+}
+
+enum MissionStatus {
+  ACTIVE
+  ENDED
+}
+
+model SheetTeam {
+  id        String   @id
+  name      String
+  color     String?
+  leaderId  String?
+  createdAt DateTime @default(now())
+
+  members  SheetUser[]
+  missions SheetMission[]
+  orders   SheetOrder[]
+
+  @@map("sheet_teams")
+}
+
+model SheetUser {
+  id           String     @id
+  employeeId   String?
+  fullName     String
+  role         UserRole   @default(MEMBER)
+  email        String?
+  phone        String?
+  idCard       String?
+  photoUrl     String?
+  password     String?
+  monthlySales Decimal?   @default(0)
+  isActive     UserStatus @default(ACTIVE)
+  teamId       String?
+
+  team          SheetTeam?          @relation(fields: [teamId], references: [id])
+  orders        SheetOrder[]        @relation("SalesRepOrders")
+  notifications SheetNotification[]
+  followUps     CrmFollowUp[]
+
+  @@map("sheet_users")
+}
+
+model SheetOrder {
+  id              String      @id
+  date            DateTime?
+  customerName    String?
+  address         String?
+  phone           String?
+  productsJson    Json?
+  totalPrice      Decimal?    @default(0)
+  status          OrderStatus @default(PENDING)
+  paymentProofUrl String?
+  salesRepId      String?
+  salesRepName    String?
+  teamId          String?
+  channel         String?
+  returnReason    String?
+  gender          String?
+  ageRange        String?
+  province        String?
+  isReturned      Boolean     @default(false)
+  birthYear       Int?
+  createdAt       DateTime    @default(now())
+
+  salesRep SheetUser? @relation("SalesRepOrders", fields: [salesRepId], references: [id])
+  team     SheetTeam? @relation(fields: [teamId], references: [id])
+
+  @@map("sheet_orders")
+}
+
+model SheetNotification {
+  id      String           @id
+  userId  String?
+  title   String?
+  message String?
+  date    DateTime?
+  isRead  Boolean          @default(false)
+  type    NotificationType @default(INFO)
+
+  user SheetUser? @relation(fields: [userId], references: [id])
+
+  @@map("sheet_notifications")
+}
+
+model SheetCustomerExtra {
+  phone       String   @id
+  note        String?
+  tagsJson    Json?    @default("[]")
+  lastUpdated DateTime @default(now())
+
+  @@map("sheet_customer_extras")
+}
+
+model SheetMission {
+  id        String        @id
+  teamId    String?
+  title     String
+  target    Decimal?      @default(0)
+  startDate DateTime?
+  endDate   DateTime?
+  reward    Decimal?      @default(0)
+  status    MissionStatus @default(ACTIVE)
+  creatorId String?
+
+  team SheetTeam? @relation(fields: [teamId], references: [id])
+
+  @@map("sheet_missions")
+}
+
+// CRM Staff - แยกจาก SheetUser (sales rep) โดยสิ้นเชิง
+// teamId = null → Admin (เห็นทุกทีม)
+// teamId = "team-xxx" → staff ของทีมนั้น เห็นแค่ลูกค้าทีมตัวเอง
+enum CrmRole {
+  ADMIN
+  STAFF
+}
+
+model CrmUser {
+  id        String   @id @default(cuid())
+  name      String
+  role      CrmRole  @default(STAFF)
+  teamId    String?  // null = admin ดูได้ทุกทีม
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("crm_users")
+}
+
+// บันทึกการติดตามลูกค้าของทีม CRM
+enum FollowUpOutcome {
+  INTERESTED       // สนใจ
+  NOT_NOW          // ยังไม่พร้อม
+  ORDERED          // สั่งซื้อแล้ว
+  NO_ANSWER        // ไม่รับสาย
+  DO_NOT_CONTACT   // ห้ามติดต่อ
+  OTHER
+}
+
+model CrmFollowUp {
+  id            String          @id @default(cuid())
+  customerPhone String          // เบอร์ลูกค้า (link ไป SheetOrder.phone)
+  sheetUserId   String          // เซลส์/ผู้บันทึก (link ไป SheetUser.id)
+  channel       String?         // CALL / LINE / SMS
+  outcome       FollowUpOutcome @default(OTHER)
+  note          String?
+  nextActionAt  DateTime?
+  createdAt     DateTime        @default(now())
+
+  sheetUser SheetUser @relation(fields: [sheetUserId], references: [id])
+
+  @@index([customerPhone])
+  @@index([sheetUserId])
+  @@map("crm_followups")
+}
