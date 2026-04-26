@@ -79,11 +79,11 @@ export default async function CustomerProfilePage({ params }: Props) {
         </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '1.5rem' }}>
+      <div className="customer-profile-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '1.5rem' }}>
         {/* LEFT */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+          <div className="customer-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
             <StatCard icon="ri-money-dollar-circle-line" label="ยอดสะสม" value={`฿${totalSpent.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`} color="var(--success)" />
             <StatCard icon="ri-shopping-bag-3-line" label="จำนวนออเดอร์" value={`${orderCount} ครั้ง`} color="var(--primary)" />
             <StatCard icon="ri-calendar-check-line" label="สั่งล่าสุด" value={daysSince !== null ? `${daysSince} วันที่แล้ว` : '-'} color={daysSince !== null && daysSince > 60 ? 'var(--danger)' : 'var(--text-dark)'} />

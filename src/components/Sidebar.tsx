@@ -11,6 +11,8 @@ type Props = {
     role: string;
     team: { id: string; name: string; color: string | null } | null;
   };
+  isOpen?: boolean;
+  onClose?: () => void;
 };
 
 const NAV = [
@@ -34,17 +36,27 @@ const ROLE_STYLE: Record<string, { bg: string; color: string }> = {
   MEMBER: { bg: 'var(--success-light)', color: 'var(--success)' },
 };
 
-export default function Sidebar({ user }: Props) {
+export default function Sidebar({ user, isOpen = false, onClose }: Props) {
   const pathname = usePathname();
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href);
 
   const style = ROLE_STYLE[user.role] ?? ROLE_STYLE.MEMBER;
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${isOpen ? ' open' : ''}`}>
       <div className="sidebar-brand">
         <i className="ri-customer-service-2-fill"></i>
-        <span>CRM Shizen</span>
+        <span style={{ flex: 1 }}>CRM Shizen</span>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="hamburger-btn"
+            style={{ display: 'flex', marginRight: '-0.5rem' }}
+            aria-label="ปิดเมนู"
+          >
+            <i className="ri-close-line"></i>
+          </button>
+        )}
       </div>
 
       <nav className="sidebar-menu">
