@@ -86,7 +86,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
       </div>
 
       {/* Filter bar */}
-      <div className="card p-3 mb-4" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="card p-3 mb-4 r-tabs-scroll" style={{ alignItems: 'center' }}>
         {STATUS_OPTIONS.map(opt => {
           const count = opt.value === 'all' ? allCount : (countMap.get(opt.value as never) ?? 0);
           const active = (!statusFilter && opt.value === 'all') || statusFilter === opt.value;
@@ -117,24 +117,25 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
           );
         })}
 
-        <form style={{ marginLeft: 'auto' }} className="search-wrap">
-          <i className="ri-search-line"></i>
-          <input
-            type="text"
-            name="q"
-            defaultValue={q ?? ''}
-            placeholder="ค้นหาชื่อ/เบอร์/เซลส์..."
-            className="search-input"
-            style={{ width: 250 }}
-          />
-          {statusFilter && <input type="hidden" name="status" value={statusFilter} />}
-        </form>
       </div>
+
+      <form className="search-wrap mb-3" style={{ width: '100%' }}>
+        <i className="ri-search-line"></i>
+        <input
+          type="text"
+          name="q"
+          defaultValue={q ?? ''}
+          placeholder="ค้นหาชื่อ/เบอร์/เซลส์..."
+          className="search-input"
+          style={{ width: '100%' }}
+        />
+        {statusFilter && <input type="hidden" name="status" value={statusFilter} />}
+      </form>
 
       {/* Orders table */}
       <div className="card" style={{ padding: 0 }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table className="table">
+        <div className="r-table-wrap">
+          <table className="r-table">
             <thead>
               <tr>
                 <th>ลูกค้า</th>
@@ -149,7 +150,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                  <td colSpan={7} className="r-cell-block" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
                     <i className="ri-inbox-line" style={{ fontSize: 36 }}></i>
                     <p className="mt-1">ไม่พบออเดอร์</p>
                   </td>
@@ -162,32 +163,34 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
                   const style = STATUS_STYLE[o.status] ?? STATUS_STYLE.OTHER;
                   return (
                     <tr key={o.id}>
-                      <td>
-                        {o.phone ? (
-                          <Link href={`/customers/${o.phone}`} style={{ color: 'var(--primary)', fontWeight: 500 }}>
-                            {o.customerName || '(ไม่ระบุ)'}
-                          </Link>
-                        ) : (
-                          <span className="fw-500">{o.customerName || '(ไม่ระบุ)'}</span>
-                        )}
-                        {o.phone && <div className="text-sm text-muted">{o.phone}</div>}
+                      <td data-label="ลูกค้า">
+                        <div>
+                          {o.phone ? (
+                            <Link href={`/customers/${o.phone}`} style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                              {o.customerName || '(ไม่ระบุ)'}
+                            </Link>
+                          ) : (
+                            <span className="fw-500">{o.customerName || '(ไม่ระบุ)'}</span>
+                          )}
+                          {o.phone && <div className="text-sm text-muted">{o.phone}</div>}
+                        </div>
                       </td>
-                      <td className="text-sm" style={{ maxWidth: 200 }}>
+                      <td className="text-sm r-cell-block" data-label="สินค้า" style={{ maxWidth: 240 }}>
                         {products.length > 0
                           ? products.map(p => `${p.name ?? '-'} x${p.quantity ?? 1}`).join(', ')
                           : '-'}
                       </td>
-                      <td className="text-sm">{o.salesRepName || '-'}</td>
-                      <td className="text-sm">{o.channel || '-'}</td>
-                      <td>
+                      <td className="text-sm" data-label="เซลส์">{o.salesRepName || '-'}</td>
+                      <td className="text-sm" data-label="ช่องทาง">{o.channel || '-'}</td>
+                      <td data-label="สถานะ">
                         <span className="status-badge" style={{ background: style.bg, color: style.color }}>
                           {style.label}
                         </span>
                       </td>
-                      <td className="fw-600" style={{ textAlign: 'right' }}>
+                      <td className="fw-600" data-label="ยอด" style={{ textAlign: 'right' }}>
                         ฿{Number(o.totalPrice ?? 0).toLocaleString('th-TH', { maximumFractionDigits: 0 })}
                       </td>
-                      <td className="text-sm text-muted">
+                      <td className="text-sm text-muted" data-label="วันที่">
                         {o.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
                       </td>
                     </tr>

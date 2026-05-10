@@ -49,35 +49,35 @@
 }
 
 :root {
-  --background: 82 46% 91%; /* #EBF4DD */
-  --foreground: 205 17% 28%; /* #3B4953 */
-  --card: 82 46% 91%;
-  --card-foreground: 205 17% 28%;
-  --popover: 82 46% 91%;
-  --popover-foreground: 205 17% 28%;
-  --primary: 139 14% 41%; /* #5A7863 */
-  --primary-foreground: 82 46% 91%;
-  --secondary: 111 18% 61%; /* #90AB8B */
-  --secondary-foreground: 205 17% 28%;
-  --muted: 111 18% 61%;
-  --muted-foreground: 139 14% 31%;
-  --accent: 111 18% 75%;
-  --accent-foreground: 205 17% 28%;
+  --background: 140 14% 97%; /* #F4F7F5 */
+  --foreground: 158 41% 14%; /* #14342B */
+  --card: 0 0% 100%;
+  --card-foreground: 158 41% 14%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 158 41% 14%;
+  --primary: 162 56% 41%; /* #2FA084 */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 140 10% 95%;
+  --secondary-foreground: 158 41% 14%;
+  --muted: 140 10% 95%;
+  --muted-foreground: 154 8% 46%; /* #6B7F76 */
+  --accent: 142 50% 62%; /* #6FCF97 */
+  --accent-foreground: 158 41% 14%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
-  --border: 111 18% 50%;
-  --input: 111 18% 50%;
-  --ring: 139 14% 41%;
+  --border: 0 0% 93%; /* #EEEEEE */
+  --input: 0 0% 93%;
+  --ring: 162 56% 41%;
   --radius: 0.75rem;
 
-  --sidebar: 139 14% 35%; /* Darker forest for sidebar */
-  --sidebar-foreground: 82 46% 91%;
-  --sidebar-primary: 111 18% 61%;
-  --sidebar-primary-foreground: 205 17% 28%;
-  --sidebar-accent: 139 14% 31%;
-  --sidebar-accent-foreground: 82 46% 91%;
-  --sidebar-border: 139 14% 31%;
-  --sidebar-ring: 139 14% 41%;
+  --sidebar: 165 56% 28%; /* #1F6F5F */
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-primary: 142 50% 62%;
+  --sidebar-primary-foreground: 158 41% 14%;
+  --sidebar-accent: 165 60% 22%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 165 50% 35%;
+  --sidebar-ring: 142 50% 62%;
 }
 
 .dark {

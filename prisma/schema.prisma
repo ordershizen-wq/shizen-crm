@@ -75,6 +75,8 @@ model SheetUser {
   orders        SheetOrder[]        @relation("SalesRepOrders")
   notifications SheetNotification[]
   followUps     CrmFollowUp[]
+  assignedTasks CustomerTask[]      @relation("AssignedTasks")
+  createdTasks  CustomerTask[]      @relation("CreatedTasks")
 
   @@map("sheet_users")
 }
@@ -122,12 +124,36 @@ model SheetNotification {
 }
 
 model SheetCustomerExtra {
-  phone       String   @id
-  note        String?
-  tagsJson    Json?    @default("[]")
-  lastUpdated DateTime @default(now())
+  phone                String    @id
+  note                 String?
+  tagsJson             Json?     @default("[]")
+  lastUpdated          DateTime  @default(now())
+
+  // Health profile
+  healthConditionsJson Json?     @default("[]")
+
+  // Customer grade (A/B/C)
+  grade                String?
+  gradeChecklistJson   Json?
+  gradeNote            String?
+  gradeUpdatedAt       DateTime?
 
   @@map("sheet_customer_extras")
+}
+
+model Product {
+  id                String   @id @default(cuid())
+  name              String
+  shortDesc         String?
+  targetProblems    Json     @default("[]")   // string[] ปัญหาที่สินค้าแก้ได้
+  contraindications Json     @default("[]")   // string[] ข้อควรระวัง
+  gradeMatch        String   @default("ALL")  // "ALL" | "A" | "B" | "C" | "A,B" | "B,C"
+  isActive          Boolean  @default(true)
+  sortOrder         Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("products")
 }
 
 model SheetMission {
@@ -173,6 +199,60 @@ enum FollowUpOutcome {
   NO_ANSWER        // ไม่รับสาย
   DO_NOT_CONTACT   // ห้ามติดต่อ
   OTHER
+}
+
+// ─── Customer Task / Follow-up Todo ──────────────────────────────────────
+// "งานที่ต้องทำ" กับลูกค้าแต่ละคน — เพิ่มเอง หรือ auto จาก order
+enum TaskType {
+  FOLLOW_UP    // ตามอาการหลังกิน
+  CALL         // โทรหา
+  REPEAT_BUY   // เตือนซื้อซ้ำ
+  DELIVERY     // ตามของ
+  CUSTOM
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  WAITING_REPLY
+  DONE
+  SKIPPED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+}
+
+model CustomerTask {
+  id            String       @id @default(cuid())
+  customerPhone String       // link ไป SheetOrder.phone
+  title         String
+  note          String?
+  dueDate       DateTime
+  type          TaskType     @default(CUSTOM)
+  status        TaskStatus   @default(PENDING)
+  priority      TaskPriority @default(NORMAL)
+
+  assignedToId  String?      // SheetUser ที่รับผิดชอบ
+  createdById   String?      // SheetUser ที่สร้าง
+  orderId       String?      // ถ้า auto จาก order
+
+  completedAt   DateTime?
+  completedById String?
+  resultNote    String?
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  assignedTo SheetUser? @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  createdBy  SheetUser? @relation("CreatedTasks",  fields: [createdById],  references: [id])
+
+  @@index([customerPhone])
+  @@index([assignedToId, status, dueDate])
+  @@index([status, dueDate])
+  @@map("customer_tasks")
 }
 
 model CrmFollowUp {

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { calculateStage, STAGE_LABELS, STAGE_ICONS, type CustomerStage } from '@/lib/customer';
 
-type SearchParams = Promise<{ stage?: string; q?: string }>;
+type SearchParams = Promise<{ stage?: string; q?: string; grade?: string }>;
 
 type CustomerRow = {
   phone: string;
@@ -16,30 +16,39 @@ type CustomerRow = {
   lastSalesRep: string | null;
   lastChannel: string | null;
   stage: CustomerStage;
+  grade: string | null;
 };
 
 export default async function CustomersPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const stageFilter = params.stage;
+  const gradeFilter = params.grade;
   const searchQuery = params.q?.trim().toLowerCase();
 
   const user = (await getCurrentUser())!;
   const orderFilter = (await getOrderFilter(user)) ?? {};
 
   // ดึง orders ทั้งหมดในขอบเขตทีม (filter จะทำได้เฉพาะข้อมูลที่เห็น)
-  const orders = await prisma.sheetOrder.findMany({
-    where: { ...orderFilter, phone: { not: null } },
-    orderBy: { createdAt: 'desc' },
-    select: {
-      phone: true,
-      customerName: true,
-      address: true,
-      totalPrice: true,
-      createdAt: true,
-      salesRepName: true,
-      channel: true,
-    },
-  });
+  const [orders, extras] = await Promise.all([
+    prisma.sheetOrder.findMany({
+      where: { ...orderFilter, phone: { not: null } },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        phone: true,
+        customerName: true,
+        address: true,
+        totalPrice: true,
+        createdAt: true,
+        salesRepName: true,
+        channel: true,
+      },
+    }),
+    prisma.sheetCustomerExtra.findMany({
+      select: { phone: true, grade: true },
+    }),
+  ]);
+
+  const gradeMap = new Map(extras.map(e => [e.phone, e.grade]));
 
   // Group by phone → customer aggregate
   const byPhone = new Map<string, CustomerRow>();
@@ -71,6 +80,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Se
         lastSalesRep: o.salesRepName,
         lastChannel: o.channel,
         stage: 'NEW',
+        grade: gradeMap.get(o.phone) ?? null,
       });
     }
   }
@@ -89,6 +99,9 @@ export default async function CustomersPage({ searchParams }: { searchParams: Se
   let filtered = customers;
   if (stageFilter && stageFilter !== 'all') {
     filtered = filtered.filter(c => c.stage === stageFilter);
+  }
+  if (gradeFilter && gradeFilter !== 'all') {
+    filtered = filtered.filter(c => c.grade === gradeFilter);
   }
   if (searchQuery) {
     filtered = filtered.filter(
@@ -124,9 +137,24 @@ export default async function CustomersPage({ searchParams }: { searchParams: Se
         </div>
       </div>
 
+      {/* Search box */}
+      <form className="search-wrap mb-3" style={{ width: '100%' }}>
+        <i className="ri-search-line"></i>
+        <input
+          type="text"
+          name="q"
+          defaultValue={searchQuery ?? ''}
+          placeholder="ค้นหาชื่อ/เบอร์..."
+          className="search-input"
+          style={{ width: '100%' }}
+        />
+        {stageFilter && <input type="hidden" name="stage" value={stageFilter} />}
+        {gradeFilter && <input type="hidden" name="grade" value={gradeFilter} />}
+      </form>
+
       {/* Filter by Stage */}
-      <div className="card p-3 mb-4" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <StageFilter stage="all" label="ทั้งหมด" icon="ri-list-check" count={stageCounts.all} active={!stageFilter || stageFilter === 'all'} q={searchQuery} />
+      <div className="card p-3 mb-3 r-tabs-scroll" style={{ alignItems: 'center' }}>
+        <StageFilter stage="all" label="ทั้งหมด" icon="ri-list-check" count={stageCounts.all} active={!stageFilter || stageFilter === 'all'} q={searchQuery} grade={gradeFilter} />
         {(['VIP', 'NEW', 'ACTIVE', 'AT_RISK', 'LAPSED', 'LOST'] as CustomerStage[]).map(s => (
           <StageFilter
             key={s}
@@ -136,22 +164,41 @@ export default async function CustomersPage({ searchParams }: { searchParams: Se
             count={stageCounts[s]}
             active={stageFilter === s}
             q={searchQuery}
+            grade={gradeFilter}
           />
         ))}
+      </div>
 
-        {/* Search box */}
-        <form style={{ marginLeft: 'auto' }} className="search-wrap">
-          <i className="ri-search-line"></i>
-          <input
-            type="text"
-            name="q"
-            defaultValue={searchQuery ?? ''}
-            placeholder="ค้นหาชื่อ/เบอร์..."
-            className="search-input"
-            style={{ width: 250 }}
-          />
-          {stageFilter && <input type="hidden" name="stage" value={stageFilter} />}
-        </form>
+      {/* Filter by Grade */}
+      <div className="card p-3 mb-4 r-tabs-scroll" style={{ alignItems: 'center' }}>
+        <span className="text-sm fw-600" style={{ color: 'var(--text-muted)', marginRight: 4 }}>
+          <i className="ri-medal-line"></i> เกรด:
+        </span>
+        {[
+          { g: null, label: 'ทั้งหมด' },
+          { g: 'A', label: 'A — รักสุขภาพ' },
+          { g: 'B', label: 'B — พอสมควร' },
+          { g: 'C', label: 'C — ยังไม่ดูแล' },
+        ].map(({ g, label }) => {
+          const active = (!gradeFilter && g === null) || gradeFilter === g;
+          const gradeColor = g === 'A' ? '#1cc88a' : g === 'B' ? '#f8961e' : g === 'C' ? '#e74a3b' : 'var(--text-muted)';
+          const href = buildHref({ stage: stageFilter, grade: g ?? undefined, q: searchQuery });
+          return (
+            <Link
+              key={g ?? 'all'}
+              href={href}
+              className="btn"
+              style={{
+                background: active ? (g ? gradeColor : 'var(--primary)') : 'var(--bg-app)',
+                color: active ? '#fff' : (g ? gradeColor : 'var(--text-muted)'),
+                padding: '0.4rem 0.85rem', fontSize: 12,
+                border: `1.5px solid ${active ? 'transparent' : (g ? gradeColor + '55' : 'var(--border-light)')}`,
+              }}
+            >
+              {label}
+            </Link>
+          );
+        })}
       </div>
 
       {/* Customer Grid */}
@@ -177,8 +224,17 @@ export default async function CustomersPage({ searchParams }: { searchParams: Se
   );
 }
 
+function buildHref({ stage, grade, q }: { stage?: string; grade?: string; q?: string }) {
+  const p = new URLSearchParams();
+  if (stage && stage !== 'all') p.set('stage', stage);
+  if (grade && grade !== 'all') p.set('grade', grade);
+  if (q) p.set('q', q);
+  const qs = p.toString();
+  return `/customers${qs ? `?${qs}` : ''}`;
+}
+
 function StageFilter({
-  stage, label, icon, count, active, q,
+  stage, label, icon, count, active, q, grade,
 }: {
   stage: string;
   label: string;
@@ -186,10 +242,9 @@ function StageFilter({
   count: number;
   active: boolean;
   q?: string;
+  grade?: string;
 }) {
-  const href = stage === 'all'
-    ? (q ? `/customers?q=${encodeURIComponent(q)}` : '/customers')
-    : `/customers?stage=${stage}${q ? `&q=${encodeURIComponent(q)}` : ''}`;
+  const href = buildHref({ stage, grade, q });
 
   return (
     <Link
@@ -214,12 +269,20 @@ function StageFilter({
   );
 }
 
+const GRADE_BADGE: Record<string, { color: string; bg: string }> = {
+  A: { color: '#1cc88a', bg: 'var(--success-light)' },
+  B: { color: '#f8961e', bg: 'var(--orange-light)' },
+  C: { color: '#e74a3b', bg: 'var(--danger-light)' },
+};
+
 function CustomerCard({ customer: c }: { customer: CustomerRow }) {
   const stageLabel = STAGE_LABELS[c.stage];
   const stageIcon = STAGE_ICONS[c.stage];
   const daysSince = c.lastOrderAt
     ? Math.floor((Date.now() - c.lastOrderAt.getTime()) / (1000 * 60 * 60 * 24))
     : null;
+
+  const gradeStyle = c.grade ? GRADE_BADGE[c.grade] : null;
 
   return (
     <Link href={`/customers/${c.phone}`} className={`customer-card ${c.stage === 'VIP' ? 'vip' : ''}`}>
@@ -232,9 +295,20 @@ function CustomerCard({ customer: c }: { customer: CustomerRow }) {
             <i className="ri-phone-line"></i> {c.phone}
           </p>
         </div>
-        <span className={`status-badge stage-${c.stage}`}>
-          <i className={stageIcon}></i> {stageLabel}
-        </span>
+        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexShrink: 0 }}>
+          {gradeStyle && (
+            <span style={{
+              background: gradeStyle.bg, color: gradeStyle.color,
+              borderRadius: 20, padding: '0.25rem 0.6rem',
+              fontSize: 11, fontWeight: 800,
+            }}>
+              {c.grade}
+            </span>
+          )}
+          <span className={`status-badge stage-${c.stage}`}>
+            <i className={stageIcon}></i> {stageLabel}
+          </span>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>

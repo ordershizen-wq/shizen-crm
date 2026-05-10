@@ -107,7 +107,7 @@ export default async function DashboardPage() {
   const customerCount = phoneMap.size;
 
   const stageColors: Record<string, string> = {
-    VIP: '#f6c90e', NEW: '#4e73df', ACTIVE: '#1cc88a',
+    VIP: '#f6c90e', NEW: '#0ea5e9', ACTIVE: '#2FA084',
     AT_RISK: '#f8961e', LAPSED: '#6f42c1', LOST: '#e74a3b',
   };
 
@@ -130,7 +130,7 @@ export default async function DashboardPage() {
           <p className="text-sm text-muted mt-1">{teamLabel}</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <Link href="/followup" className="btn btn-primary" style={{ fontSize: 13 }}>
+          <Link href="/tasks" className="btn btn-primary" style={{ fontSize: 13 }}>
             <i className="ri-task-line"></i> งานวันนี้
             {(stageTally.AT_RISK + stageTally.LAPSED) > 0 && (
               <span style={{
@@ -216,8 +216,8 @@ export default async function DashboardPage() {
             ดูทั้งหมด <i className="ri-arrow-right-line"></i>
           </Link>
         </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table className="table">
+        <div className="r-table-wrap">
+          <table className="r-table">
             <thead>
               <tr>
                 <th>ลูกค้า</th>
@@ -231,30 +231,32 @@ export default async function DashboardPage() {
             <tbody>
               {recentOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                  <td colSpan={6} className="r-cell-block" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                     ยังไม่มีออเดอร์
                   </td>
                 </tr>
               ) : (
                 recentOrders.map(o => (
                   <tr key={o.id}>
-                    <td>
-                      {o.phone ? (
-                        <Link href={`/customers/${o.phone}`} style={{ color: 'var(--primary)', fontWeight: 500 }}>
-                          {o.customerName || '-'}
-                        </Link>
-                      ) : (
-                        o.customerName || '-'
-                      )}
-                      {o.phone && <div className="text-sm text-muted">{o.phone}</div>}
+                    <td data-label="ลูกค้า">
+                      <div>
+                        {o.phone ? (
+                          <Link href={`/customers/${o.phone}`} style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                            {o.customerName || '-'}
+                          </Link>
+                        ) : (
+                          o.customerName || '-'
+                        )}
+                        {o.phone && <div className="text-sm text-muted">{o.phone}</div>}
+                      </div>
                     </td>
-                    <td className="text-sm">{o.salesRepName || '-'}</td>
-                    <td className="text-sm">{o.channel || '-'}</td>
-                    <td><StatusBadge status={o.status} /></td>
-                    <td style={{ textAlign: 'right' }} className="fw-600">
+                    <td className="text-sm" data-label="เซลส์">{o.salesRepName || '-'}</td>
+                    <td className="text-sm" data-label="ช่องทาง">{o.channel || '-'}</td>
+                    <td data-label="สถานะ"><StatusBadge status={o.status} /></td>
+                    <td className="fw-600" data-label="ยอด" style={{ textAlign: 'right' }}>
                       ฿{Number(o.totalPrice ?? 0).toLocaleString('th-TH', { maximumFractionDigits: 0 })}
                     </td>
-                    <td className="text-sm text-muted">
+                    <td className="text-sm text-muted" data-label="วันที่">
                       {o.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
                     </td>
                   </tr>
@@ -301,6 +303,6 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 const stageColors: Record<string, string> = {
-  VIP: '#f6c90e', NEW: '#4e73df', ACTIVE: '#1cc88a',
+  VIP: '#f6c90e', NEW: '#0ea5e9', ACTIVE: '#2FA084',
   AT_RISK: '#f8961e', LAPSED: '#6f42c1', LOST: '#e74a3b',
 };
