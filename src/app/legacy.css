@@ -689,6 +689,12 @@ textarea:focus-visible {
 .page-content {
   flex: 1;
   padding: 2rem 1.75rem;
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+}
+@media (min-width: 1600px) {
+  .page-content { padding: 2rem 2.5rem; }
 }
 
 .page-title {
@@ -1221,22 +1227,22 @@ input[type="radio"] {
 }
 @media (max-width: 768px) {
   .kanban-board {
-    grid-template-columns: repeat(var(--col-count, 5), 88vw);
+    grid-template-columns: repeat(var(--col-count, 5), 90vw);
     gap: 0.6rem;
-    margin: 0 -1rem;
-    padding: 0 1rem 1rem;
+    margin-inline: calc(-1 * var(--container-pad, 1rem));
+    padding: 0 var(--container-pad, 1rem) 1rem;
     scroll-snap-type: x mandatory;
-    scroll-padding: 0 1rem;
+    scroll-padding-inline: var(--container-pad, 1rem);
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
   }
   .kanban-col {
-    min-height: 320px;
-    max-height: calc(100vh - 260px);
+    min-height: 360px;
+    max-height: calc(100dvh - 220px);
     scroll-snap-align: start;
     scroll-snap-stop: always;
   }
   .kanban-card {
-    /* บน mobile drag-drop ใช้ touch ไม่ได้ — clearly tappable เป็น primary */
     cursor: pointer;
     min-height: 64px;
   }
@@ -1252,26 +1258,35 @@ input[type="radio"] {
 @media (max-width: 768px) {
   .kanban-dots {
     display: flex;
-    gap: 0.4rem;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-top: 0.5rem;
-    padding: 0 0.5rem;
+    gap: 0.35rem;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    margin-top: 0.65rem;
+    margin-inline: calc(-1 * var(--container-pad, 1rem));
+    padding: 0.25rem var(--container-pad, 1rem) 0.35rem;
+    scroll-snap-type: x proximity;
   }
+  .kanban-dots::-webkit-scrollbar { display: none; }
   .kanban-dot {
-    background: transparent;
-    border: none;
-    padding: 0.25rem 0.5rem;
+    background: rgba(255,255,255,0.6);
+    border: 1px solid var(--border-light);
+    padding: 0.35rem 0.7rem;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
     border-radius: var(--radius-pill);
-    min-height: 32px;
+    min-height: 36px;
     color: var(--text-muted);
-    font-size: 11.5px;
+    font-size: 12px;
     font-weight: 600;
     transition: all var(--transition-base);
+    flex-shrink: 0;
+    white-space: nowrap;
+    scroll-snap-align: start;
   }
   .kanban-dot-inner {
     width: 8px;
@@ -1614,6 +1629,88 @@ input[type="radio"] {
   .customer-profile-grid { grid-template-columns: 1fr !important; }
 }
 
+/* ─── Mobile-first profile hero redesign (≤480) ─── */
+@media (max-width: 480px) {
+  .profile-hero {
+    padding: 0.9rem 0.95rem;
+    border-radius: var(--radius-lg);
+    margin-bottom: 0.85rem;
+  }
+  .profile-hero-row {
+    gap: 0.65rem;
+    align-items: flex-start;
+  }
+  .profile-hero-row > .icon-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    font-size: 0.95rem;
+  }
+  .profile-hero-avatar {
+    width: 44px;
+    height: 44px;
+    font-size: 14px;
+  }
+  .profile-hero-name {
+    font-size: 1.05rem;
+    line-height: 1.25;
+  }
+  .profile-hero-name-row {
+    gap: 0.35rem;
+  }
+  .profile-hero-name-row .status-badge {
+    font-size: 11px !important;
+    padding: 0.15rem 0.5rem;
+  }
+  /* Meta: convert "icon text • icon text" into a clean stacked list, hide dividers */
+  .profile-hero-meta {
+    margin-top: 0.45rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+    font-size: 12px;
+  }
+  .profile-hero-divider { display: none; }
+}
+
+/* ─── Mobile tabs polish (≤480) — tight pills + fade gradient hint ─── */
+@media (max-width: 480px) {
+  .profile-tabs-wrap {
+    margin-bottom: 0.85rem;
+    padding: 0;
+    position: relative;
+  }
+  /* Fade gradient on right edge — "more content this way" cue */
+  .profile-tabs-wrap::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 24px;
+    background: linear-gradient(to right, rgba(244,247,245,0), rgba(244,247,245,0.9));
+    pointer-events: none;
+    border-radius: 0 999px 999px 0;
+  }
+  .profile-tabs {
+    padding: 3px;
+    gap: 2px;
+  }
+  .profile-tab {
+    padding: 0.45rem 0.55rem;
+    font-size: 11.5px;
+    min-height: 38px;
+    gap: 3px;
+  }
+  .profile-tab i { font-size: 13px; }
+  .profile-tab-badge {
+    min-width: 16px;
+    height: 15px;
+    font-size: 9.5px;
+    padding: 0 3px;
+    margin-left: 2px;
+  }
+}
+
 /* ═══════════════════════════════════════════
    TASK DRAWER (slide from right)
 ═══════════════════════════════════════════ */
@@ -1950,7 +2047,11 @@ input[type="radio"] {
   .sidebar.open { transform: translateX(0); }
 
   .main-content,
-  .app-wrapper.sidebar-collapsed .main-content { margin-left: 0; }
+  .app-wrapper.sidebar-collapsed .main-content {
+    margin-left: 0;
+    /* prevent negative-margin kanban from leaking horizontal scroll to body */
+    overflow-x: hidden;
+  }
 
   .sidebar-backdrop { display: block; }
 
@@ -1969,14 +2070,21 @@ input[type="radio"] {
 }
 
 @media (max-width: 480px) {
-  .top-header { padding: 0 0.6rem; gap: 0.4rem; height: 56px; }
+  .top-header { padding: 0 0.5rem; gap: 0.3rem; height: 56px; }
   .header-search {
-    height: 38px;
-    padding: 0 0.75rem;
+    height: 40px;
+    padding: 0 0.7rem;
   }
   .header-search input { font-size: 14px; }
-  .header-icon-btn { width: 38px; height: 38px; font-size: 1.1rem; }
-  .navbar-alert-pill { height: 34px; font-size: 11.5px; }
+  .header-icon-btn { width: 40px; height: 40px; font-size: 1.1rem; }
+  .hamburger-btn { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
+  .navbar-alert-pill {
+    height: 32px;
+    font-size: 11.5px;
+    padding: 0 0.3rem 0 0.5rem;
+    gap: 0.3rem;
+  }
+  .navbar-alert-pill-count { min-width: 20px; height: 20px; font-size: 10.5px; }
   .page-content { padding: 0.75rem; }
 
   .customer-profile-grid { grid-template-columns: 1fr !important; }
@@ -2256,4 +2364,197 @@ button, [role="button"], a.btn, .btn {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
   gap: 1rem;
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE PATCHES v4 (tablet + 4K + mobile inline-grid)
+═══════════════════════════════════════════ */
+
+/* Inline grid collapse on mobile */
+@media (max-width: 640px) {
+  .follow-up-row-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .follow-up-row-grid > :first-child {
+    grid-column: 1 / -1;
+  }
+  .tasks-panel-2col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Header search hits 44px touch target on small screens */
+@media (max-width: 480px) {
+  .header-search { height: 44px; }
+  .header-icon-btn { width: 44px; height: 44px; }
+}
+
+/* Dashboard page-header right cluster wraps cleanly */
+.page-header > div {
+  min-width: 0;
+}
+.page-header [data-actions],
+.page-header .page-header-actions {
+  flex-wrap: wrap;
+}
+
+/* Kanban tablet: enable horizontal scroll-snap from 1024px down */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .kanban-board {
+    grid-template-columns: repeat(var(--col-count, 5), 320px);
+    gap: 0.75rem;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+  .kanban-col { scroll-snap-align: start; }
+}
+
+/* Dashboard KPI cap on very wide screens */
+@media (min-width: 1600px) {
+  .kpi-mini-grid,
+  .dashboard-grid-top { gap: 1.5rem; }
+}
+
+/* Tablet: auto rail (769–1024px) — AppShell forces collapsed=true and adds .tablet-rail.
+   Hide the manual collapse toggle since it's auto-managed at this breakpoint. */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .app-wrapper.tablet-rail .collapse-btn { display: none; }
+  .app-wrapper.tablet-rail .sidebar-rail-expand { display: none; }
+}
+
+/* Dashboard charts (line + donut) — stack on md and below */
+.dashboard-charts-grid { grid-template-columns: 1fr 340px; }
+@media (max-width: 1024px) {
+  .dashboard-charts-grid { grid-template-columns: 1fr !important; }
+}
+
+/* Calendar — mobile-first: tighter cells, dots instead of chips */
+@media (max-width: 640px) {
+  .calendar-layout .card { font-size: 12px; }
+  /* Tighten cells: 88px → 56px, less padding */
+  .cal-grid > div[style*="minHeight: 88"],
+  .cal-grid > div[style*="min-height: 88px"] {
+    min-height: 56px !important;
+    padding: 0.25rem !important;
+  }
+  /* Day number — keep visible but tighten */
+  .cal-grid > div > div:first-child {
+    font-size: 11.5px !important;
+    width: 20px !important;
+    height: 20px !important;
+    margin-bottom: 0.15rem !important;
+  }
+  /* Event "chips" become dots: hide text, keep colored dot */
+  .cal-grid > div > div:last-child > div {
+    padding: 0 !important;
+    width: 6px !important;
+    height: 6px !important;
+    border-radius: 50% !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    margin: 1px 1px 0 0;
+    display: inline-block !important;
+    overflow: hidden;
+    border: none !important;
+  }
+  .cal-grid > div > div:last-child > div i { display: none !important; }
+  /* Container for dots — flex row wrap */
+  .cal-grid > div > div:last-child {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 0 !important;
+    align-items: center;
+  }
+  /* "+N รายการ" overflow text — keep small */
+  .cal-grid > div > div:last-child > div[style*="paddingLeft"],
+  .cal-grid > div > div:last-child > div[style*="padding-left"] {
+    width: auto !important;
+    height: auto !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    font-size: 9px !important;
+    line-height: 1.1 !important;
+    padding: 0 !important;
+    margin-top: 2px;
+    display: block !important;
+    flex-basis: 100%;
+  }
+  /* Day headers: tighter */
+  .cal-days-row > div { padding: 0.4rem 0 !important; font-size: 10.5px !important; }
+}
+
+/* TaskDrawer close button = 40px desktop, 44px touch on mobile */
+.task-drawer-close { width: 40px; height: 40px; }
+@media (max-width: 768px) {
+  .task-drawer-close { width: 44px; height: 44px; }
+}
+
+/* Product recommendation cards — already scroll-x, but ensure scroll-snap on mobile */
+@media (max-width: 768px) {
+  [data-product-rec-list] {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+  [data-product-rec-list] > * {
+    scroll-snap-align: start;
+  }
+}
+
+/* Page header on dashboard: avoid date+button collision on tiny screens */
+@media (max-width: 400px) {
+  .page-header-actions { width: 100%; }
+  .page-header-actions > * { flex: 0 1 auto; }
+}
+
+/* Modal padding tightens on mobile */
+@media (max-width: 480px) {
+  .order-followup-modal-body,
+  [class*="modal-body"] { padding: 1rem !important; }
+}
+
+/* Ensure all .icon-btn meet 44px touch target on mobile (some have inline 36px) */
+@media (max-width: 768px) {
+  .icon-btn { min-width: 44px; min-height: 44px; }
+}
+
+/* Forms in narrow drawers/modals: stack action rows */
+@media (max-width: 480px) {
+  .task-drawer-footer { flex-direction: column; }
+  .task-drawer-footer .btn { width: 100%; }
+}
+
+/* Customer profile grid — base mobile-first */
+.customer-profile-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+}
+/* Direct children — ensure they can shrink below their min-content */
+.customer-profile-grid > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.customer-profile-grid-span-all { grid-column: 1 / -1; }
+
+/* Desktop overrides */
+@media (min-width: 1025px) {
+  .customer-profile-grid:not(.customer-profile-grid-2col) {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+  .customer-profile-grid.customer-profile-grid-2col {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Card content: force long unbreakable strings (Thai, product codes) to wrap */
+.profile-tab-panel .card,
+.profile-tab-panel .card * {
+  min-width: 0;
+}
+.profile-tab-panel .card p,
+.profile-tab-panel .card td,
+.profile-tab-panel .card span,
+.profile-tab-panel .card div {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }

@@ -117,7 +117,7 @@ export default function ProductRecommendations({
             <i className="ri-sparkling-line"></i> แนะนำให้ลอง ({recommended.length})
           </div>
           {/* Horizontal scroll on mobile */}
-          <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '0.25rem', scrollbarWidth: 'none' }}>
+          <div data-product-rec-list style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '0.25rem', scrollbarWidth: 'none' }}>
             {recommended.map(r => (
               <RecommendCard key={r.product.id} r={r} grade={grade} />
             ))}

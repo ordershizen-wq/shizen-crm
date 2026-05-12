@@ -174,7 +174,7 @@ function NewTaskForm({ phone, currentUserId, members, onDone }: {
           style={{ fontSize: 14 }}
         />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+        <div className="tasks-panel-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
           <select value={type} onChange={e => setType(e.target.value)} className="form-control" style={{ fontSize: 13 }}>
             {Object.entries(TYPE_LABEL).map(([v, t]) => (
               <option key={v} value={v}>{t.label}</option>

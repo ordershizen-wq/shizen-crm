@@ -38,7 +38,7 @@ type Props = {
 
 export default function DashboardCharts({ dailyRevenue, stageCounts }: Props) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', marginBottom: '1.5rem' }}>
+    <div className="dashboard-charts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', marginBottom: '1.5rem' }}>
       <RevenueChart data={dailyRevenue} />
       <StageChart data={stageCounts} />
     </div>

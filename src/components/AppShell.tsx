@@ -22,7 +22,9 @@ const COLLAPSE_KEY = 'shizen.sidebarCollapsed';
 export default function AppShell({ user, children, atRiskCount = 0, taskCount = 0 }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false); // mobile drawer
   const [collapsed, setCollapsed] = useState(false);     // desktop rail
+  const [tabletRail, setTabletRail] = useState(false);   // auto rail at 769-1024
   const [hydrated, setHydrated] = useState(false);
+  const [searchPlaceholder, setSearchPlaceholder] = useState('ค้นหาลูกค้า, ออเดอร์, เบอร์โทร...');
 
   useEffect(() => {
     // restore preference
@@ -34,11 +36,15 @@ export default function AppShell({ user, children, atRiskCount = 0, taskCount = 
   }, []);
 
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth > 768) setSidebarOpen(false);
+    const apply = () => {
+      const w = window.innerWidth;
+      if (w > 768) setSidebarOpen(false);
+      setTabletRail(w >= 769 && w <= 1024);
+      setSearchPlaceholder(w <= 480 ? 'ค้นหา...' : 'ค้นหาลูกค้า, ออเดอร์, เบอร์โทร...');
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    apply();
+    window.addEventListener('resize', apply);
+    return () => window.removeEventListener('resize', apply);
   }, []);
 
   const toggleCollapse = () => {
@@ -49,15 +55,17 @@ export default function AppShell({ user, children, atRiskCount = 0, taskCount = 
     });
   };
 
+  const effectiveCollapsed = hydrated && (collapsed || tabletRail);
+
   return (
-    <div className={`app-wrapper${collapsed ? ' sidebar-collapsed' : ''}`}>
+    <div className={`app-wrapper${effectiveCollapsed ? ' sidebar-collapsed' : ''}${tabletRail ? ' tablet-rail' : ''}`}>
       <Sidebar
         user={user}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         atRiskCount={atRiskCount}
         taskCount={taskCount}
-        collapsed={hydrated && collapsed}
+        collapsed={effectiveCollapsed}
         onToggleCollapse={toggleCollapse}
       />
 
@@ -89,7 +97,7 @@ export default function AppShell({ user, children, atRiskCount = 0, taskCount = 
 
           <div className="header-search">
             <i className="ri-search-line"></i>
-            <input type="text" placeholder="ค้นหาลูกค้า, ออเดอร์, เบอร์โทร..." />
+            <input type="text" placeholder={searchPlaceholder} />
           </div>
 
           <div className="header-actions">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 type Tab = {
   id: string;
@@ -14,12 +14,23 @@ type Tab = {
 export default function ProfileTabs({ tabs, defaultTab }: { tabs: Tab[]; defaultTab?: string }) {
   const [active, setActive] = useState(defaultTab ?? tabs[0]?.id);
   const current = tabs.find(t => t.id === active);
+  const stripRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    const activeEl = strip.querySelector<HTMLElement>('.profile-tab.active');
+    if (!activeEl) return;
+    // Scroll only the strip horizontally — don't use scrollIntoView (would scroll the page too)
+    const target = activeEl.offsetLeft - (strip.clientWidth - activeEl.clientWidth) / 2;
+    strip.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+  }, [active]);
 
   return (
     <div>
       {/* Tabs nav (sticky) */}
       <div className="profile-tabs-wrap">
-        <div className="profile-tabs">
+        <div ref={stripRef} className="profile-tabs">
           {tabs.map(t => (
             <button
               key={t.id}

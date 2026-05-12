@@ -11,14 +11,19 @@ const STAGE_STYLE: Record<'AT_RISK' | 'LAPSED', { color: string; bg: string; ico
   LAPSED:  { color: '#6f42c1',        bg: 'var(--purple-light)', icon: 'ri-time-line',          label: 'ห่างหายไปนาน' },
 };
 
+const INITIAL_SHOW = 5;
+
 export default function TaskSuggestionsSection({ suggestions }: { suggestions: TaskSuggestion[] }) {
   const router = useRouter();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const [, startTransition] = useTransition();
 
   const visible = suggestions.filter(s => !dismissed.has(s.phone));
   if (visible.length === 0) return null;
+  const shown = showAll ? visible : visible.slice(0, INITIAL_SHOW);
+  const remaining = visible.length - shown.length;
 
   const handleAccept = (s: TaskSuggestion) => {
     setPendingPhone(s.phone);
@@ -57,7 +62,7 @@ export default function TaskSuggestionsSection({ suggestions }: { suggestions: T
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        {visible.map(s => {
+        {shown.map(s => {
           const st = STAGE_STYLE[s.stage as 'AT_RISK' | 'LAPSED'];
           const isPending = pendingPhone === s.phone;
           return (
@@ -113,6 +118,26 @@ export default function TaskSuggestionsSection({ suggestions }: { suggestions: T
             </div>
           );
         })}
+        {remaining > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowAll(true)}
+            className="btn btn-secondary"
+            style={{ alignSelf: 'center', marginTop: '0.25rem', fontSize: 13 }}
+          >
+            <i className="ri-arrow-down-s-line"></i> ดูเพิ่มอีก {remaining} รายการ
+          </button>
+        )}
+        {showAll && visible.length > INITIAL_SHOW && (
+          <button
+            type="button"
+            onClick={() => setShowAll(false)}
+            className="btn btn-ghost"
+            style={{ alignSelf: 'center', marginTop: '0.25rem', fontSize: 13 }}
+          >
+            <i className="ri-arrow-up-s-line"></i> ย่อกลับ
+          </button>
+        )}
       </div>
     </div>
   );

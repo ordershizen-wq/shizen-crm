@@ -209,7 +209,7 @@ export default function CalendarView({ events, initialYear, initialMonth, userNa
           </div>
 
           {/* Day headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--border-light)' }}>
+          <div className="cal-days-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', borderBottom: '1px solid var(--border-light)' }}>
             {DAYS_TH.map((d, i) => (
               <div key={d} style={{
                 textAlign: 'center', padding: '0.6rem 0',
@@ -222,7 +222,7 @@ export default function CalendarView({ events, initialYear, initialMonth, userNa
           </div>
 
           {/* Day cells */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+          <div className="cal-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
             {cells.map((day, idx) => {
               if (!day) {
                 return <div key={`e-${idx}`} style={{ minHeight: 88, borderRight: idx % 7 !== 6 ? '1px solid var(--border-light)' : 'none', borderBottom: '1px solid var(--border-light)', background: '#fafafa' }} />;

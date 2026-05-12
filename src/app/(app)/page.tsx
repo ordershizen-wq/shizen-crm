@@ -129,7 +129,7 @@ export default async function DashboardPage() {
           <h1 className="page-title">แดชบอร์ด</h1>
           <p className="text-sm text-muted mt-1">{teamLabel}</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <Link href="/tasks" className="btn btn-primary" style={{ fontSize: 13 }}>
             <i className="ri-task-line"></i> งานวันนี้
             {(stageTally.AT_RISK + stageTally.LAPSED) > 0 && (
@@ -149,7 +149,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem', maxWidth: '100%' }}>
         <KpiCard
           icon="ri-money-dollar-circle-line"
           iconBg="var(--success-light)"

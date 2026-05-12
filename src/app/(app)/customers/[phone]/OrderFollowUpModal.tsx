@@ -201,7 +201,7 @@ export default function OrderFollowUpModal({
                         className="form-control"
                         style={{ fontSize: 13, fontWeight: 600 }}
                       />
-                      <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 1fr', gap: '0.4rem' }}>
+                      <div className="follow-up-row-grid" style={{ display: 'grid', gridTemplateColumns: '90px 1fr 1fr', gap: '0.4rem' }}>
                         <input
                           type="number"
                           min={0} max={365}

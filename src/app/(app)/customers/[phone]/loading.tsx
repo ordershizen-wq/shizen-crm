@@ -18,7 +18,7 @@ export default function Loading() {
       </div>
 
       {/* Body grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '1.5rem' }}>
+      <div className="customer-profile-grid">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="card p-4">

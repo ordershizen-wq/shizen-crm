@@ -228,6 +228,7 @@ export default function TasksKanban({ tasks, groupBy }: { tasks: DrawerTask[]; g
 
   // Mobile column indicator (active dot ตาม scroll position)
   const boardRef = useRef<HTMLDivElement>(null);
+  const dotsRef = useRef<HTMLDivElement>(null);
   const [activeColIdx, setActiveColIdx] = useState(0);
 
   useEffect(() => {
@@ -243,6 +244,14 @@ export default function TasksKanban({ tasks, groupBy }: { tasks: DrawerTask[]; g
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
   }, [columns.length]);
+
+  // Keep active dot in view (mobile dots strip)
+  useEffect(() => {
+    const dots = dotsRef.current;
+    if (!dots) return;
+    const active = dots.querySelector<HTMLElement>('.kanban-dot.is-active');
+    active?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [activeColIdx]);
 
   if (groupBy === 'assignee' && columns.length === 0) {
     return (
@@ -305,7 +314,7 @@ export default function TasksKanban({ tasks, groupBy }: { tasks: DrawerTask[]; g
       </div>
 
       {/* Mobile-only column indicator */}
-      <div className="kanban-dots" role="tablist" aria-label="คอลัมน์ kanban">
+      <div ref={dotsRef} className="kanban-dots" role="tablist" aria-label="คอลัมน์ kanban">
         {columns.map((col, i) => (
           <button
             key={col.id}

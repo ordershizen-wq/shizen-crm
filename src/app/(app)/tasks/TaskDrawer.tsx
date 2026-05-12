@@ -143,7 +143,7 @@ export default function TaskDrawer({
               </span>
             )}
           </div>
-          <button onClick={onClose} className="icon-btn" aria-label="ปิด" style={{ width: 36, height: 36 }}>
+          <button onClick={onClose} className="icon-btn task-drawer-close" aria-label="ปิด">
             <i className="ri-close-line"></i>
           </button>
         </div>

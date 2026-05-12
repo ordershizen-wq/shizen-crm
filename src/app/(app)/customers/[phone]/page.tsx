@@ -110,7 +110,7 @@ export default async function CustomerProfilePage({ params }: Props) {
   // ─── Build tab contents ───────────────────────────────────────────────
 
   const overviewTab = (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '1.5rem' }} className="customer-profile-grid">
+    <div className="customer-profile-grid">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         {/* Recent orders preview (3 ล่าสุด) */}
         <div className="card" style={{ padding: 0 }}>
@@ -269,7 +269,7 @@ export default async function CustomerProfilePage({ params }: Props) {
   );
 
   const followUpTab = (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '1.5rem' }} className="customer-profile-grid">
+    <div className="customer-profile-grid">
       <div className="card" style={{ padding: 0 }}>
         <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-light)' }}>
           <h3 className="fw-600" style={{ fontSize: 15 }}>
@@ -316,7 +316,7 @@ export default async function CustomerProfilePage({ params }: Props) {
   );
 
   const profileDataTab = (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem' }} className="customer-profile-grid">
+    <div className="customer-profile-grid customer-profile-grid-2col">
       <div className="card p-4">
         <h3 className="fw-600 mb-3" style={{ fontSize: 15 }}>
           <i className="ri-medal-line text-primary"></i> เกรดลูกค้า
@@ -338,7 +338,7 @@ export default async function CustomerProfilePage({ params }: Props) {
           initialConditions={(extra?.healthConditionsJson as string[]) ?? []}
         />
       </div>
-      <div className="card p-4" style={{ gridColumn: 'span 2' }}>
+      <div className="card p-4 customer-profile-grid-span-all">
         <h3 className="fw-600 mb-3" style={{ fontSize: 15 }}>
           <i className="ri-sticky-note-line text-orange"></i> โน้ตลูกค้า
         </h3>
