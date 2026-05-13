@@ -1,8 +1,20 @@
 'use client';
 
-import Link from 'next/link';
+import Link, { useLinkStatus } from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/actions';
+
+/** ไอคอน spinner เล็กที่แสดงเฉพาะตอนลิงก์กำลังโหลด — fixed-size, ไม่ดันเลย์เอาต์ */
+function MenuItemPendingIndicator() {
+  const { pending } = useLinkStatus();
+  return (
+    <span
+      aria-hidden
+      className="menu-item-pending"
+      data-pending={pending ? 'true' : 'false'}
+    />
+  );
+}
 
 type Props = {
   user: {
@@ -115,6 +127,7 @@ export default function Sidebar({
                   {showBadge && !showText && (
                     <span className="menu-badge-dot" style={{ background: badgeColor }} />
                   )}
+                  <MenuItemPendingIndicator />
                 </Link>
               );
             })}

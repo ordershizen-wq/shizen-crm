@@ -986,6 +986,54 @@ input[type="radio"] {
 .skeleton-pill  { height: 28px; border-radius: 999px; width: 80px; }
 .skeleton-avatar { width: 44px; height: 44px; border-radius: 50%; }
 
+/* ── Sidebar Link Pending Indicator ── */
+.menu-item-pending {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  opacity: 0;
+  visibility: hidden;
+  flex-shrink: 0;
+}
+.menu-item-pending[data-pending="true"] {
+  visibility: visible;
+  animation: spinHint 0.7s linear infinite, fadeHintIn 200ms ease 120ms forwards;
+}
+@keyframes spinHint { to { transform: rotate(360deg); } }
+@keyframes fadeHintIn { to { opacity: 0.85; } }
+
+/* ── Click feedback บน clickable elements ── */
+.customer-card,
+.r-table tbody tr,
+.btn,
+.menu-item,
+a.card,
+.card a[href] {
+  transition:
+    transform 120ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 180ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+.customer-card:active:not(:disabled),
+.btn:active:not(:disabled),
+a.card:active,
+.menu-item:active {
+  transform: scale(0.98);
+}
+.customer-card:active:not(:disabled) {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+/* ลิงก์ที่ถูกกดอยู่ (รอ navigate) — เปลี่ยน BG เร็วๆ ให้รู้สึก "ตอบสนอง" */
+.menu-item:has(.menu-item-pending[data-pending="true"]) {
+  background: rgba(47,160,132,0.18) !important;
+}
+
 /* ═══════════════════════════════════════════
    VIEW TOGGLE (List ↔ Kanban)
 ═══════════════════════════════════════════ */

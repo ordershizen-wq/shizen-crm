@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
+import RouteProgressBar from './RouteProgressBar';
 
 type User = {
   id: string;
@@ -59,6 +60,7 @@ export default function AppShell({ user, children, atRiskCount = 0, taskCount = 
 
   return (
     <div className={`app-wrapper${effectiveCollapsed ? ' sidebar-collapsed' : ''}${tabletRail ? ' tablet-rail' : ''}`}>
+      <RouteProgressBar />
       <Sidebar
         user={user}
         isOpen={sidebarOpen}
