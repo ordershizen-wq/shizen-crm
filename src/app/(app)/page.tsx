@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { STAGE_LABELS, aggregateOrdersByPhone, tallyStages } from '@/lib/customer';
 import DashboardCharts, { type DailyRevenue, type StageCount } from './DashboardCharts';
+import SourceBadge from '@/components/SourceBadge';
+import { OrderSource } from '@prisma/client';
 
 export default async function DashboardPage() {
   const user = (await getCurrentUser())!;
@@ -13,7 +15,7 @@ export default async function DashboardPage() {
   const d60 = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
   // ทุก aggregate ทำใน DB (groupBy/aggregate/count) — ไม่ดึง row ทั้ง table มา process ใน JS อีกต่อไป
-  const [totalOrders, revenue, recentOrders, last30Orders, last30, prev30, phoneAggs] = await Promise.all([
+  const [totalOrders, revenue, recentOrders, last30Orders, last30, prev30, phoneAggs, sourceBreakdown] = await Promise.all([
     prisma.sheetOrder.count({ where: orderFilter }),
     prisma.sheetOrder.aggregate({ where: orderFilter, _sum: { totalPrice: true } }),
     prisma.sheetOrder.findMany({
@@ -29,6 +31,7 @@ export default async function DashboardPage() {
         channel: true,
         salesRepName: true,
         createdAt: true,
+        source: true,
       },
     }),
     // เฉพาะ 30 วันล่าสุดสำหรับกราฟ — แทนที่จะดึงทั้ง table
@@ -48,7 +51,22 @@ export default async function DashboardPage() {
     }),
     // GROUP BY phone ใน DB — คืนแค่ 1 row ต่อลูกค้า ไม่ใช่ทุก order
     aggregateOrdersByPhone(orderFilter),
+    // แยกยอดตามที่มา 30 วันล่าสุด สำหรับ KPI Acquisition vs Retention
+    prisma.sheetOrder.groupBy({
+      by: ['source'],
+      where: { ...orderFilter, createdAt: { gte: d30 } },
+      _sum: { totalPrice: true },
+      _count: true,
+    }),
   ]);
+
+  const sourceMap = new Map(sourceBreakdown.map(r => [r.source, r]));
+  const newCustRev = Number(sourceMap.get(OrderSource.SHEET)?._sum.totalPrice ?? 0);
+  const newCustCount = sourceMap.get(OrderSource.SHEET)?._count ?? 0;
+  const reorderRev = Number(sourceMap.get(OrderSource.CRM_REORDER)?._sum.totalPrice ?? 0);
+  const reorderCount = sourceMap.get(OrderSource.CRM_REORDER)?._count ?? 0;
+  const last30Total = newCustRev + reorderRev;
+  const reorderShare = last30Total > 0 ? (reorderRev / last30Total) * 100 : 0;
 
   const totalRevenue = Number(revenue._sum.totalPrice ?? 0);
   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
@@ -162,6 +180,38 @@ export default async function DashboardPage() {
         />
       </div>
 
+      {/* Source split — Acquisition vs Retention (30 วันล่าสุด) */}
+      <div className="card p-4 mb-4">
+        <div className="flex-between mb-3">
+          <h3 className="fw-700" style={{ fontSize: 14, margin: 0 }}>
+            <i className="ri-shuffle-line" style={{ color: '#147a5e' }}></i> ที่มาของออเดอร์ — 30 วันล่าสุด
+          </h3>
+          <Link href="/orders" className="text-sm" style={{ color: 'var(--primary)' }}>
+            ดูออเดอร์ทั้งหมด <i className="ri-arrow-right-line"></i>
+          </Link>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+          <SourceKpi
+            source={OrderSource.SHEET}
+            title="ลูกค้าใหม่ (ลง Sheet)"
+            subtitle="Acquisition"
+            revenue={newCustRev}
+            count={newCustCount}
+            share={last30Total > 0 ? 100 - reorderShare : 0}
+            href="/orders?source=SHEET"
+          />
+          <SourceKpi
+            source={OrderSource.CRM_REORDER}
+            title="รีออเดอร์ (ลง CRM)"
+            subtitle="Retention"
+            revenue={reorderRev}
+            count={reorderCount}
+            share={reorderShare}
+            href="/orders?source=CRM_REORDER"
+          />
+        </div>
+      </div>
+
       {/* Charts */}
       <DashboardCharts dailyRevenue={dailyRevenue} stageCounts={stageCounts} />
 
@@ -218,13 +268,16 @@ export default async function DashboardPage() {
                   <tr key={o.id}>
                     <td data-label="ลูกค้า">
                       <div>
-                        {o.phone ? (
-                          <Link href={`/customers/${o.phone}`} style={{ color: 'var(--primary)', fontWeight: 600 }}>
-                            {o.customerName || '-'}
-                          </Link>
-                        ) : (
-                          o.customerName || '-'
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          {o.phone ? (
+                            <Link href={`/customers/${o.phone}`} style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                              {o.customerName || '-'}
+                            </Link>
+                          ) : (
+                            o.customerName || '-'
+                          )}
+                          <SourceBadge source={o.source} compact />
+                        </div>
                         {o.phone && <div className="text-sm text-muted">{o.phone}</div>}
                       </div>
                     </td>
@@ -284,3 +337,48 @@ const stageColors: Record<string, string> = {
   VIP: '#f6c90e', NEW: '#0ea5e9', ACTIVE: '#2FA084',
   AT_RISK: '#f8961e', LAPSED: '#6f42c1', LOST: '#e74a3b',
 };
+
+function SourceKpi({
+  source, title, subtitle, revenue, count, share, href,
+}: {
+  source: OrderSource;
+  title: string;
+  subtitle: string;
+  revenue: number;
+  count: number;
+  share: number;
+  href: string;
+}) {
+  const accent = source === OrderSource.SHEET ? '#0284c7' : '#147a5e';
+  const tint   = source === OrderSource.SHEET ? 'rgba(14,165,233,0.10)' : 'rgba(47,160,132,0.10)';
+  return (
+    <Link
+      href={href}
+      style={{
+        display: 'block', textDecoration: 'none', color: 'inherit',
+        background: tint, border: `1.5px solid ${accent}33`,
+        borderRadius: 12, padding: '0.85rem 1rem',
+      }}
+    >
+      <div className="flex-between" style={{ alignItems: 'flex-start', marginBottom: 6 }}>
+        <div>
+          <SourceBadge source={source} />
+          <div className="text-sm fw-600 mt-1" style={{ color: 'var(--text-dark)', marginTop: 6 }}>{title}</div>
+          <div className="text-sm text-muted" style={{ fontSize: 11 }}>{subtitle}</div>
+        </div>
+        <div style={{
+          fontSize: 11, fontWeight: 700, color: accent,
+          background: '#fff', borderRadius: 999, padding: '0.15rem 0.5rem',
+        }}>
+          {share.toFixed(0)}%
+        </div>
+      </div>
+      <div className="fw-700" style={{ fontSize: 22, color: accent, lineHeight: 1.1 }}>
+        ฿{revenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
+      </div>
+      <div className="text-sm text-muted" style={{ marginTop: 2 }}>
+        {count.toLocaleString()} ออเดอร์
+      </div>
+    </Link>
+  );
+}

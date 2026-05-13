@@ -43,6 +43,24 @@ enum MissionStatus {
   ENDED
 }
 
+// SHEET       = ลงผ่าน Google Sheet (ลูกค้าใหม่ — Acquisition team)
+// CRM_REORDER = ลงผ่านเว็บ CRM โดยตรง (รีออเดอร์ลูกค้าเก่า — Retention team)
+enum OrderSource {
+  SHEET
+  CRM_REORDER
+}
+
+// PENDING  = สร้างใน CRM แล้ว แต่ยังไม่ได้ส่งไป Sheet
+// SYNCED   = ส่ง webhook ไป Apps Script สำเร็จ — packer เห็นใน Sheet แล้ว
+// FAILED   = ส่งล้มเหลว — รอ retry
+// NA       = ไม่ต้อง sync (ออเดอร์ที่มาจาก Sheet อยู่แล้ว)
+enum SyncStatus {
+  NA
+  PENDING
+  SYNCED
+  FAILED
+}
+
 model SheetTeam {
   id        String   @id
   name      String
@@ -104,6 +122,20 @@ model SheetOrder {
   birthYear       Int?
   createdAt       DateTime    @default(now())
 
+  // ต้นทางของออเดอร์
+  source          OrderSource @default(SHEET)
+
+  // สถานะการ sync ออเดอร์ที่สร้างใน CRM กลับไป Sheet
+  // ออเดอร์ source=SHEET → syncStatus=NA (ไม่ต้อง sync ย้อน)
+  // ออเดอร์ source=CRM_REORDER → เริ่มที่ PENDING → SYNCED หรือ FAILED
+  syncStatus      SyncStatus  @default(NA)
+  syncedAt        DateTime?
+  syncError       String?
+  syncAttempts    Int         @default(0)
+
+  // user ที่กดสร้างออเดอร์ใน CRM (ต่างจาก salesRepId ที่อาจเป็นเซลส์เจ้าของลูกค้า)
+  createdByUserId String?
+
   salesRep SheetUser? @relation("SalesRepOrders", fields: [salesRepId], references: [id])
   team     SheetTeam? @relation(fields: [teamId], references: [id])
 
@@ -112,9 +144,12 @@ model SheetOrder {
   @@index([status])
   @@index([salesRepId])
   @@index([teamId])
+  @@index([source])
+  @@index([syncStatus])
   @@index([salesRepId, createdAt])
   @@index([salesRepId, phone])
   @@index([phone, createdAt])
+  @@index([source, createdAt])
   @@map("sheet_orders")
 }
 

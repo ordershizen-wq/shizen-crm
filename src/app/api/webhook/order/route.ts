@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { OrderStatus, Prisma } from '@prisma/client'
+import { OrderStatus, OrderSource, SyncStatus, Prisma } from '@prisma/client'
 const VALID_STATUSES = new Set<string>(Object.values(OrderStatus))
 
 function parseStatus(raw: unknown): OrderStatus {
@@ -46,12 +46,20 @@ export async function POST(request: NextRequest) {
     ageRange: typeof body.ageGroup === 'string' ? body.ageGroup : null,
     province: typeof body.province === 'string' ? body.province : null,
     birthYear: body.birthYear != null ? Number(body.birthYear) : null,
+    // ออเดอร์จาก Sheet → source=SHEET เสมอ, ไม่ต้อง sync ย้อนกลับ
+    source: OrderSource.SHEET,
+    syncStatus: SyncStatus.NA,
   }
 
   const order = await prisma.sheetOrder.upsert({
     where: { id },
+    // ตอน update ไม่แตะ source/syncStatus เผื่อ admin reclassify เป็น CRM_REORDER ภายหลัง
     create: { id, ...data },
-    update: data,
+    update: (() => {
+      const { source: _s, syncStatus: _ss, ...rest } = data;
+      void _s; void _ss;
+      return rest;
+    })(),
   })
 
   return Response.json({ success: true, orderId: order.id })

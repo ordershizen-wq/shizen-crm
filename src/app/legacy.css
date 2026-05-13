@@ -1006,6 +1006,26 @@ input[type="radio"] {
 @keyframes spinHint { to { transform: rotate(360deg); } }
 @keyframes fadeHintIn { to { opacity: 0.85; } }
 
+/* ── Profile hero action area ── */
+.profile-hero-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+@media (max-width: 640px) {
+  .profile-hero-actions {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 0.5rem;
+  }
+  .profile-hero-actions .btn { flex: 1; justify-content: center; }
+}
+
+/* ── Spin animation for loading icons ── */
+@keyframes spin360 { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+.ri-spin { display: inline-block; animation: spin360 0.9s linear infinite; }
+
 /* ── Click feedback บน clickable elements ── */
 .customer-card,
 .r-table tbody tr,

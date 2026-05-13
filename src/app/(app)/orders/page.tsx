@@ -1,8 +1,16 @@
 import { getCurrentUser, getOrderFilter } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
+import { OrderSource } from '@prisma/client';
+import SourceBadge from '@/components/SourceBadge';
 
-type SearchParams = Promise<{ status?: string; q?: string }>;
+type SearchParams = Promise<{ status?: string; q?: string; source?: string }>;
+
+const SOURCE_TABS: { value: string; label: string; icon: string }[] = [
+  { value: 'all',         label: 'ทุกที่มา',    icon: 'ri-stack-line' },
+  { value: 'SHEET',       label: 'ลูกค้าใหม่',  icon: 'ri-user-add-line' },
+  { value: 'CRM_REORDER', label: 'รีออเดอร์',   icon: 'ri-repeat-line' },
+];
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'ทั้งหมด', icon: 'ri-list-check' },
@@ -27,6 +35,10 @@ const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }>
 export default async function OrdersPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const statusFilter = params.status && params.status !== 'all' ? params.status : undefined;
+  const sourceFilter: OrderSource | undefined =
+    params.source === 'SHEET' || params.source === 'CRM_REORDER'
+      ? params.source
+      : undefined;
   const q = params.q?.trim().toLowerCase();
 
   const user = (await getCurrentUser())!;
@@ -35,9 +47,10 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
   const where = {
     ...teamFilter,
     ...(statusFilter ? { status: statusFilter as never } : {}),
+    ...(sourceFilter ? { source: sourceFilter } : {}),
   };
 
-  const [orders, allCount, countPerStatus] = await Promise.all([
+  const [orders, allCount, countPerStatus, countPerSource] = await Promise.all([
     prisma.sheetOrder.findMany({
       where,
       orderBy: { createdAt: 'desc' },
@@ -52,6 +65,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
         salesRepName: true,
         createdAt: true,
         productsJson: true,
+        source: true,
       },
     }),
     prisma.sheetOrder.count({ where: teamFilter }),
@@ -60,7 +74,13 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
       where: teamFilter,
       _count: true,
     }),
+    prisma.sheetOrder.groupBy({
+      by: ['source'],
+      where: teamFilter,
+      _count: true,
+    }),
   ]);
+  const sourceCountMap = new Map(countPerSource.map(c => [c.source, c._count]));
 
   // Client-side search filter
   const filtered = q
@@ -85,14 +105,52 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
         </div>
       </div>
 
+      {/* Source filter (ที่มา) */}
+      <div className="card p-3 mb-3 r-tabs-scroll" style={{ alignItems: 'center' }}>
+        <span className="text-sm fw-600" style={{ color: 'var(--text-muted)', marginRight: 4 }}>
+          <i className="ri-filter-line"></i> ที่มา:
+        </span>
+        {SOURCE_TABS.map(opt => {
+          const count = opt.value === 'all'
+            ? allCount
+            : (sourceCountMap.get(opt.value as OrderSource) ?? 0);
+          const active = (!sourceFilter && opt.value === 'all') || sourceFilter === opt.value;
+          const href = buildSourceHref({ source: opt.value, status: statusFilter, q });
+          return (
+            <Link
+              key={opt.value}
+              href={href}
+              className="btn"
+              style={{
+                background: active ? '#147a5e' : 'var(--bg-app)',
+                color: active ? '#fff' : 'var(--text-muted)',
+                padding: '0.4rem 0.85rem',
+                fontSize: 12,
+              }}
+            >
+              <i className={opt.icon}></i> {opt.label}
+              <span style={{
+                background: active ? 'rgba(255,255,255,0.25)' : 'var(--border-light)',
+                padding: '0.05rem 0.5rem',
+                borderRadius: 10,
+                fontSize: 11,
+                fontWeight: 700,
+              }}>{count}</span>
+            </Link>
+          );
+        })}
+      </div>
+
       {/* Filter bar */}
       <div className="card p-3 mb-4 r-tabs-scroll" style={{ alignItems: 'center' }}>
         {STATUS_OPTIONS.map(opt => {
           const count = opt.value === 'all' ? allCount : (countMap.get(opt.value as never) ?? 0);
           const active = (!statusFilter && opt.value === 'all') || statusFilter === opt.value;
-          const href = opt.value === 'all'
-            ? (q ? `/orders?q=${encodeURIComponent(q)}` : '/orders')
-            : `/orders?status=${opt.value}${q ? `&q=${encodeURIComponent(q)}` : ''}`;
+          const href = buildSourceHref({
+            source: sourceFilter ?? 'all',
+            status: opt.value,
+            q,
+          });
           return (
             <Link
               key={opt.value}
@@ -165,13 +223,16 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
                     <tr key={o.id}>
                       <td data-label="ลูกค้า">
                         <div>
-                          {o.phone ? (
-                            <Link href={`/customers/${o.phone}`} style={{ color: 'var(--primary)', fontWeight: 600 }}>
-                              {o.customerName || '(ไม่ระบุ)'}
-                            </Link>
-                          ) : (
-                            <span className="fw-500">{o.customerName || '(ไม่ระบุ)'}</span>
-                          )}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            {o.phone ? (
+                              <Link href={`/customers/${o.phone}`} style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                                {o.customerName || '(ไม่ระบุ)'}
+                              </Link>
+                            ) : (
+                              <span className="fw-500">{o.customerName || '(ไม่ระบุ)'}</span>
+                            )}
+                            <SourceBadge source={o.source} compact />
+                          </div>
                           {o.phone && <div className="text-sm text-muted">{o.phone}</div>}
                         </div>
                       </td>
@@ -208,4 +269,13 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
       </div>
     </>
   );
+}
+
+function buildSourceHref({ source, status, q }: { source?: string; status?: string; q?: string }) {
+  const p = new URLSearchParams();
+  if (source && source !== 'all') p.set('source', source);
+  if (status && status !== 'all') p.set('status', status);
+  if (q) p.set('q', q);
+  const qs = p.toString();
+  return `/orders${qs ? `?${qs}` : ''}`;
 }

@@ -36,6 +36,7 @@ type NavItem = {
   icon: string;
   text: string;
   badge?: 'atRisk' | 'task';
+  adminOnly?: boolean;
 };
 
 const NAV: { label: string; items: NavItem[] }[] = [
@@ -46,6 +47,9 @@ const NAV: { label: string; items: NavItem[] }[] = [
     { href: '/customers', icon: 'ri-group-2-line',         text: 'จัดการลูกค้า' },
     { href: '/orders',    icon: 'ri-shopping-bag-3-line',  text: 'ออเดอร์' },
     { href: '/products',  icon: 'ri-archive-2-line',       text: 'คลังสินค้า' },
+  ]},
+  { label: 'แอดมิน', items: [
+    { href: '/admin/sync-failed', icon: 'ri-refresh-line', text: 'ออเดอร์รอ sync', adminOnly: true },
   ]},
 ];
 
@@ -97,10 +101,13 @@ export default function Sidebar({
 
       {/* Navigation */}
       <nav className="sidebar-menu">
-        {NAV.map(group => (
+        {NAV.map(group => {
+          const visibleItems = group.items.filter(it => !it.adminOnly || user.role === 'ADMIN');
+          if (visibleItems.length === 0) return null;
+          return (
           <div key={group.label}>
             {showText && <div className="menu-label">{group.label}</div>}
-            {group.items.map(item => {
+            {visibleItems.map(item => {
               const active = isActive(item.href);
               const showBadge =
                 (item.badge === 'atRisk' && atRiskCount > 0) ||
@@ -132,7 +139,8 @@ export default function Sidebar({
               );
             })}
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Expand button when collapsed */}

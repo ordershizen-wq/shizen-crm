@@ -10,6 +10,8 @@ import ProductRecommendations from './ProductRecommendations';
 import TasksPanel from './TasksPanel';
 import SetTaskButton from './SetTaskButton';
 import ProfileTabs from './ProfileTabs';
+import ReorderButton from './ReorderButton';
+import SourceBadge from '@/components/SourceBadge';
 import type { ChecklistAnswers } from './actions';
 
 type Props = { params: Promise<{ phone: string }> };
@@ -27,7 +29,7 @@ export default async function CustomerProfilePage({ params }: Props) {
     select: {
       id: true, date: true, createdAt: true, totalPrice: true, status: true,
       channel: true, salesRepName: true, productsJson: true,
-      address: true, customerName: true, isReturned: true,
+      address: true, customerName: true, isReturned: true, source: true,
     },
   });
 
@@ -124,7 +126,7 @@ export default async function CustomerProfilePage({ params }: Props) {
             <table className="r-table">
               <thead>
                 <tr>
-                  <th>วันที่</th><th>สินค้า</th><th>สถานะ</th>
+                  <th>วันที่</th><th>ที่มา</th><th>สินค้า</th><th>สถานะ</th>
                   <th style={{ textAlign: 'right' }}>ยอด</th>
                 </tr>
               </thead>
@@ -134,6 +136,7 @@ export default async function CustomerProfilePage({ params }: Props) {
                   return (
                     <tr key={o.id}>
                       <td className="text-sm" data-label="วันที่">{(o.date ?? o.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}</td>
+                      <td data-label="ที่มา"><SourceBadge source={o.source} compact /></td>
                       <td className="text-sm r-cell-block" data-label="สินค้า">{products.length > 0 ? products.map(p => `${p.name ?? '-'} x${p.quantity ?? 1}`).join(', ') : '-'}</td>
                       <td data-label="สถานะ"><StatusBadge status={o.status} /></td>
                       <td className="fw-600" data-label="ยอด" style={{ textAlign: 'right' }}>฿{Number(o.totalPrice ?? 0).toLocaleString('th-TH', { maximumFractionDigits: 0 })}</td>
@@ -232,7 +235,7 @@ export default async function CustomerProfilePage({ params }: Props) {
         <table className="r-table">
           <thead>
             <tr>
-              <th>วันที่</th><th>สินค้า</th><th>เซลส์</th><th>ช่องทาง</th><th>สถานะ</th>
+              <th>วันที่</th><th>ที่มา</th><th>สินค้า</th><th>เซลส์</th><th>ช่องทาง</th><th>สถานะ</th>
               <th style={{ textAlign: 'right' }}>ยอด</th>
               <th style={{ textAlign: 'right' }}>งาน</th>
             </tr>
@@ -244,6 +247,7 @@ export default async function CustomerProfilePage({ params }: Props) {
               return (
                 <tr key={o.id}>
                   <td className="text-sm" data-label="วันที่">{(o.date ?? o.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}</td>
+                  <td data-label="ที่มา"><SourceBadge source={o.source} compact /></td>
                   <td className="text-sm r-cell-block" data-label="สินค้า">{products.length > 0 ? products.map(p => `${p.name ?? '-'} x${p.quantity ?? 1}`).join(', ') : '-'}</td>
                   <td className="text-sm" data-label="เซลส์">{o.salesRepName || '-'}</td>
                   <td className="text-sm" data-label="ช่องทาง">{o.channel || '-'}</td>
@@ -375,6 +379,20 @@ export default async function CustomerProfilePage({ params }: Props) {
                 <i className="ri-time-line"></i> {daysSince !== null ? `สั่งล่าสุด ${daysSince} วันที่แล้ว` : '-'}
               </span>
             </div>
+          </div>
+          <div className="profile-hero-actions">
+            <ReorderButton
+              customerPhone={decodedPhone}
+              customerName={name}
+              defaultAddress={latestOrder.address ?? ''}
+              defaultChannel={latestOrder.channel}
+              productSuggestions={allProducts.map(p => p.name)}
+              lastOrderProducts={
+                (Array.isArray(latestOrder.productsJson) ? (latestOrder.productsJson as { name?: string; quantity?: number }[]) : [])
+                  .filter(p => p.name)
+                  .map(p => ({ name: String(p.name), quantity: Number(p.quantity ?? 1) }))
+              }
+            />
           </div>
         </div>
       </div>
