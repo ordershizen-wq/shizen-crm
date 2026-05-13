@@ -37,22 +37,30 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
     ...(statusFilter ? { status: statusFilter as never } : {}),
   };
 
-  const orders = await prisma.sheetOrder.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-    take: 200,
-    select: {
-      id: true,
-      customerName: true,
-      phone: true,
-      totalPrice: true,
-      status: true,
-      channel: true,
-      salesRepName: true,
-      createdAt: true,
-      productsJson: true,
-    },
-  });
+  const [orders, allCount, countPerStatus] = await Promise.all([
+    prisma.sheetOrder.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      select: {
+        id: true,
+        customerName: true,
+        phone: true,
+        totalPrice: true,
+        status: true,
+        channel: true,
+        salesRepName: true,
+        createdAt: true,
+        productsJson: true,
+      },
+    }),
+    prisma.sheetOrder.count({ where: teamFilter }),
+    prisma.sheetOrder.groupBy({
+      by: ['status'],
+      where: teamFilter,
+      _count: true,
+    }),
+  ]);
 
   // Client-side search filter
   const filtered = q
@@ -63,14 +71,6 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
           o.salesRepName?.toLowerCase().includes(q)
       )
     : orders;
-
-  // Count per status
-  const allCount = await prisma.sheetOrder.count({ where: teamFilter });
-  const countPerStatus = await prisma.sheetOrder.groupBy({
-    by: ['status'],
-    where: teamFilter,
-    _count: true,
-  });
   const countMap = new Map(countPerStatus.map(c => [c.status, c._count]));
 
   return (

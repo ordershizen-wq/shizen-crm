@@ -1,7 +1,7 @@
 import { getCurrentUser, getOrderFilter } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
-import { calculateStage, STAGE_LABELS } from '@/lib/customer';
+import { STAGE_LABELS, aggregateOrdersByPhone, tallyStages } from '@/lib/customer';
 import DashboardCharts, { type DailyRevenue, type StageCount } from './DashboardCharts';
 
 export default async function DashboardPage() {
@@ -12,8 +12,8 @@ export default async function DashboardPage() {
   const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const d60 = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
-  // Aggregate stats + recent orders
-  const [totalOrders, revenue, recentOrders, allOrdersForGroups] = await Promise.all([
+  // ทุก aggregate ทำใน DB (groupBy/aggregate/count) — ไม่ดึง row ทั้ง table มา process ใน JS อีกต่อไป
+  const [totalOrders, revenue, recentOrders, last30Orders, last30, prev30, phoneAggs] = await Promise.all([
     prisma.sheetOrder.count({ where: orderFilter }),
     prisma.sheetOrder.aggregate({ where: orderFilter, _sum: { totalPrice: true } }),
     prisma.sheetOrder.findMany({
@@ -31,18 +31,11 @@ export default async function DashboardPage() {
         createdAt: true,
       },
     }),
-    // All orders for chart + stage computation
+    // เฉพาะ 30 วันล่าสุดสำหรับกราฟ — แทนที่จะดึงทั้ง table
     prisma.sheetOrder.findMany({
-      where: { ...orderFilter, phone: { not: null } },
-      select: { phone: true, totalPrice: true, createdAt: true, customerName: true },
+      where: { ...orderFilter, createdAt: { gte: d30 } },
+      select: { totalPrice: true, createdAt: true },
     }),
-  ]);
-
-  const totalRevenue = Number(revenue._sum.totalPrice ?? 0);
-  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-
-  // 30-day vs prev-30-day
-  const [last30, prev30] = await Promise.all([
     prisma.sheetOrder.aggregate({
       where: { ...orderFilter, createdAt: { gte: d30 } },
       _sum: { totalPrice: true },
@@ -53,7 +46,12 @@ export default async function DashboardPage() {
       _sum: { totalPrice: true },
       _count: true,
     }),
+    // GROUP BY phone ใน DB — คืนแค่ 1 row ต่อลูกค้า ไม่ใช่ทุก order
+    aggregateOrdersByPhone(orderFilter),
   ]);
+
+  const totalRevenue = Number(revenue._sum.totalPrice ?? 0);
+  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
   const last30Rev = Number(last30._sum.totalPrice ?? 0);
   const prev30Rev = Number(prev30._sum.totalPrice ?? 0);
@@ -67,8 +65,7 @@ export default async function DashboardPage() {
     dailyMap.set(key, { revenue: 0, orders: 0 });
   }
 
-  for (const o of allOrdersForGroups) {
-    if (o.createdAt < d30) continue;
+  for (const o of last30Orders) {
     const key = o.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
     const entry = dailyMap.get(key);
     if (entry) {
@@ -84,27 +81,8 @@ export default async function DashboardPage() {
   }));
 
   // --- Stage distribution ---
-  type PhoneRow = { orderCount: number; totalSpent: number; lastOrderAt: Date };
-  const phoneMap = new Map<string, PhoneRow>();
-  for (const o of allOrdersForGroups) {
-    const ph = o.phone!;
-    const ex = phoneMap.get(ph);
-    if (!ex) {
-      phoneMap.set(ph, { orderCount: 1, totalSpent: Number(o.totalPrice ?? 0), lastOrderAt: o.createdAt });
-    } else {
-      ex.orderCount += 1;
-      ex.totalSpent += Number(o.totalPrice ?? 0);
-      if (o.createdAt > ex.lastOrderAt) ex.lastOrderAt = o.createdAt;
-    }
-  }
-
-  const stageTally: Record<string, number> = { VIP: 0, NEW: 0, ACTIVE: 0, AT_RISK: 0, LAPSED: 0, LOST: 0 };
-  for (const row of phoneMap.values()) {
-    const stage = calculateStage(row);
-    stageTally[stage] = (stageTally[stage] ?? 0) + 1;
-  }
-
-  const customerCount = phoneMap.size;
+  const stageTally = tallyStages(phoneAggs);
+  const customerCount = phoneAggs.length;
 
   const stageColors: Record<string, string> = {
     VIP: '#f6c90e', NEW: '#0ea5e9', ACTIVE: '#2FA084',

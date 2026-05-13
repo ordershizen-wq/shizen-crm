@@ -55,3 +55,51 @@ export function normalizePhone(phone: string | null | undefined): string | null 
   const cleaned = phone.replace(/[^0-9]/g, '');
   return cleaned.length >= 9 ? cleaned : null;
 }
+
+import { prisma } from './prisma';
+import type { Prisma } from '@prisma/client';
+
+export type PhoneAggregate = {
+  phone: string;
+  orderCount: number;
+  totalSpent: number;
+  lastOrderAt: Date;
+};
+
+/**
+ * รวมยอดต่อเบอร์ในระดับ DB (Postgres GROUP BY) แทนการดึงทุก row มา reduce ใน JS
+ * เร็วกว่า findMany หลายเท่าเมื่อมี order หลักหมื่น+
+ */
+export async function aggregateOrdersByPhone(
+  where: Prisma.SheetOrderWhereInput,
+): Promise<PhoneAggregate[]> {
+  const rows = await prisma.sheetOrder.groupBy({
+    by: ['phone'],
+    where: { ...where, phone: { not: null } },
+    _count: { _all: true },
+    _sum: { totalPrice: true },
+    _max: { createdAt: true },
+  });
+
+  const out: PhoneAggregate[] = [];
+  for (const r of rows) {
+    if (!r.phone || !r._max.createdAt) continue;
+    out.push({
+      phone: r.phone,
+      orderCount: r._count._all,
+      totalSpent: Number(r._sum.totalPrice ?? 0),
+      lastOrderAt: r._max.createdAt,
+    });
+  }
+  return out;
+}
+
+export function tallyStages(rows: PhoneAggregate[]): Record<CustomerStage, number> {
+  const tally: Record<CustomerStage, number> = {
+    VIP: 0, NEW: 0, ACTIVE: 0, AT_RISK: 0, LAPSED: 0, LOST: 0,
+  };
+  for (const r of rows) {
+    tally[calculateStage(r)] += 1;
+  }
+  return tally;
+}

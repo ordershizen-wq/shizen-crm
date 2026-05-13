@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { prisma } from './prisma';
 import type { SheetUser } from '@prisma/client';
@@ -12,25 +13,21 @@ export type CurrentUser = SheetUser & {
  * คืนค่า SheetUser (เซลส์) ปัจจุบัน จาก cookie
  * PACKER ไม่มีสิทธิ์เข้า CRM → return null
  */
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const cookieStore = await cookies();
   const userId = cookieStore.get(COOKIE_NAME)?.value;
   if (!userId) return null;
 
-  const user = await prisma.sheetUser.findUnique({ where: { id: userId } });
+  // join team ในรอบเดียว ลด round-trip
+  const user = await prisma.sheetUser.findUnique({
+    where: { id: userId },
+    include: { team: { select: { id: true, name: true, color: true } } },
+  });
   if (!user || user.isActive !== 'ACTIVE') return null;
   if (user.role === 'PACKER') return null;
 
-  let team: CurrentUser['team'] = null;
-  if (user.teamId) {
-    team = await prisma.sheetTeam.findUnique({
-      where: { id: user.teamId },
-      select: { id: true, name: true, color: true },
-    });
-  }
-
-  return { ...user, team };
-}
+  return user as CurrentUser;
+});
 
 /**
  * สร้าง Prisma filter สำหรับ SheetOrder ตาม role:

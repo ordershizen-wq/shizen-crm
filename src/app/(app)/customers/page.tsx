@@ -28,20 +28,16 @@ export default async function CustomersPage({ searchParams }: { searchParams: Se
   const user = (await getCurrentUser())!;
   const orderFilter = (await getOrderFilter(user)) ?? {};
 
-  // ดึง orders ทั้งหมดในขอบเขตทีม (filter จะทำได้เฉพาะข้อมูลที่เห็น)
-  const [orders, extras] = await Promise.all([
-    prisma.sheetOrder.findMany({
+  // 1) GROUP BY phone ใน DB → ได้ 1 row ต่อลูกค้า (orderCount, totalSpent, firstOrderAt, lastOrderAt)
+  // 2) ค่อยดึงรายละเอียดล่าสุด (name/address/salesRep/channel) จาก order ล่าสุดของเฉพาะเบอร์ที่ต้องโชว์
+  const [phoneRows, extras] = await Promise.all([
+    prisma.sheetOrder.groupBy({
+      by: ['phone'],
       where: { ...orderFilter, phone: { not: null } },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        phone: true,
-        customerName: true,
-        address: true,
-        totalPrice: true,
-        createdAt: true,
-        salesRepName: true,
-        channel: true,
-      },
+      _count: { _all: true },
+      _sum: { totalPrice: true },
+      _min: { createdAt: true },
+      _max: { createdAt: true },
     }),
     prisma.sheetCustomerExtra.findMany({
       select: { phone: true, grade: true },
@@ -50,50 +46,45 @@ export default async function CustomersPage({ searchParams }: { searchParams: Se
 
   const gradeMap = new Map(extras.map(e => [e.phone, e.grade]));
 
-  // Group by phone → customer aggregate
-  const byPhone = new Map<string, CustomerRow>();
-  for (const o of orders) {
-    if (!o.phone) continue;
-    const existing = byPhone.get(o.phone);
-    if (existing) {
-      existing.orderCount += 1;
-      existing.totalSpent += Number(o.totalPrice ?? 0);
-      if (!existing.firstOrderAt || o.createdAt < existing.firstOrderAt) {
-        existing.firstOrderAt = o.createdAt;
-      }
-      if (!existing.lastOrderAt || o.createdAt > existing.lastOrderAt) {
-        existing.lastOrderAt = o.createdAt;
-        existing.lastSalesRep = o.salesRepName;
-        existing.lastChannel = o.channel;
-        existing.name = o.customerName || existing.name;
-        existing.address = o.address || existing.address;
-      }
-    } else {
-      byPhone.set(o.phone, {
-        phone: o.phone,
-        name: o.customerName,
-        address: o.address,
-        orderCount: 1,
-        totalSpent: Number(o.totalPrice ?? 0),
-        firstOrderAt: o.createdAt,
-        lastOrderAt: o.createdAt,
-        lastSalesRep: o.salesRepName,
-        lastChannel: o.channel,
-        stage: 'NEW',
-        grade: gradeMap.get(o.phone) ?? null,
-      });
-    }
-  }
+  // ดึงรายละเอียดล่าสุดต่อเบอร์ — query เดียวคืนทุก "order ล่าสุด" ผ่าน distinct on phone
+  const latestPerPhone = await prisma.sheetOrder.findMany({
+    where: {
+      ...orderFilter,
+      phone: { in: phoneRows.map(r => r.phone!).filter(Boolean) },
+    },
+    orderBy: [{ phone: 'asc' }, { createdAt: 'desc' }],
+    distinct: ['phone'],
+    select: {
+      phone: true,
+      customerName: true,
+      address: true,
+      salesRepName: true,
+      channel: true,
+    },
+  });
+  const latestMap = new Map(latestPerPhone.map(o => [o.phone!, o]));
 
-  // Compute stage for each
-  const customers: CustomerRow[] = Array.from(byPhone.values()).map(c => ({
-    ...c,
-    stage: calculateStage({
-      lastOrderAt: c.lastOrderAt,
-      orderCount: c.orderCount,
-      totalSpent: c.totalSpent,
-    }),
-  }));
+  const customers: CustomerRow[] = phoneRows
+    .filter(r => r.phone && r._max.createdAt)
+    .map(r => {
+      const latest = latestMap.get(r.phone!);
+      const orderCount = r._count._all;
+      const totalSpent = Number(r._sum.totalPrice ?? 0);
+      const lastOrderAt = r._max.createdAt!;
+      return {
+        phone: r.phone!,
+        name: latest?.customerName ?? null,
+        address: latest?.address ?? null,
+        orderCount,
+        totalSpent,
+        firstOrderAt: r._min.createdAt,
+        lastOrderAt,
+        lastSalesRep: latest?.salesRepName ?? null,
+        lastChannel: latest?.channel ?? null,
+        stage: calculateStage({ lastOrderAt, orderCount, totalSpent }),
+        grade: gradeMap.get(r.phone!) ?? null,
+      };
+    });
 
   // Apply filters
   let filtered = customers;

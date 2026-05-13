@@ -78,6 +78,7 @@ model SheetUser {
   assignedTasks CustomerTask[]      @relation("AssignedTasks")
   createdTasks  CustomerTask[]      @relation("CreatedTasks")
 
+  @@index([teamId])
   @@map("sheet_users")
 }
 
@@ -106,6 +107,14 @@ model SheetOrder {
   salesRep SheetUser? @relation("SalesRepOrders", fields: [salesRepId], references: [id])
   team     SheetTeam? @relation(fields: [teamId], references: [id])
 
+  @@index([createdAt])
+  @@index([phone])
+  @@index([status])
+  @@index([salesRepId])
+  @@index([teamId])
+  @@index([salesRepId, createdAt])
+  @@index([salesRepId, phone])
+  @@index([phone, createdAt])
   @@map("sheet_orders")
 }
 

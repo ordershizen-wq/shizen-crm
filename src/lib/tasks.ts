@@ -1,6 +1,6 @@
 import { prisma } from './prisma';
 import { getQueueFilter, type CurrentUser } from './auth';
-import { calculateStage, type CustomerStage } from './customer';
+import { aggregateOrdersByPhone, calculateStage, type CustomerStage } from './customer';
 import type { Prisma } from '@prisma/client';
 
 /**
@@ -57,37 +57,27 @@ export async function getTaskSuggestions(user: CurrentUser | null): Promise<Task
   if (!user) return [];
   const queueFilter = getQueueFilter(user);
 
-  const orders = await prisma.sheetOrder.findMany({
-    where: { ...queueFilter, phone: { not: null } },
-    orderBy: { createdAt: 'desc' },
-    select: { phone: true, customerName: true, totalPrice: true, createdAt: true },
+  // 1) Aggregate ใน DB
+  const phoneAggs = await aggregateOrdersByPhone(queueFilter);
+  if (phoneAggs.length === 0) return [];
+
+  // 2) เอาเฉพาะลูกค้าที่ stage เป็น AT_RISK/LAPSED ก่อน (filter ฝั่ง JS แต่ทำกับ aggregate ไม่ใช่ทุก row)
+  const candidates = phoneAggs.filter(r => {
+    const stage = calculateStage(r);
+    return stage === 'AT_RISK' || stage === 'LAPSED';
   });
+  if (candidates.length === 0) return [];
 
-  type Row = { phone: string; name: string; orderCount: number; totalSpent: number; lastOrderAt: Date };
-  const byPhone = new Map<string, Row>();
-  for (const o of orders) {
-    const ph = o.phone!;
-    const ex = byPhone.get(ph);
-    if (!ex) {
-      byPhone.set(ph, {
-        phone: ph,
-        name: o.customerName || 'ไม่ระบุชื่อ',
-        orderCount: 1,
-        totalSpent: Number(o.totalPrice ?? 0),
-        lastOrderAt: o.createdAt,
-      });
-    } else {
-      ex.orderCount += 1;
-      ex.totalSpent += Number(o.totalPrice ?? 0);
-      if (o.createdAt > ex.lastOrderAt) {
-        ex.lastOrderAt = o.createdAt;
-        if (o.customerName) ex.name = o.customerName;
-      }
-    }
-  }
-  if (byPhone.size === 0) return [];
+  const phones = candidates.map(r => r.phone);
 
-  const phones = Array.from(byPhone.keys());
+  // 3) ดึงชื่อล่าสุดต่อเบอร์ (distinct on phone — เร็วเพราะ filter ด้วยรายชื่อเบอร์ที่ลดลงแล้ว)
+  const latestNames = await prisma.sheetOrder.findMany({
+    where: { ...queueFilter, phone: { in: phones } },
+    orderBy: [{ phone: 'asc' }, { createdAt: 'desc' }],
+    distinct: ['phone'],
+    select: { phone: true, customerName: true },
+  });
+  const nameMap = new Map(latestNames.map(o => [o.phone!, o.customerName || 'ไม่ระบุชื่อ']));
 
   // ลูกค้าที่มีงาน active อยู่แล้ว
   const activeTasks = await prisma.customerTask.findMany({
@@ -108,17 +98,11 @@ export async function getTaskSuggestions(user: CurrentUser | null): Promise<Task
   const hasFutureNudge = new Set(futureNudges.map(n => n.customerPhone));
 
   const suggestions: TaskSuggestion[] = [];
-  for (const row of byPhone.values()) {
+  for (const row of candidates) {
     if (hasActiveTask.has(row.phone)) continue;
     if (hasFutureNudge.has(row.phone)) continue;
 
-    const stage = calculateStage({
-      lastOrderAt: row.lastOrderAt,
-      orderCount: row.orderCount,
-      totalSpent: row.totalSpent,
-    });
-    if (stage !== 'AT_RISK' && stage !== 'LAPSED') continue;
-
+    const stage = calculateStage(row) as 'AT_RISK' | 'LAPSED';
     const daysSince = Math.floor((Date.now() - row.lastOrderAt.getTime()) / 86400000);
     const reason = stage === 'AT_RISK'
       ? `ห่างไป ${daysSince} วัน — ถึงเวลารีออเดอร์`
@@ -126,7 +110,7 @@ export async function getTaskSuggestions(user: CurrentUser | null): Promise<Task
 
     suggestions.push({
       phone: row.phone,
-      name: row.name,
+      name: nameMap.get(row.phone) ?? 'ไม่ระบุชื่อ',
       stage,
       daysSince,
       orderCount: row.orderCount,

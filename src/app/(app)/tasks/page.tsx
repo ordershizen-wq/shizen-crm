@@ -76,29 +76,32 @@ export default async function TasksPage({ searchParams }: Props) {
     take: view === 'kanban' ? 400 : 200,
   });
 
-  // ดึงชื่อลูกค้าจาก order ล่าสุด
+  // ดึงชื่อลูกค้าจาก order ล่าสุด — distinct on phone ให้ DB คืน 1 row ต่อเบอร์
   const phones = Array.from(new Set(tasks.map(t => t.customerPhone)));
   const orders = phones.length ? await prisma.sheetOrder.findMany({
     where: { phone: { in: phones } },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ phone: 'asc' }, { createdAt: 'desc' }],
+    distinct: ['phone'],
     select: { phone: true, customerName: true },
   }) : [];
   const nameMap = new Map<string, string>();
   for (const o of orders) {
-    if (o.phone && !nameMap.has(o.phone) && o.customerName) nameMap.set(o.phone, o.customerName);
+    if (o.phone && o.customerName) nameMap.set(o.phone, o.customerName);
   }
 
-  // counters สำหรับ summary — "pending" = ค้างอยู่ทุกสถานะที่ยังไม่ปิด
+  // counters สำหรับ summary — รันขนาน
   const activeStatuses = ['PENDING' as const, 'IN_PROGRESS' as const, 'WAITING_REPLY' as const];
-  const allMyPending = await prisma.customerTask.count({
-    where: { AND: [baseFilter, { status: { in: activeStatuses } }] },
-  });
-  const todayCount = await prisma.customerTask.count({
-    where: { AND: [baseFilter, { status: { in: activeStatuses }, dueDate: { gte: today, lt: tomorrow } }] },
-  });
-  const overdueCount = await prisma.customerTask.count({
-    where: { AND: [baseFilter, { status: { in: activeStatuses }, dueDate: { lt: today } }] },
-  });
+  const [allMyPending, todayCount, overdueCount] = await Promise.all([
+    prisma.customerTask.count({
+      where: { AND: [baseFilter, { status: { in: activeStatuses } }] },
+    }),
+    prisma.customerTask.count({
+      where: { AND: [baseFilter, { status: { in: activeStatuses }, dueDate: { gte: today, lt: tomorrow } }] },
+    }),
+    prisma.customerTask.count({
+      where: { AND: [baseFilter, { status: { in: activeStatuses }, dueDate: { lt: today } }] },
+    }),
+  ]);
 
   // Suggestions โชว์เมื่อดูงาน "ค้างอยู่" (ทั้ง list และ kanban time mode)
   const showSuggestions =
