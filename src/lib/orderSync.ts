@@ -4,14 +4,13 @@ import { SyncStatus } from '@prisma/client';
 type ProductRow = { name: string; quantity: number; unitPrice: number };
 
 /**
- * ส่งออเดอร์ที่สร้างใน CRM (source=CRM_REORDER) ไปต่อท้าย Google Sheet ผ่าน
- * Apps Script Web App ที่ตั้งค่าใน env: SHEET_SYNC_URL
+ * ส่งออเดอร์ที่สร้างใน CRM (source=CRM_REORDER) → Google Sheet ผ่าน Apps Script Web App
  *
- * Strategy:
- *  1) POST ไป /exec ของ Apps Script ด้วย redirect: 'manual'
- *  2) ถ้าได้ 302 → GET location URL เอง (จัดการ redirect manually เพราะ Node fetch
- *     บน Vercel datacenter บางครั้งโดน Google block ตอน follow 302 → googleusercontent)
- *  3) Parse response JSON → success
+ * Key behaviors:
+ *  - POST ด้วย redirect: 'follow' — Node fetch จะแปลง POST → GET ตอน follow 302
+ *    (Apps Script doPost คืน 302 → googleusercontent.com ที่ cache response)
+ *  - ส่ง User-Agent แบบ browser-like กัน Google bot detection
+ *  - เก็บ error preview ใน syncError ให้ admin diagnose ผ่าน /admin/sync-failed
  */
 export async function syncOrderToSheet(orderId: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const url = process.env.SHEET_SYNC_URL;
@@ -25,7 +24,7 @@ export async function syncOrderToSheet(orderId: string): Promise<{ ok: true } | 
       where: { id: orderId },
       data: {
         syncStatus: SyncStatus.PENDING,
-        syncError: 'SHEET_SYNC_URL ยังไม่ได้ตั้งค่า — รอ admin ตั้งค่าและ retry',
+        syncError: 'SHEET_SYNC_URL ยังไม่ได้ตั้งค่า',
         syncAttempts: { increment: 1 },
       },
     });
@@ -38,6 +37,7 @@ export async function syncOrderToSheet(orderId: string): Promise<{ ok: true } | 
 
   const payload = {
     command: 'reorder_sync',
+    // Apps Script doPost อ่าน HTTP header ไม่ได้ → ใส่ secret ใน body
     secret: secret ?? null,
     apiKey: secret ?? null,
     id: order.id,
@@ -57,97 +57,36 @@ export async function syncOrderToSheet(orderId: string): Promise<{ ok: true } | 
     source: 'CRM_REORDER',
   };
 
-  // เก็บรายละเอียดการ debug ลง syncError เมื่อ fail
-  const trace: string[] = [];
-  trace.push(`url=${url.slice(0, 80)}...`);
-  trace.push(`urlLen=${url.length}`);
-  trace.push(`secretLen=${secret?.length ?? 0}`);
-
   try {
-    // Step 1: POST without following redirect (ดู Location header เอง)
-    const res1 = await fetch(url, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json, text/plain, */*',
-        // browser-like UA เผื่อ Google trigger bot detection
+        // กัน Google bot detection จาก datacenter IP
         'User-Agent': 'Mozilla/5.0 (compatible; ShizenCRM-Sync/1.0)',
       },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(20000),
-      redirect: 'manual',
+      redirect: 'follow',
     });
 
-    trace.push(`step1.status=${res1.status}`);
-    trace.push(`step1.type=${res1.type}`);
+    const text = await res.text();
 
-    let finalRes = res1;
-    let finalText = '';
-
-    if (res1.status === 0 || res1.type === 'opaqueredirect' || (res1.status >= 300 && res1.status < 400)) {
-      // Got redirect — follow manually
-      const location = res1.headers.get('location');
-      trace.push(`step1.location=${location ? location.slice(0, 80) : 'null'}`);
-
-      if (!location) {
-        // บางครั้ง redirect: 'manual' บน Node fetch จะคืน type=opaqueredirect แบบไม่มี location header
-        // → ใช้ redirect: 'follow' แทน
-        trace.push('fallback: redirect=follow');
-        const res2 = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'Mozilla/5.0 (compatible; ShizenCRM-Sync/1.0)',
-          },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(20000),
-          redirect: 'follow',
-        });
-        trace.push(`step2.status=${res2.status}`);
-        trace.push(`step2.finalUrl=${res2.url.slice(0, 80)}`);
-        finalRes = res2;
-        finalText = await res2.text().catch(() => '');
-      } else {
-        // Follow redirect ด้วย GET
-        const res2 = await fetch(location, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'Mozilla/5.0 (compatible; ShizenCRM-Sync/1.0)',
-          },
-          signal: AbortSignal.timeout(20000),
-          redirect: 'follow',
-        });
-        trace.push(`step2.status=${res2.status}`);
-        trace.push(`step2.contentType=${res2.headers.get('content-type') ?? '?'}`);
-        trace.push(`step2.finalUrl=${res2.url.slice(0, 80)}`);
-        finalRes = res2;
-        finalText = await res2.text().catch(() => '');
-      }
-    } else {
-      finalText = await res1.text().catch(() => '');
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
     }
 
-    trace.push(`final.status=${finalRes.status}`);
-    trace.push(`final.bodyLen=${finalText.length}`);
-    trace.push(`final.bodyPreview=${finalText.slice(0, 120).replace(/\s+/g, ' ')}`);
-
-    if (!finalRes.ok) {
-      throw new Error(`[${trace.join(' | ')}]`);
-    }
-
-    // Parse JSON
-    type ScriptResp = { ok?: boolean; error?: string; id?: string };
-    let parsed: ScriptResp;
+    // Apps Script ตอบเป็น JSON เสมอ — ถ้าได้ HTML แปลว่ามีปัญหา (redirect ไป login etc.)
+    let parsed: { ok?: boolean; error?: string };
     try {
-      parsed = JSON.parse(finalText) as ScriptResp;
+      parsed = JSON.parse(text);
     } catch {
-      throw new Error(`Non-JSON response [${trace.join(' | ')}]`);
+      throw new Error(`Non-JSON response: ${text.slice(0, 200)}`);
     }
 
     if (!parsed.ok) {
-      throw new Error(`Apps Script returned not-ok: ${parsed.error ?? 'unknown'} [${trace.join(' | ')}]`);
+      throw new Error(`Apps Script not-ok: ${parsed.error ?? 'unknown'}`);
     }
 
     await prisma.sheetOrder.update({
@@ -166,7 +105,7 @@ export async function syncOrderToSheet(orderId: string): Promise<{ ok: true } | 
       where: { id: orderId },
       data: {
         syncStatus: SyncStatus.FAILED,
-        syncError: message.slice(0, 800),   // เก็บ trace ได้ยาวขึ้น
+        syncError: message.slice(0, 500),
         syncAttempts: { increment: 1 },
       },
     });
@@ -175,7 +114,7 @@ export async function syncOrderToSheet(orderId: string): Promise<{ ok: true } | 
 }
 
 /**
- * Retry sync ออเดอร์ที่ failed/pending — เรียกจากหน้า admin หรือ scheduler ภายหลัง
+ * Retry sync ออเดอร์ที่ failed/pending — เรียกจากหน้า admin หรือ scheduler
  */
 export async function retrySync(orderId: string) {
   return syncOrderToSheet(orderId);

@@ -22,6 +22,11 @@
 const REORDER_SHEET_NAME = 'Orders';   // ← แก้ให้ตรงชื่อแท็บ Sheet จริง
 
 function handleReorderSync_(body) {
+  // ตรวจ secret กัน webhook ปลอม (ค่าต้องตรงกับ SHEET_SYNC_SECRET ใน Vercel)
+  if (body.secret !== CRM_API_KEY && body.apiKey !== CRM_API_KEY) {
+    return { ok: false, error: 'unauthorized' };
+  }
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(REORDER_SHEET_NAME);
   if (!sheet) {

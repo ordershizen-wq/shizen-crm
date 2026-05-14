@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import RouteProgressBar from './RouteProgressBar';
+import HeaderSearch from './HeaderSearch';
 
 type User = {
   id: string;
@@ -97,10 +98,7 @@ export default function AppShell({ user, children, atRiskCount = 0, taskCount = 
             <i className={collapsed ? 'ri-menu-unfold-line' : 'ri-menu-fold-line'}></i>
           </button>
 
-          <div className="header-search">
-            <i className="ri-search-line"></i>
-            <input type="text" placeholder={searchPlaceholder} />
-          </div>
+          <HeaderSearch placeholder={searchPlaceholder} />
 
           <div className="header-actions">
             {atRiskCount > 0 && (
