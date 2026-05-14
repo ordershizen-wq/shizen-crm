@@ -5,6 +5,8 @@ import { STAGE_LABELS, aggregateOrdersByPhone, tallyStages } from '@/lib/custome
 import DashboardCharts, { type DailyRevenue, type StageCount } from './DashboardCharts';
 import SourceBadge from '@/components/SourceBadge';
 import { OrderSource } from '@prisma/client';
+import TodaysFocus from '@/components/TodaysFocus';
+import { getTodaysFocus } from '@/lib/todaysFocus';
 
 export default async function DashboardPage() {
   const user = (await getCurrentUser())!;
@@ -67,6 +69,9 @@ export default async function DashboardPage() {
   const reorderCount = sourceMap.get(OrderSource.CRM_REORDER)?._count ?? 0;
   const last30Total = newCustRev + reorderRev;
   const reorderShare = last30Total > 0 ? (reorderRev / last30Total) * 100 : 0;
+
+  // Today's Focus — ดึงหลังจาก aggregate data หลักเสร็จ
+  const focus = await getTodaysFocus(user);
 
   const totalRevenue = Number(revenue._sum.totalPrice ?? 0);
   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
@@ -143,6 +148,9 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Today's Focus — actionable items บนสุด */}
+      <TodaysFocus data={focus} userName={user.fullName.split(' ')[0]} />
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem', maxWidth: '100%' }}>
