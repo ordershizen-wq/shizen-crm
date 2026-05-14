@@ -39,7 +39,7 @@ export default function FunnelWidget({ data }: { data: FunnelData }) {
 
   return (
     <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
-      <div className="fw-600" style={{ fontSize: 15, marginBottom: 4, fontFamily: "'IBM Plex Serif', serif", letterSpacing: '-0.01em' }}>
+      <div className="fw-600" style={{ fontSize: 15, marginBottom: 4, fontFamily: "'Trirong', serif", letterSpacing: '-0.01em' }}>
         Funnel การได้ลูกค้า
       </div>
       <div className="text-sm text-muted" style={{ fontSize: 12, marginBottom: 14 }}>
@@ -70,7 +70,7 @@ export default function FunnelWidget({ data }: { data: FunnelData }) {
                       {s.sub}
                     </div>
                   </div>
-                  <div className="fw-700" style={{ fontSize: 22, color: s.color, fontFamily: "'IBM Plex Serif', serif" }}>
+                  <div className="fw-700" style={{ fontSize: 22, color: s.color, fontFamily: "'Trirong', serif" }}>
                     {s.count.toLocaleString()}
                   </div>
                 </div>

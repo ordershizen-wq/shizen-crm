@@ -25,7 +25,7 @@ export default function RevenueForecastCard({ data }: { data: RevenueForecast })
           <div className="text-sm text-muted" style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             คาดการณ์รายได้สิ้นเดือน
           </div>
-          <div className="fw-600" style={{ fontSize: 14, marginTop: 4, fontFamily: "'IBM Plex Serif', serif" }}>
+          <div className="fw-600" style={{ fontSize: 14, marginTop: 4, fontFamily: "'Trirong', serif" }}>
             วันที่ {data.daysElapsed} / {data.daysTotal} · เหลืออีก {data.daysRemaining} วัน
           </div>
         </div>

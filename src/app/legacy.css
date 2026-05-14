@@ -132,15 +132,16 @@ button:disabled, [aria-disabled="true"] {
 *, *::before, *::after { box-sizing: border-box; }
 
 .legacy-body {
-  font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  /* Noto Sans Thai Looped — มีหัวลูป อ่านง่ายสุด เป็นมิตรกว่าตัวลีบ */
+  font-family: 'Noto Sans Thai Looped', 'Inter', system-ui, -apple-system, sans-serif;
   background: var(--bg-app);
   color: var(--text-body);
   font-size: 14.5px;
-  line-height: 1.6;
-  letter-spacing: -0.005em;
+  line-height: 1.65;
+  letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: 'tnum' on, 'lnum' on, 'ss01' on;
+  font-feature-settings: 'tnum' on, 'lnum' on;
 }
 
 /* Numbers: tabular by default — เลขเรียงตรงในตาราง */
@@ -148,13 +149,13 @@ button:disabled, [aria-disabled="true"] {
   font-feature-settings: 'tnum' on, 'lnum' on;
 }
 
-/* Headings — serif สำหรับ premium feel */
+/* Headings — Trirong (Thai serif สวย) ผสม premium feel */
 h1, h2, h3, .page-title, .profile-hero-name {
-  font-family: 'IBM Plex Serif', 'IBM Plex Sans Thai', serif;
-  letter-spacing: -0.015em;
+  font-family: 'Trirong', 'Noto Sans Thai Looped', serif;
+  letter-spacing: -0.005em;
   font-feature-settings: 'lnum' on;
 }
-h1, h2, h3 { color: var(--text-dark); font-weight: 600; }
+h1, h2, h3 { color: var(--text-dark); font-weight: 500; }
 
 /* Monospace สำหรับ code / ids */
 code, kbd, .mono {
@@ -455,7 +456,7 @@ textarea:focus-visible {
 }
 
 .sidebar-brand-text {
-  font-family: 'IBM Plex Serif', serif;
+  font-family: 'Trirong', serif;
   font-size: 1.05rem;
   font-weight: 500;
   color: #FFFFFF;
@@ -724,7 +725,7 @@ textarea:focus-visible {
 }
 
 .page-title {
-  font-family: 'IBM Plex Serif', serif;
+  font-family: 'Trirong', serif;
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--text-dark);
@@ -1695,7 +1696,7 @@ a.card:active,
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; font-weight: 500;
   flex-shrink: 0;
-  font-family: 'IBM Plex Serif', serif;
+  font-family: 'Trirong', serif;
   letter-spacing: 0.02em;
 }
 
@@ -1707,7 +1708,7 @@ a.card:active,
 }
 
 .profile-hero-name {
-  font-family: 'IBM Plex Serif', serif;
+  font-family: 'Trirong', serif;
   font-size: 1.4rem;
   font-weight: 500;
   color: var(--text-dark);

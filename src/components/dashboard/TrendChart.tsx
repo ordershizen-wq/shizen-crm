@@ -44,7 +44,7 @@ export default function TrendChart({ points }: { points: TrendPoint[] }) {
     <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
       <div className="flex-between mb-3" style={{ alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div>
-          <div className="fw-600" style={{ fontSize: 15, fontFamily: "'IBM Plex Serif', serif", letterSpacing: '-0.01em' }}>
+          <div className="fw-600" style={{ fontSize: 15, fontFamily: "'Trirong', serif", letterSpacing: '-0.01em' }}>
             รายได้รายวัน — เปรียบเทียบกับเดือนก่อน
           </div>
           <div className="text-sm text-muted" style={{ fontSize: 12, marginTop: 2 }}>

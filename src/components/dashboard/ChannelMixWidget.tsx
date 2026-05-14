@@ -41,7 +41,7 @@ export default function ChannelMixWidget({ slices }: { slices: ChannelSlice[] })
 
   return (
     <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
-      <div className="fw-600" style={{ fontSize: 15, marginBottom: 4, fontFamily: "'IBM Plex Serif', serif", letterSpacing: '-0.01em' }}>
+      <div className="fw-600" style={{ fontSize: 15, marginBottom: 4, fontFamily: "'Trirong', serif", letterSpacing: '-0.01em' }}>
         ช่องทางที่ใช้ขายเดือนนี้
       </div>
       <div className="text-sm text-muted" style={{ fontSize: 11, marginBottom: 12 }}>

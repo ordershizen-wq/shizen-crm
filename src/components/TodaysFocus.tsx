@@ -103,7 +103,7 @@ export default function TodaysFocus({ data, userName }: { data: TodaysFocusData;
             style={{ color: 'var(--text-muted)', fontSize: 18, flexShrink: 0 }}
           ></i>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div className="fw-600" style={{ fontSize: collapsed ? 14 : 15, color: 'var(--text-dark)', fontFamily: "'IBM Plex Serif', serif", letterSpacing: '-0.01em' }}>
+            <div className="fw-600" style={{ fontSize: collapsed ? 14 : 15, color: 'var(--text-dark)', fontFamily: "'Trirong', serif", letterSpacing: '-0.01em' }}>
               งานวันนี้ของคุณ
             </div>
             {!collapsed && (

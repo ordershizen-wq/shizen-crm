@@ -102,7 +102,7 @@ export default function AdminFocus({ data, userName }: { data: AdminFocusData; u
             <div className="fw-600" style={{
               fontSize: collapsed ? 14 : 15,
               display: 'flex', alignItems: 'center', gap: 6,
-              fontFamily: "'IBM Plex Serif', serif", letterSpacing: '-0.01em',
+              fontFamily: "'Trirong', serif", letterSpacing: '-0.01em',
             }}>
               <span>ภาพรวมงานบริหาร</span>
               {collapsed && totalItems > 0 && (

@@ -260,7 +260,7 @@ export default async function DashboardPage() {
       {/* Source split — Acquisition vs Retention (30 วันล่าสุด) */}
       <div className="card p-4 mb-4">
         <div className="flex-between mb-3">
-          <h3 className="fw-600" style={{ fontSize: 15, margin: 0, fontFamily: "'IBM Plex Serif', serif", letterSpacing: '-0.01em' }}>
+          <h3 className="fw-600" style={{ fontSize: 15, margin: 0, fontFamily: "'Trirong', serif", letterSpacing: '-0.01em' }}>
             ที่มาของออเดอร์ — 30 วันล่าสุด
           </h3>
           <Link href="/orders" className="text-sm" style={{ color: 'var(--primary)' }}>

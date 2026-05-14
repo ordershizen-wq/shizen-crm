@@ -19,7 +19,7 @@ export default function HotCustomersWidget({ customers }: { customers: HotCustom
         background: 'var(--bg-card)',
         borderBottom: '1px solid var(--border-light)',
       }}>
-        <div className="fw-600" style={{ fontSize: 15, fontFamily: "'IBM Plex Serif', serif", letterSpacing: '-0.01em', color: 'var(--text-dark)' }}>
+        <div className="fw-600" style={{ fontSize: 15, fontFamily: "'Trirong', serif", letterSpacing: '-0.01em', color: 'var(--text-dark)' }}>
           ลูกค้าที่กำลังถึงรอบซื้อซ้ำ
         </div>
         <div className="text-sm text-muted" style={{ fontSize: 12, marginTop: 2 }}>
