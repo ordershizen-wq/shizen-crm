@@ -9,11 +9,11 @@ export default function TeamBattleWidget({ rows }: { rows: TeamBattleRow[] }) {
 
   return (
     <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
-      <div className="fw-700" style={{ fontSize: 14, marginBottom: 4 }}>
-        🏆 Team Battle — เดือนนี้
+      <div className="fw-600" style={{ fontSize: 15, marginBottom: 4, fontFamily: "'IBM Plex Serif', serif", letterSpacing: '-0.01em' }}>
+        เปรียบเทียบทีม — เดือนนี้
       </div>
-      <div className="text-sm text-muted" style={{ fontSize: 11, marginBottom: 14 }}>
-        เปรียบเทียบยอดทีม + สัดส่วนลูกค้าใหม่ vs รีออเดอร์
+      <div className="text-sm text-muted" style={{ fontSize: 12, marginBottom: 14 }}>
+        ยอดทีม + สัดส่วนลูกค้าใหม่ vs รีออเดอร์
       </div>
       <div>
         {rows.map((r, i) => {
@@ -24,9 +24,9 @@ export default function TeamBattleWidget({ rows }: { rows: TeamBattleRow[] }) {
               <div className="flex-between" style={{ fontSize: 12, marginBottom: 5 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{
-                    width: 22, height: 22, borderRadius: 6,
-                    background: i === 0 ? '#fbbf24' : i === 1 ? '#cbd5e1' : i === 2 ? '#f97316' : '#e2e8f0',
-                    color: '#fff', fontSize: 11, fontWeight: 800,
+                    width: 22, height: 22, borderRadius: 'var(--radius-sm)',
+                    background: i === 0 ? 'var(--gold)' : i === 1 ? 'var(--text-light)' : i === 2 ? 'var(--clay)' : 'var(--border)',
+                    color: '#fff', fontSize: 11, fontWeight: 600,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>{i + 1}</span>
                   <span className="fw-600" style={{ fontSize: 13 }}>{r.teamName}</span>
@@ -36,21 +36,21 @@ export default function TeamBattleWidget({ rows }: { rows: TeamBattleRow[] }) {
                   ฿{r.totalRevenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
                 </span>
               </div>
-              <div style={{ height: 10, background: 'var(--border-light)', borderRadius: 5, overflow: 'hidden', display: 'flex' }}>
+              <div style={{ height: 8, background: 'var(--border-light)', borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
                 <div style={{
                   height: '100%', width: `${widthPct * (newPct / 100)}%`,
-                  background: '#0284c7', borderRadius: '5px 0 0 5px',
+                  background: 'var(--info)', borderRadius: '4px 0 0 4px',
                   transition: 'width 400ms',
                 }} />
                 <div style={{
                   height: '100%', width: `${widthPct * (1 - newPct / 100)}%`,
-                  background: '#147a5e',
+                  background: 'var(--primary)',
                   transition: 'width 400ms',
                 }} />
               </div>
-              <div className="text-sm text-muted" style={{ fontSize: 10, marginTop: 2, display: 'flex', gap: 12 }}>
-                <span><span style={{ color: '#0284c7', fontWeight: 700 }}>●</span> ลูกค้าใหม่ ฿{r.newCustRevenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })} ({(100 - r.reorderShare).toFixed(0)}%)</span>
-                <span><span style={{ color: '#147a5e', fontWeight: 700 }}>●</span> รีออเดอร์ ฿{r.reorderRevenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })} ({r.reorderShare.toFixed(0)}%)</span>
+              <div className="text-sm text-muted" style={{ fontSize: 10.5, marginTop: 4, display: 'flex', gap: 14 }}>
+                <span><span style={{ color: 'var(--info)', fontWeight: 600 }}>●</span> ลูกค้าใหม่ ฿{r.newCustRevenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })} ({(100 - r.reorderShare).toFixed(0)}%)</span>
+                <span><span style={{ color: 'var(--primary)', fontWeight: 600 }}>●</span> รีออเดอร์ ฿{r.reorderRevenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })} ({r.reorderShare.toFixed(0)}%)</span>
               </div>
             </div>
           );

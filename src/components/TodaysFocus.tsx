@@ -33,9 +33,9 @@ export default function TodaysFocus({ data, userName }: { data: TodaysFocusData;
       <div
         className="card"
         style={{
-          background: 'linear-gradient(135deg, rgba(47,160,132,0.08) 0%, rgba(47,160,132,0.03) 100%)',
-          border: '1.5px solid rgba(47,160,132,0.2)',
-          padding: '1.25rem 1.5rem',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
+          padding: '1.1rem 1.4rem',
           marginBottom: '1.5rem',
           display: 'flex',
           alignItems: 'center',
@@ -43,16 +43,16 @@ export default function TodaysFocus({ data, userName }: { data: TodaysFocusData;
         }}
       >
         <div style={{
-          width: 48, height: 48, borderRadius: '50%',
-          background: 'rgba(47,160,132,0.15)', color: '#147a5e',
+          width: 40, height: 40, borderRadius: '50%',
+          background: 'var(--success-light)', color: 'var(--success)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 24, flexShrink: 0,
+          fontSize: 20, flexShrink: 0,
         }}>
           <i className="ri-checkbox-circle-line"></i>
         </div>
         <div>
-          <div className="fw-700" style={{ fontSize: 16, color: '#147a5e', marginBottom: 2 }}>
-            ทุกอย่างเรียบร้อย {userName} 🎉
+          <div className="fw-600" style={{ fontSize: 15, color: 'var(--text-dark)', marginBottom: 2 }}>
+            ทุกอย่างเรียบร้อย {userName}
           </div>
           <div className="text-sm text-muted">
             ไม่มี task ค้าง · ลูกค้าทุกคนยัง active · ออเดอร์ flow ปกติ
@@ -66,8 +66,8 @@ export default function TodaysFocus({ data, userName }: { data: TodaysFocusData;
     <div
       className="card"
       style={{
-        background: 'linear-gradient(135deg, #fff 0%, #fafbfc 100%)',
-        border: '1.5px solid var(--border)',
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border)',
         padding: 0,
         marginBottom: '1.5rem',
         overflow: 'hidden',
@@ -80,9 +80,9 @@ export default function TodaysFocus({ data, userName }: { data: TodaysFocusData;
         aria-expanded={!collapsed}
         style={{
           width: '100%',
-          padding: collapsed ? '0.75rem 1.25rem' : '1rem 1.25rem',
+          padding: collapsed ? '0.85rem 1.25rem' : '1rem 1.25rem',
           borderBottom: collapsed ? 'none' : '1px solid var(--border-light)',
-          background: 'linear-gradient(90deg, rgba(47,160,132,0.06), transparent)',
+          background: 'var(--bg-card)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -103,19 +103,19 @@ export default function TodaysFocus({ data, userName }: { data: TodaysFocusData;
             style={{ color: 'var(--text-muted)', fontSize: 18, flexShrink: 0 }}
           ></i>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div className="fw-700" style={{ fontSize: collapsed ? 14 : 15, color: 'var(--text-dark)' }}>
-              🎯 งานวันนี้ของคุณ
+            <div className="fw-600" style={{ fontSize: collapsed ? 14 : 15, color: 'var(--text-dark)', fontFamily: "'IBM Plex Serif', serif", letterSpacing: '-0.01em' }}>
+              งานวันนี้ของคุณ
             </div>
             {!collapsed && (
-              <div className="text-sm text-muted" style={{ marginTop: 2 }}>
+              <div className="text-sm text-muted" style={{ marginTop: 2, fontSize: 12 }}>
                 สิ่งที่ต้องจัดการก่อนสิ่งอื่น
               </div>
             )}
             {collapsed && (
               <div className="text-sm text-muted" style={{ fontSize: 11, marginTop: 1 }}>
-                {data.vipAtRiskTotal > 0 && <span style={{ color: '#dc2626', marginRight: 8 }}>🔥 VIP {data.vipAtRiskTotal}</span>}
-                {data.overdueTasksTotal > 0 && <span style={{ color: '#f59e0b', marginRight: 8 }}>⏰ task {data.overdueTasksTotal}</span>}
-                {data.stuckOrdersTotal > 0 && <span style={{ color: '#0ea5e9' }}>📦 ค้าง {data.stuckOrdersTotal}</span>}
+                {data.vipAtRiskTotal > 0 && <span style={{ color: 'var(--danger)', marginRight: 10 }}>VIP {data.vipAtRiskTotal}</span>}
+                {data.overdueTasksTotal > 0 && <span style={{ color: 'var(--warning)', marginRight: 10 }}>เกิน {data.overdueTasksTotal}</span>}
+                {data.stuckOrdersTotal > 0 && <span style={{ color: 'var(--info)' }}>ค้าง {data.stuckOrdersTotal}</span>}
               </div>
             )}
           </div>
@@ -128,9 +128,9 @@ export default function TodaysFocus({ data, userName }: { data: TodaysFocusData;
         {/* VIP at risk */}
         {data.vipAtRiskTotal > 0 && (
           <Section
-            color="#dc2626"
-            bgTint="rgba(220,38,38,0.06)"
-            icon="ri-fire-line"
+            color="var(--danger)"
+            bgTint="var(--danger-light)"
+            icon="ri-alert-line"
             title="ลูกค้า VIP/A ใกล้หลุดเกรด"
             count={data.vipAtRiskTotal}
             description="เคยซื้อหลายครั้ง แต่ห่างไป 30+ วัน — รีบติดต่อก่อนเสียลูกค้า"
@@ -159,10 +159,10 @@ export default function TodaysFocus({ data, userName }: { data: TodaysFocusData;
         {/* Overdue tasks */}
         {data.overdueTasksTotal > 0 && (
           <Section
-            color="#f59e0b"
-            bgTint="rgba(245,158,11,0.06)"
+            color="var(--warning)"
+            bgTint="var(--warning-light)"
             icon="ri-time-line"
-            title="Task เกินกำหนด"
+            title="งานเกินกำหนด"
             count={data.overdueTasksTotal}
             description="งานที่ควรทำเสร็จไปแล้ว"
           >
@@ -194,10 +194,10 @@ export default function TodaysFocus({ data, userName }: { data: TodaysFocusData;
         {/* Stuck orders */}
         {data.stuckOrdersTotal > 0 && (
           <Section
-            color="#0ea5e9"
-            bgTint="rgba(14,165,233,0.06)"
+            color="var(--info)"
+            bgTint="var(--info-light)"
             icon="ri-archive-2-line"
-            title="ออเดอร์ค้าง PENDING > 24 ชม."
+            title="ออเดอร์ค้างเกิน 24 ชั่วโมง"
             count={data.stuckOrdersTotal}
             description="ออเดอร์ที่ยังไม่ได้ดำเนินการ — เช็คชำระ/จัดส่ง"
           >

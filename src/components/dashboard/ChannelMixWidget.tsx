@@ -1,12 +1,13 @@
 import type { ChannelSlice } from '@/lib/analytics';
 
+// Refined palette — desaturated, premium
 const CHANNEL_COLORS: Record<string, string> = {
-  LINE: '#06C755',
-  FB: '#1877F2',
-  FACEBOOK: '#1877F2',
-  TIKTOK: '#000000',
-  TEL: '#0ea5e9',
-  OTHER: '#94a3b8',
+  LINE: '#4A7C5E',       // sage (was bright green)
+  FB: '#5B7E92',         // muted slate-blue
+  FACEBOOK: '#5B7E92',
+  TIKTOK: '#1F2A24',     // deep ink
+  TEL: '#715B7E',        // muted purple
+  OTHER: '#A4ADA1',      // muted gray-sage
 };
 
 function colorFor(ch: string): string {
@@ -40,8 +41,8 @@ export default function ChannelMixWidget({ slices }: { slices: ChannelSlice[] })
 
   return (
     <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
-      <div className="fw-700" style={{ fontSize: 14, marginBottom: 4 }}>
-        🥧 ช่องทางที่คุณขายเดือนนี้
+      <div className="fw-600" style={{ fontSize: 15, marginBottom: 4, fontFamily: "'IBM Plex Serif', serif", letterSpacing: '-0.01em' }}>
+        ช่องทางที่ใช้ขายเดือนนี้
       </div>
       <div className="text-sm text-muted" style={{ fontSize: 11, marginBottom: 12 }}>
         {topChannel ? `เก่งสุดที่ ${topChannel.channel} — ${topChannel.share.toFixed(0)}% ของรายได้` : ''}

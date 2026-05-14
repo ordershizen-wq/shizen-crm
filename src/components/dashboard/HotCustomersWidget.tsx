@@ -9,26 +9,27 @@ export default function HotCustomersWidget({ customers }: { customers: HotCustom
   return (
     <div className="card" style={{
       padding: 0,
-      border: '1.5px solid rgba(245,158,11,0.2)',
+      border: '1px solid var(--border)',
+      borderLeft: '3px solid var(--warning)',
       marginBottom: '1.5rem',
       overflow: 'hidden',
     }}>
       <div style={{
-        padding: '0.85rem 1.25rem',
-        background: 'linear-gradient(90deg, rgba(245,158,11,0.08), transparent)',
+        padding: '0.95rem 1.25rem',
+        background: 'var(--bg-card)',
         borderBottom: '1px solid var(--border-light)',
       }}>
-        <div className="fw-700" style={{ fontSize: 14 }}>
-          🔥 ลูกค้าที่กำลังถึงรอบซื้อซ้ำ
+        <div className="fw-600" style={{ fontSize: 15, fontFamily: "'IBM Plex Serif', serif", letterSpacing: '-0.01em', color: 'var(--text-dark)' }}>
+          ลูกค้าที่กำลังถึงรอบซื้อซ้ำ
         </div>
-        <div className="text-sm text-muted" style={{ fontSize: 11, marginTop: 2 }}>
-          คาดการณ์จาก pattern การซื้อของแต่ละคน — ติดต่อก่อนเค้าจะลืม
+        <div className="text-sm text-muted" style={{ fontSize: 12, marginTop: 2 }}>
+          คาดการณ์จาก pattern การซื้อของแต่ละคน — ติดต่อก่อนเค้าลืม
         </div>
       </div>
       <div>
         {customers.map(c => {
           const overdue = c.isOverdue;
-          const color = overdue ? '#dc2626' : '#f59e0b';
+          const color = overdue ? 'var(--danger)' : 'var(--warning)';
           const cycleLabel = overdue
             ? `เลย ${Math.abs(c.predictedDays)} วันแล้ว`
             : `อีก ${c.predictedDays} วัน`;
@@ -56,12 +57,12 @@ export default function HotCustomersWidget({ customers }: { customers: HotCustom
                 </div>
               </div>
               <div style={{
-                fontSize: 11, fontWeight: 700, color,
-                background: `${color}11`, border: `1px solid ${color}33`,
-                borderRadius: 6, padding: '4px 8px',
+                fontSize: 11, fontWeight: 600, color,
+                background: `${color}14`, border: `1px solid ${color}33`,
+                borderRadius: 'var(--radius-sm)', padding: '3px 8px',
                 whiteSpace: 'nowrap', flexShrink: 0,
               }}>
-                {overdue ? '⚠️' : '⏰'} {cycleLabel}
+                {cycleLabel}
               </div>
             </Link>
           );

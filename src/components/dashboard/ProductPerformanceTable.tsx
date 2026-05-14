@@ -6,9 +6,11 @@ export default function ProductPerformanceTable({ products }: { products: Produc
   return (
     <div className="card" style={{ padding: 0, marginBottom: '1.5rem' }}>
       <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-light)' }}>
-        <div className="fw-700" style={{ fontSize: 14 }}>📦 Product Performance — เดือนนี้</div>
-        <div className="text-sm text-muted" style={{ fontSize: 11, marginTop: 2 }}>
-          สินค้าที่ลูกค้าซื้อซ้ำสูง = สินค้าที่ควร push ต่อ
+        <div className="fw-600" style={{ fontSize: 15, fontFamily: "'IBM Plex Serif', serif", letterSpacing: '-0.01em' }}>
+          ผลงานของสินค้า — เดือนนี้
+        </div>
+        <div className="text-sm text-muted" style={{ fontSize: 12, marginTop: 2 }}>
+          สินค้าที่ลูกค้าซื้อซ้ำสูง = สินค้าที่ควรผลักดันต่อ
         </div>
       </div>
       <div className="r-table-wrap">
@@ -25,7 +27,7 @@ export default function ProductPerformanceTable({ products }: { products: Produc
           </thead>
           <tbody>
             {products.map(p => {
-              const rrColor = p.reorderRate >= 50 ? '#10b981' : p.reorderRate >= 25 ? '#f59e0b' : p.reorderRate > 0 ? '#94a3b8' : '#cbd5e1';
+              const rrColor = p.reorderRate >= 50 ? 'var(--success)' : p.reorderRate >= 25 ? 'var(--warning)' : p.reorderRate > 0 ? 'var(--text-muted)' : 'var(--text-light)';
               return (
                 <tr key={p.name}>
                   <td className="fw-600" data-label="สินค้า">{p.name}</td>

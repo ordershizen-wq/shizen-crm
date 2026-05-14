@@ -3,7 +3,7 @@ import type { RevenueForecast } from '@/lib/analytics';
 export default function RevenueForecastCard({ data }: { data: RevenueForecast }) {
   const willHit = data.willHitTarget;
   const growthUp = data.growthPercent >= 0;
-  const accent = willHit ? '#10b981' : data.monthlyTarget ? '#f59e0b' : 'var(--primary)';
+  const accent = willHit ? 'var(--success)' : data.monthlyTarget ? 'var(--warning)' : 'var(--primary)';
 
   const progressPercent = data.monthlyTarget && data.monthlyTarget > 0
     ? Math.min(100, (data.currentRevenue / data.monthlyTarget) * 100)
@@ -15,25 +15,26 @@ export default function RevenueForecastCard({ data }: { data: RevenueForecast })
   return (
     <div className="card" style={{
       padding: '1.15rem 1.25rem',
-      background: `linear-gradient(135deg, ${accent}0a 0%, #fff 70%)`,
-      border: `1.5px solid ${accent}33`,
+      background: 'var(--bg-card)',
+      border: '1px solid var(--border)',
+      borderLeft: `3px solid ${accent}`,
       marginBottom: '1.5rem',
     }}>
       <div className="flex-between mb-3" style={{ alignItems: 'flex-start' }}>
         <div>
-          <div className="text-sm text-muted" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            🎯 คาดการณ์รายได้สิ้นเดือน
+          <div className="text-sm text-muted" style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            คาดการณ์รายได้สิ้นเดือน
           </div>
-          <div className="fw-700" style={{ fontSize: 13, marginTop: 2 }}>
-            วันที่ {data.daysElapsed} / {data.daysTotal} · เหลือ {data.daysRemaining} วัน
+          <div className="fw-600" style={{ fontSize: 14, marginTop: 4, fontFamily: "'IBM Plex Serif', serif" }}>
+            วันที่ {data.daysElapsed} / {data.daysTotal} · เหลืออีก {data.daysRemaining} วัน
           </div>
         </div>
         <div style={{
-          fontSize: 11, fontWeight: 700, color: growthUp ? '#10b981' : '#dc2626',
-          background: '#fff', border: `1px solid ${growthUp ? '#10b98133' : '#dc262633'}`,
-          borderRadius: 999, padding: '3px 10px',
+          fontSize: 11, fontWeight: 600, color: growthUp ? 'var(--success)' : 'var(--danger)',
+          background: '#fff', border: `1px solid ${growthUp ? 'var(--success)' : 'var(--danger)'}40`,
+          borderRadius: 'var(--radius-sm)', padding: '3px 10px',
         }}>
-          {growthUp ? '▲' : '▼'} {Math.abs(data.growthPercent).toFixed(1)}% vs เดือนก่อน
+          {growthUp ? '↑' : '↓'} {Math.abs(data.growthPercent).toFixed(1)}% เทียบเดือนก่อน
         </div>
       </div>
 
@@ -74,11 +75,13 @@ export default function RevenueForecastCard({ data }: { data: RevenueForecast })
 
       {data.projectedHitDay && data.monthlyTarget && data.willHitTarget && data.projectedHitDay <= data.daysTotal && (
         <div style={{
-          marginTop: 10, padding: '6px 10px',
-          background: 'rgba(16,185,129,0.1)', borderRadius: 6,
-          fontSize: 12, color: '#065f46',
+          marginTop: 10, padding: '8px 12px',
+          background: 'var(--success-light)',
+          border: '1px solid rgba(74,124,94,0.18)',
+          borderRadius: 'var(--radius-sm)',
+          fontSize: 12, color: 'var(--success)',
         }}>
-          🎯 น่าจะถึงเป้าวันที่ <strong>{data.projectedHitDay}</strong> ของเดือน (เร็วกว่ากำหนด {data.daysTotal - data.projectedHitDay} วัน)
+          น่าจะถึงเป้าวันที่ <strong>{data.projectedHitDay}</strong> ของเดือน (เร็วกว่ากำหนด {data.daysTotal - data.projectedHitDay} วัน)
         </div>
       )}
     </div>

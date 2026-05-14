@@ -33,8 +33,8 @@ export default function AdminFocus({ data, userName }: { data: AdminFocusData; u
       <div
         className="card"
         style={{
-          background: 'linear-gradient(135deg, rgba(47,160,132,0.08) 0%, rgba(47,160,132,0.03) 100%)',
-          border: '1.5px solid rgba(47,160,132,0.2)',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
           padding: '1.25rem 1.5rem',
           marginBottom: '1.5rem',
           display: 'flex',
@@ -43,16 +43,16 @@ export default function AdminFocus({ data, userName }: { data: AdminFocusData; u
         }}
       >
         <div style={{
-          width: 48, height: 48, borderRadius: '50%',
-          background: 'rgba(47,160,132,0.15)', color: '#147a5e',
+          width: 40, height: 40, borderRadius: '50%',
+          background: 'var(--success-light)', color: 'var(--success)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 24, flexShrink: 0,
+          fontSize: 20, flexShrink: 0,
         }}>
           <i className="ri-shield-check-line"></i>
         </div>
         <div>
-          <div className="fw-700" style={{ fontSize: 16, color: '#147a5e', marginBottom: 2 }}>
-            ระบบเรียบร้อย {userName} 🎉
+          <div className="fw-600" style={{ fontSize: 15, color: 'var(--text-dark)', marginBottom: 2 }}>
+            ระบบเรียบร้อย {userName}
           </div>
           <div className="text-sm text-muted">
             ไม่มี sync ค้าง · เซลส์ทุกคน on track · ออเดอร์ flow ปกติ
@@ -64,8 +64,8 @@ export default function AdminFocus({ data, userName }: { data: AdminFocusData; u
 
   return (
     <div className="card" style={{
-      background: 'linear-gradient(135deg, #fff 0%, #fafbfc 100%)',
-      border: '1.5px solid var(--border)',
+      background: 'var(--bg-card)',
+      border: '1px solid var(--border)',
       padding: 0,
       marginBottom: '1.5rem',
       overflow: 'hidden',
@@ -76,9 +76,9 @@ export default function AdminFocus({ data, userName }: { data: AdminFocusData; u
         aria-expanded={!collapsed}
         style={{
           width: '100%',
-          padding: collapsed ? '0.75rem 1.25rem' : '1rem 1.25rem',
+          padding: collapsed ? '0.85rem 1.25rem' : '1rem 1.25rem',
           borderBottom: collapsed ? 'none' : '1px solid var(--border-light)',
-          background: 'linear-gradient(90deg, rgba(99,102,241,0.08), transparent)',
+          background: 'var(--bg-card)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -99,26 +99,30 @@ export default function AdminFocus({ data, userName }: { data: AdminFocusData; u
             style={{ color: 'var(--text-muted)', fontSize: 18, flexShrink: 0, transition: 'transform 180ms' }}
           ></i>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div className="fw-700" style={{ fontSize: collapsed ? 14 : 15, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>👁️ Oversight ของคุณวันนี้</span>
+            <div className="fw-600" style={{
+              fontSize: collapsed ? 14 : 15,
+              display: 'flex', alignItems: 'center', gap: 6,
+              fontFamily: "'IBM Plex Serif', serif", letterSpacing: '-0.01em',
+            }}>
+              <span>ภาพรวมงานบริหาร</span>
               {collapsed && totalItems > 0 && (
                 <span style={{
-                  background: '#dc2626', color: '#fff',
-                  borderRadius: 999, padding: '1px 8px',
-                  fontSize: 11, fontWeight: 700,
+                  background: 'var(--danger)', color: '#fff',
+                  borderRadius: 4, padding: '0 6px',
+                  fontSize: 11, fontWeight: 600,
                 }}>{totalItems}</span>
               )}
             </div>
             {!collapsed && (
-              <div className="text-sm text-muted" style={{ marginTop: 2 }}>
-                สิ่งที่ admin ต้องดูแล (ไม่ใช่งานรายลูกค้า)
+              <div className="text-sm text-muted" style={{ marginTop: 2, fontSize: 12 }}>
+                สิ่งที่ผู้ดูแลต้องตรวจสอบ (ไม่ใช่งานรายลูกค้า)
               </div>
             )}
             {collapsed && (
               <div className="text-sm text-muted" style={{ fontSize: 11, marginTop: 1 }}>
-                {data.syncFailedCount > 0 && <span style={{ color: '#dc2626', marginRight: 8 }}>🔴 sync {data.syncFailedCount}</span>}
-                {data.lowPerformersTotal > 0 && <span style={{ color: '#f59e0b', marginRight: 8 }}>⚠️ เซลส์ {data.lowPerformersTotal}</span>}
-                {data.stuckOrdersTotal > 0 && <span style={{ color: '#0ea5e9' }}>📦 ค้าง {data.stuckOrdersTotal}</span>}
+                {data.syncFailedCount > 0 && <span style={{ color: 'var(--danger)', marginRight: 10 }}>sync {data.syncFailedCount}</span>}
+                {data.lowPerformersTotal > 0 && <span style={{ color: 'var(--warning)', marginRight: 10 }}>เซลส์ {data.lowPerformersTotal}</span>}
+                {data.stuckOrdersTotal > 0 && <span style={{ color: 'var(--info)' }}>ค้าง {data.stuckOrdersTotal}</span>}
               </div>
             )}
           </div>
@@ -130,8 +134,8 @@ export default function AdminFocus({ data, userName }: { data: AdminFocusData; u
         {/* Sync failed */}
         {data.syncFailedCount > 0 && (
           <Section
-            color="#dc2626"
-            bgTint="rgba(220,38,38,0.06)"
+            color="var(--danger)"
+            bgTint="var(--danger-light)"
             icon="ri-error-warning-line"
             title="ออเดอร์ sync ไป Sheet ล้มเหลว"
             count={data.syncFailedCount}
@@ -161,10 +165,10 @@ export default function AdminFocus({ data, userName }: { data: AdminFocusData; u
         {/* Low performers */}
         {data.lowPerformersTotal > 0 && (
           <Section
-            color="#f59e0b"
-            bgTint="rgba(245,158,11,0.06)"
+            color="var(--warning)"
+            bgTint="var(--warning-light)"
             icon="ri-line-chart-line"
-            title="เซลส์ที่ยังต่ำกว่า 50% ของเป้า"
+            title="เซลส์ที่ยอดต่ำกว่าครึ่งของเป้า"
             count={data.lowPerformersTotal}
             description="คอยช่วย/coach เซลส์ที่ยังไม่ถึงครึ่งของเป้าเดือนนี้"
           >
@@ -199,10 +203,10 @@ export default function AdminFocus({ data, userName }: { data: AdminFocusData; u
         {/* Stuck orders (company-wide) */}
         {data.stuckOrdersTotal > 0 && (
           <Section
-            color="#0ea5e9"
-            bgTint="rgba(14,165,233,0.06)"
+            color="var(--info)"
+            bgTint="var(--info-light)"
             icon="ri-archive-2-line"
-            title="ออเดอร์ค้าง PENDING > 24 ชม. (ทั้งบริษัท)"
+            title="ออเดอร์ค้างเกิน 24 ชั่วโมง (ทั้งบริษัท)"
             count={data.stuckOrdersTotal}
             description="ออเดอร์ที่ค้างเกินไป — ทีมแพคหรือเซลส์ต้อง follow up"
           >

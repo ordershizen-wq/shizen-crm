@@ -44,17 +44,19 @@ export default function TrendChart({ points }: { points: TrendPoint[] }) {
     <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
       <div className="flex-between mb-3" style={{ alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div>
-          <div className="fw-700" style={{ fontSize: 14 }}>📈 รายได้รายวัน — เดือนนี้ vs เดือนก่อน</div>
-          <div className="text-sm text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+          <div className="fw-600" style={{ fontSize: 15, fontFamily: "'IBM Plex Serif', serif", letterSpacing: '-0.01em' }}>
+            รายได้รายวัน — เปรียบเทียบกับเดือนก่อน
+          </div>
+          <div className="text-sm text-muted" style={{ fontSize: 12, marginTop: 2 }}>
             วันที่ {todayDay} ของเดือน · {isUp ? 'มากกว่า' : 'น้อยกว่า'}เดือนก่อน{' '}
-            <span style={{ color: isUp ? '#10b981' : '#dc2626', fontWeight: 700 }}>
+            <span style={{ color: isUp ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
               {isUp ? '+' : ''}฿{Math.abs(diff).toLocaleString('th-TH', { maximumFractionDigits: 0 })}
             </span>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.85rem', fontSize: 11 }}>
-          <Legend color="#2FA084" label={`เดือนนี้ ฿${thisSum.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`} solid />
-          <Legend color="#94a3b8" label={`เดือนก่อน ฿${lastSum.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`} />
+          <Legend color="var(--primary)" label={`เดือนนี้ ฿${thisSum.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`} solid />
+          <Legend color="var(--text-light)" label={`เดือนก่อน ฿${lastSum.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`} />
         </div>
       </div>
 
@@ -62,16 +64,16 @@ export default function TrendChart({ points }: { points: TrendPoint[] }) {
         {/* grid lines */}
         {[0.25, 0.5, 0.75, 1].map(p => {
           const y = 12 + 126 * (1 - p);
-          return <line key={p} x1={12} x2={width - 12} y1={y} y2={y} stroke="#e2e8f0" strokeWidth={0.5} />;
+          return <line key={p} x1={12} x2={width - 12} y1={y} y2={y} stroke="#EFECE4" strokeWidth={0.5} />;
         })}
         {/* last month dashed */}
-        <path d={paths.lastMonth} fill="none" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4,4" />
+        <path d={paths.lastMonth} fill="none" stroke="#A4ADA1" strokeWidth={1.5} strokeDasharray="3,3" />
         {/* this month solid */}
-        <path d={paths.thisMonth} fill="none" stroke="#2FA084" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+        <path d={paths.thisMonth} fill="none" stroke="#2F5D52" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
         {/* x-axis labels */}
         {[1, 7, 14, 21, points.length].filter(d => d <= points.length).map(day => {
           const x = 12 + ((day - 1) / Math.max(1, points.length - 1)) * (width - 24);
-          return <text key={day} x={x} y={154} textAnchor="middle" fontSize={10} fill="#64748b">{day}</text>;
+          return <text key={day} x={x} y={154} textAnchor="middle" fontSize={10} fill="#6B7568">{day}</text>;
         })}
       </svg>
     </div>

@@ -14,23 +14,23 @@ export default function FunnelWidget({ data }: { data: FunnelData }) {
   const stages = [
     {
       label: 'ลูกค้าใหม่ (เดือนนี้)',
-      icon: '🌱',
+      icon: 'ri-user-add-line',
       count: data.newCustomers,
-      color: '#0284c7',
-      sub: 'First-time buyers',
+      color: 'var(--info)',
+      sub: 'ลูกค้าที่ซื้อครั้งแรกในเดือนนี้',
     },
     {
       label: 'ลูกค้าซื้อซ้ำ (ตลอดกาล)',
-      icon: '🔄',
+      icon: 'ri-repeat-line',
       count: data.repeatCustomers,
-      color: '#147a5e',
+      color: 'var(--primary)',
       sub: `${lifetimeRepeatRate.toFixed(0)}% retention rate`,
     },
     {
-      label: 'ลูกค้า VIP (≥3 ครั้ง หรือ ≥฿20K)',
-      icon: '👑',
+      label: 'ลูกค้า VIP (ซื้อ ≥3 ครั้ง หรือ ≥฿20K)',
+      icon: 'ri-vip-crown-line',
       count: data.vipCustomers,
-      color: '#f59e0b',
+      color: 'var(--gold)',
       sub: `${repeatToVipRate.toFixed(0)}% ของลูกค้าซื้อซ้ำ`,
     },
   ];
@@ -39,10 +39,10 @@ export default function FunnelWidget({ data }: { data: FunnelData }) {
 
   return (
     <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
-      <div className="fw-700" style={{ fontSize: 14, marginBottom: 4 }}>
-        🔄 Acquisition Funnel
+      <div className="fw-600" style={{ fontSize: 15, marginBottom: 4, fontFamily: "'IBM Plex Serif', serif", letterSpacing: '-0.01em' }}>
+        Funnel การได้ลูกค้า
       </div>
-      <div className="text-sm text-muted" style={{ fontSize: 11, marginBottom: 14 }}>
+      <div className="text-sm text-muted" style={{ fontSize: 12, marginBottom: 14 }}>
         ดูว่า funnel รั่วตรงไหน — % ที่ลดลงระหว่าง stage คือจุดต้องปรับปรุง
       </div>
       <div>
@@ -51,24 +51,26 @@ export default function FunnelWidget({ data }: { data: FunnelData }) {
           return (
             <div key={i} style={{ marginBottom: 12, position: 'relative' }}>
               <div style={{
-                background: `linear-gradient(90deg, ${s.color}22 0%, ${s.color}44 100%)`,
-                border: `1.5px solid ${s.color}55`,
-                borderRadius: 8,
-                padding: '0.6rem 1rem',
+                background: `${s.color}10`,
+                border: `1px solid ${s.color}30`,
+                borderLeft: `3px solid ${s.color}`,
+                borderRadius: 'var(--radius-md)',
+                padding: '0.7rem 1rem',
                 width: `${Math.max(40, width)}%`,
-                minWidth: 200,
+                minWidth: 220,
                 transition: 'width 400ms',
               }}>
                 <div className="flex-between">
                   <div>
-                    <div className="fw-600" style={{ fontSize: 13, color: 'var(--text-dark)' }}>
-                      {s.icon} {s.label}
+                    <div className="fw-600" style={{ fontSize: 13, color: 'var(--text-dark)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <i className={s.icon} style={{ color: s.color, fontSize: 14 }}></i>
+                      {s.label}
                     </div>
-                    <div className="text-sm text-muted" style={{ fontSize: 10, marginTop: 1 }}>
+                    <div className="text-sm text-muted" style={{ fontSize: 11, marginTop: 2 }}>
                       {s.sub}
                     </div>
                   </div>
-                  <div className="fw-800" style={{ fontSize: 22, color: s.color }}>
+                  <div className="fw-700" style={{ fontSize: 22, color: s.color, fontFamily: "'IBM Plex Serif', serif" }}>
                     {s.count.toLocaleString()}
                   </div>
                 </div>

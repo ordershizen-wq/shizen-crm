@@ -8,36 +8,35 @@ export default function VelocityCard({ stats, name }: { stats: VelocityStats; na
     ? Math.min(150, (stats.todayRevenue / stats.dailyTargetToReach) * 100)
     : 100;
 
-  const paceColor = stats.paceOk ? '#10b981' : '#ef4444';
-  const paceLabel = stats.paceOk ? 'On pace 🎯' : 'ต้องเร่ง 🚀';
+  const paceColor = stats.paceOk ? 'var(--success)' : 'var(--danger)';
+  const paceLabel = stats.paceOk ? 'ทำงานตามเป้า' : 'ต้องเร่ง';
 
   return (
     <div
       className="card"
       style={{
         padding: '1.15rem 1.25rem',
-        background: stats.paceOk
-          ? 'linear-gradient(135deg, rgba(16,185,129,0.04) 0%, #fff 60%)'
-          : 'linear-gradient(135deg, rgba(239,68,68,0.04) 0%, #fff 60%)',
-        border: `1.5px solid ${stats.paceOk ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border)',
+        borderLeft: `3px solid ${paceColor}`,
         marginBottom: '1.5rem',
       }}
     >
       <div className="flex-between mb-3" style={{ alignItems: 'flex-start' }}>
         <div>
-          <div className="text-sm text-muted" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            ⚡ Pace ของคุณวันนี้
+          <div className="text-sm text-muted" style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            ผลงานของคุณวันนี้
           </div>
-          <div className="fw-700" style={{ fontSize: 13, marginTop: 2, color: 'var(--text-dark)' }}>
-            สวัสดี {name} — {paceLabel}
+          <div className="fw-600" style={{ fontSize: 14, marginTop: 4, color: 'var(--text-dark)', fontFamily: "'IBM Plex Serif', serif" }}>
+            {name} — {paceLabel}
           </div>
         </div>
         <div style={{
-          fontSize: 11, fontWeight: 700, color: paceColor,
-          background: '#fff', border: `1px solid ${paceColor}33`,
-          borderRadius: 999, padding: '3px 10px',
+          fontSize: 11, fontWeight: 600, color: paceColor,
+          background: '#fff', border: `1px solid ${paceColor}40`,
+          borderRadius: 'var(--radius-sm)', padding: '3px 10px',
         }}>
-          {pacePercent.toFixed(0)}% pace
+          {pacePercent.toFixed(0)}%
         </div>
       </div>
 
@@ -52,13 +51,13 @@ export default function VelocityCard({ stats, name }: { stats: VelocityStats; na
             </span>
           </span>
         </div>
-        <div style={{ height: 8, background: 'var(--border-light)', borderRadius: 4, overflow: 'hidden', position: 'relative' }}>
+        <div style={{ height: 6, background: 'var(--border-light)', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
           <div style={{
             height: '100%',
             width: `${Math.min(100, todayPercent)}%`,
-            background: `linear-gradient(90deg, ${paceColor} 0%, ${paceColor}dd 100%)`,
+            background: paceColor,
             transition: 'width 400ms cubic-bezier(0.4, 0, 0.2, 1)',
-            borderRadius: 4,
+            borderRadius: 3,
           }} />
           {/* avg marker */}
           {stats.dailyAverage > 0 && stats.dailyTargetToReach > 0 && (

@@ -260,8 +260,8 @@ export default async function DashboardPage() {
       {/* Source split — Acquisition vs Retention (30 วันล่าสุด) */}
       <div className="card p-4 mb-4">
         <div className="flex-between mb-3">
-          <h3 className="fw-700" style={{ fontSize: 14, margin: 0 }}>
-            <i className="ri-shuffle-line" style={{ color: '#147a5e' }}></i> ที่มาของออเดอร์ — 30 วันล่าสุด
+          <h3 className="fw-600" style={{ fontSize: 15, margin: 0, fontFamily: "'IBM Plex Serif', serif", letterSpacing: '-0.01em' }}>
+            ที่มาของออเดอร์ — 30 วันล่าสุด
           </h3>
           <Link href="/orders" className="text-sm" style={{ color: 'var(--primary)' }}>
             ดูออเดอร์ทั้งหมด <i className="ri-arrow-right-line"></i>
@@ -429,8 +429,8 @@ function SourceKpi({
   share: number;
   href: string;
 }) {
-  const accent = source === OrderSource.SHEET ? '#0284c7' : '#147a5e';
-  const tint   = source === OrderSource.SHEET ? 'rgba(14,165,233,0.10)' : 'rgba(47,160,132,0.10)';
+  const accent = source === OrderSource.SHEET ? 'var(--info)' : 'var(--primary)';
+  const tint   = source === OrderSource.SHEET ? 'var(--info-light)' : 'var(--primary-light)';
   return (
     <Link
       href={href}
