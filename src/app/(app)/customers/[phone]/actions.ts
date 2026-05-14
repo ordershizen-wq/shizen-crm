@@ -148,12 +148,17 @@ export async function createReorder(input: CreateReorderInput): Promise<CreateRe
   const id = genOrderId();
   const now = new Date();
 
+  // รวมหมายเหตุต่อท้าย address (Sheet ไม่มี column สำหรับ note → เก็บใน address)
+  const addressWithNote = input.note?.trim()
+    ? `${(input.address || '').trim()}\n📝 ${input.note.trim()}`.trim()
+    : (input.address?.trim() || null);
+
   const order = await prisma.sheetOrder.create({
     data: {
       id,
       date: now,
       customerName: input.customerName || null,
-      address: input.address || null,
+      address: addressWithNote,
       phone: input.customerPhone,
       productsJson: input.products as object,
       totalPrice,

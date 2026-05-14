@@ -53,7 +53,7 @@ function handleReorderSync_(body) {
     '',                                                               // 16 ageRange
     '',                                                               // 17 province
     body.isReturned ? true : false,                                   // 18 isReturned
-    '',                                                               // 19 column ว่าง
+    body.source || 'CRM_REORDER',                                     // 19 source — เก็บไว้ใน column ว่าง
     '',                                                               // 20 birthYear (ยังไม่ส่งจาก CRM)
   ];
   sheet.appendRow(row);
@@ -164,7 +164,10 @@ CRM POST JSON ไปยัง `SHEET_SYNC_URL` ด้วย shape:
   "totalPrice": 890,
   "status": "PENDING",
   "channel": "LINE",
+  "salesRepId": "user-id-...",
   "salesRepName": "...",
+  "paymentProofUrl": null,
+  "isReturned": false,
   "source": "CRM_REORDER"
 }
 ```
