@@ -181,6 +181,131 @@ CRM POST JSON ไปยัง `SHEET_SYNC_URL` ด้วย shape:
 
 ---
 
+---
+
+## 🔁 One-time Bulk Import — ย้ายออเดอร์เก่าทั้งหมดจาก Sheet เข้า CRM
+
+ใช้เมื่อคุณ deploy CRM เสร็จแล้วต้องการ "เติม" ข้อมูลเก่าใน Sheet เข้า DB ของ CRM
+ครั้งเดียวจบ — รันซ้ำได้ปลอดภัย (CRM upsert by id)
+
+### Step 1: วาง function นี้ใน Code.gs (ท้ายไฟล์)
+
+```js
+/**
+ * ⚡ One-time bulk import: ส่งออเดอร์ทุกแถวใน Sheet → CRM webhook
+ * รันที่ Apps Script editor: เลือก bulkImportAllOrdersToCRM → ▶ Run
+ * ดูผลใน Execution log
+ *
+ * ใช้ UrlFetchApp.fetchAll() ยิง 50 ออเดอร์พร้อมกัน — เร็วมาก
+ */
+function bulkImportAllOrdersToCRM() {
+  const sheet = getSheet(SHEET_ORDERS);
+  const data = sheet.getDataRange().getValues();
+  data.shift(); // remove header
+
+  Logger.log(`📦 Bulk import: ${data.length} rows`);
+
+  const BATCH = 50;
+  let success = 0, failed = 0;
+  const errorIds = [];
+
+  for (let start = 0; start < data.length; start += BATCH) {
+    const batch = data.slice(start, start + BATCH).filter(row => row[0]);
+    if (batch.length === 0) continue;
+
+    const requests = batch.map(row => {
+      let products = [];
+      try { products = JSON.parse(row[5]); } catch (e) {}
+
+      const payload = {
+        id: row[0],
+        date: row[1] ? new Date(row[1]).toISOString() : null,
+        customerName: row[2] || null,
+        address: row[3] || null,
+        phone: String(row[4] || '').replace(/^'/, ''),
+        products: products,
+        totalPrice: Number(row[6] || 0),
+        status: String(row[7] || 'PENDING').trim(),
+        paymentProofUrl: row[8] || null,
+        salesRepId: String(row[9] || ''),
+        salesRepName: row[10] || null,
+        source: row[11] || null,       // → channel ใน CRM
+        gender: row[14] || null,
+        ageGroup: row[15] || null,     // → ageRange ใน CRM
+        province: row[16] || null,
+        birthYear: row[19] ? Number(row[19]) : null,
+      };
+
+      return {
+        url: WEBHOOK_URL,
+        method: 'post',
+        contentType: 'application/json',
+        headers: { 'x-webhook-secret': WEBHOOK_SECRET },
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true,
+      };
+    });
+
+    const responses = UrlFetchApp.fetchAll(requests);
+    responses.forEach((res, idx) => {
+      if (res.getResponseCode() === 200) {
+        success++;
+      } else {
+        failed++;
+        errorIds.push(`${batch[idx][0]} (HTTP ${res.getResponseCode()})`);
+      }
+    });
+
+    Logger.log(`  ...batch ${start}-${start + batch.length}: success ${success}, failed ${failed}`);
+    Utilities.sleep(100); // กัน rate limit
+  }
+
+  Logger.log(`✅ Done. Success: ${success}, Failed: ${failed}, Total: ${data.length}`);
+  if (errorIds.length > 0 && errorIds.length <= 20) {
+    Logger.log(`Errors:\n${errorIds.join('\n')}`);
+  } else if (errorIds.length > 20) {
+    Logger.log(`Errors (first 20):\n${errorIds.slice(0, 20).join('\n')}\n...and ${errorIds.length - 20} more`);
+  }
+  return { success, failed, total: data.length };
+}
+```
+
+### Step 2: รันที่ Apps Script editor
+
+1. Save (Ctrl+S)
+2. ที่ dropdown ข้างปุ่ม Run → เลือก **`bulkImportAllOrdersToCRM`**
+3. กด **▶ Run**
+4. ดู Execution log ด้านล่าง — จะเห็นความคืบหน้าทุก batch
+5. รอจน log บอก `✅ Done. Success: N, Failed: M, Total: T`
+
+### Step 3: ตรวจสอบใน CRM
+
+- เปิด Shizen CRM Dashboard → จำนวนออเดอร์ + ลูกค้าควรขึ้นเท่าจริง
+- ไปหน้า `/customers` → เห็นรายชื่อลูกค้าครบ
+- กดเข้า customer profile → เห็นประวัติออเดอร์ครบทุกครั้ง
+
+### หมายเหตุสำคัญ
+
+- **Idempotent — รันซ้ำได้ปลอดภัย**: CRM upsert by `id` → ออเดอร์เดิมจะถูก update ไม่ duplicate
+- **เวลาที่ใช้**: ~1 วินาทีต่อ batch 50 ออเดอร์ → 1,000 ออเดอร์ใช้ ~20 วินาที, 10,000 ออเดอร์ใช้ ~3 นาที
+- **Apps Script timeout**: max 6 นาที — ถ้าออเดอร์เกิน ~15,000 ให้แบ่งช่วงเอง (ดูใต้)
+- **ออเดอร์ที่ import ทั้งหมดจะมี `source = SHEET`** ตามปกติ (webhook receiver บังคับใส่)
+
+### ถ้าออเดอร์เยอะมาก (>15,000) — แบ่ง range
+
+แทน `data.shift()` และ loop ทั้งหมด ให้เปลี่ยนเป็น:
+
+```js
+// แทน 'for (let start = 0; start < data.length; start += BATCH)'
+const FROM = 0;       // ← เปลี่ยน range
+const TO = 5000;
+for (let start = FROM; start < Math.min(TO, data.length); start += BATCH) {
+```
+
+รันรอบแรก 0-5000, รอบสองเปลี่ยน FROM=5000 TO=10000 เป็นต้น
+
+---
+
 ## Troubleshooting
 
 | อาการ | สาเหตุ | แก้ |
