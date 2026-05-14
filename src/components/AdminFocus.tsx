@@ -1,7 +1,33 @@
+'use client';
+
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import type { AdminFocusData } from '@/lib/todaysFocus';
 
+const COLLAPSE_KEY = 'shizen.adminFocus.collapsed';
+
 export default function AdminFocus({ data, userName }: { data: AdminFocusData; userName: string }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(COLLAPSE_KEY);
+      if (saved === '1') setCollapsed(true);
+    } catch {}
+    setHydrated(true);
+  }, []);
+
+  const toggle = () => {
+    setCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0'); } catch {}
+      return next;
+    });
+  };
+
+  const totalItems = data.syncFailedCount + data.lowPerformersTotal + data.stuckOrdersTotal;
+
   if (data.isAllClear) {
     return (
       <div
@@ -44,25 +70,62 @@ export default function AdminFocus({ data, userName }: { data: AdminFocusData; u
       marginBottom: '1.5rem',
       overflow: 'hidden',
     }}>
-      <div style={{
-        padding: '1rem 1.25rem',
-        borderBottom: '1px solid var(--border-light)',
-        background: 'linear-gradient(90deg, rgba(99,102,241,0.08), transparent)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '0.5rem',
-      }}>
-        <div>
-          <div className="fw-700" style={{ fontSize: 15 }}>
-            👁️ Oversight ของคุณวันนี้
-          </div>
-          <div className="text-sm text-muted" style={{ marginTop: 2 }}>
-            สิ่งที่ admin ต้องดูแล (ไม่ใช่งานรายลูกค้า)
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={!collapsed}
+        style={{
+          width: '100%',
+          padding: collapsed ? '0.75rem 1.25rem' : '1rem 1.25rem',
+          borderBottom: collapsed ? 'none' : '1px solid var(--border-light)',
+          background: 'linear-gradient(90deg, rgba(99,102,241,0.08), transparent)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '0.5rem',
+          border: 'none',
+          borderTopLeftRadius: 11,
+          borderTopRightRadius: 11,
+          borderBottomLeftRadius: collapsed ? 11 : 0,
+          borderBottomRightRadius: collapsed ? 11 : 0,
+          cursor: 'pointer',
+          textAlign: 'left',
+          transition: 'padding 180ms ease',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0, flex: 1 }}>
+          <i
+            className={collapsed ? 'ri-arrow-right-s-line' : 'ri-arrow-down-s-line'}
+            style={{ color: 'var(--text-muted)', fontSize: 18, flexShrink: 0, transition: 'transform 180ms' }}
+          ></i>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div className="fw-700" style={{ fontSize: collapsed ? 14 : 15, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>👁️ Oversight ของคุณวันนี้</span>
+              {collapsed && totalItems > 0 && (
+                <span style={{
+                  background: '#dc2626', color: '#fff',
+                  borderRadius: 999, padding: '1px 8px',
+                  fontSize: 11, fontWeight: 700,
+                }}>{totalItems}</span>
+              )}
+            </div>
+            {!collapsed && (
+              <div className="text-sm text-muted" style={{ marginTop: 2 }}>
+                สิ่งที่ admin ต้องดูแล (ไม่ใช่งานรายลูกค้า)
+              </div>
+            )}
+            {collapsed && (
+              <div className="text-sm text-muted" style={{ fontSize: 11, marginTop: 1 }}>
+                {data.syncFailedCount > 0 && <span style={{ color: '#dc2626', marginRight: 8 }}>🔴 sync {data.syncFailedCount}</span>}
+                {data.lowPerformersTotal > 0 && <span style={{ color: '#f59e0b', marginRight: 8 }}>⚠️ เซลส์ {data.lowPerformersTotal}</span>}
+                {data.stuckOrdersTotal > 0 && <span style={{ color: '#0ea5e9' }}>📦 ค้าง {data.stuckOrdersTotal}</span>}
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      </button>
 
+      {hydrated && collapsed ? null : (
       <div style={{ padding: '0.5rem 0' }}>
         {/* Sync failed */}
         {data.syncFailedCount > 0 && (
@@ -157,6 +220,7 @@ export default function AdminFocus({ data, userName }: { data: AdminFocusData; u
           </Section>
         )}
       </div>
+      )}
     </div>
   );
 }
