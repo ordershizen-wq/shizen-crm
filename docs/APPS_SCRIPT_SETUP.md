@@ -183,20 +183,117 @@ CRM POST JSON ไปยัง `SHEET_SYNC_URL` ด้วย shape:
 
 ---
 
-## 🔁 One-time Bulk Import — ย้ายออเดอร์เก่าทั้งหมดจาก Sheet เข้า CRM
+## 🔁 One-time Bulk Import — ย้ายข้อมูลเก่าทั้งหมดจาก Sheet เข้า CRM
 
 ใช้เมื่อคุณ deploy CRM เสร็จแล้วต้องการ "เติม" ข้อมูลเก่าใน Sheet เข้า DB ของ CRM
 ครั้งเดียวจบ — รันซ้ำได้ปลอดภัย (CRM upsert by id)
 
-### Step 1: วาง function นี้ใน Code.gs (ท้ายไฟล์)
+### ⚠️ **ลำดับสำคัญ — ต้องรันตามนี้:**
+1. **Teams** ก่อน (เพราะ Users มี teamId)
+2. **Users** ต่อ (เพราะ Orders มี salesRepId)
+3. **Orders** ท้ายสุด
+
+มี wrapper function `bulkImportEverything()` ที่รันทั้ง 3 ตามลำดับให้
+
+### Step 1: วาง function ทั้งหมดนี้ใน Code.gs (ท้ายไฟล์)
 
 ```js
+// ═══════════════════════════════════════════════════════════════
+// One-time Bulk Import: ย้ายข้อมูลเก่าจาก Sheet → CRM
+// ═══════════════════════════════════════════════════════════════
+
+const TEAM_WEBHOOK_URL = WEBHOOK_URL.replace('/order', '/team');
+const USER_WEBHOOK_URL = WEBHOOK_URL.replace('/order', '/user');
+
 /**
- * ⚡ One-time bulk import: ส่งออเดอร์ทุกแถวใน Sheet → CRM webhook
- * รันที่ Apps Script editor: เลือก bulkImportAllOrdersToCRM → ▶ Run
- * ดูผลใน Execution log
- *
- * ใช้ UrlFetchApp.fetchAll() ยิง 50 ออเดอร์พร้อมกัน — เร็วมาก
+ * 🚀 รันทั้งหมดตามลำดับ: Teams → Users → Orders
+ * รันแค่ฟังก์ชันนี้ตัวเดียวก็จบ
+ */
+function bulkImportEverything() {
+  Logger.log('═══ STEP 1/3: Teams ═══');
+  bulkImportAllTeamsToCRM();
+  Logger.log('═══ STEP 2/3: Users ═══');
+  bulkImportAllUsersToCRM();
+  Logger.log('═══ STEP 3/3: Orders ═══');
+  bulkImportAllOrdersToCRM();
+  Logger.log('🎉 All done!');
+}
+
+/**
+ * Import Teams from SHEET_TEAMS
+ */
+function bulkImportAllTeamsToCRM() {
+  const sheet = getSheet(SHEET_TEAMS);
+  const data = sheet.getDataRange().getValues();
+  data.shift();
+  Logger.log(`📋 Teams: ${data.length} rows`);
+
+  const requests = data.filter(row => row[0]).map(row => ({
+    url: TEAM_WEBHOOK_URL,
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'x-webhook-secret': WEBHOOK_SECRET },
+    payload: JSON.stringify({
+      id: row[0],
+      name: row[1] || '',
+      color: row[2] || null,
+      leaderId: row[3] || null,
+      createdAt: row[4] || null,
+    }),
+    muteHttpExceptions: true,
+  }));
+
+  const responses = UrlFetchApp.fetchAll(requests);
+  let ok = 0, fail = 0;
+  responses.forEach((res, i) => {
+    if (res.getResponseCode() === 200) ok++;
+    else { fail++; Logger.log(`  ❌ Team ${requests[i].payload}: HTTP ${res.getResponseCode()}`); }
+  });
+  Logger.log(`✅ Teams done: ok ${ok}, fail ${fail}`);
+}
+
+/**
+ * Import Users from SHEET_USERS
+ */
+function bulkImportAllUsersToCRM() {
+  const sheet = getSheet(SHEET_USERS);
+  const data = sheet.getDataRange().getValues();
+  data.shift();
+  Logger.log(`👤 Users: ${data.length} rows`);
+
+  const requests = data.filter(row => row[0]).map(row => ({
+    url: USER_WEBHOOK_URL,
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'x-webhook-secret': WEBHOOK_SECRET },
+    payload: JSON.stringify({
+      id: row[0],
+      employeeId: row[1] != null ? String(row[1]) : null,
+      fullName: row[2] || '',
+      role: row[3] || 'MEMBER',
+      email: row[4] || null,
+      phone: row[5] != null ? String(row[5]) : null,
+      idCard: row[6] != null ? String(row[6]) : null,
+      photoUrl: row[7] || null,
+      password: row[8] != null ? String(row[8]) : null,
+      monthlyTarget: Number(row[9] || 0),
+      status: row[10] || 'ACTIVE',
+      teamId: row[11] || null,
+    }),
+    muteHttpExceptions: true,
+  }));
+
+  const responses = UrlFetchApp.fetchAll(requests);
+  let ok = 0, fail = 0;
+  responses.forEach((res, i) => {
+    if (res.getResponseCode() === 200) ok++;
+    else { fail++; Logger.log(`  ❌ User: HTTP ${res.getResponseCode()} body=${res.getContentText().slice(0,200)}`); }
+  });
+  Logger.log(`✅ Users done: ok ${ok}, fail ${fail}`);
+}
+
+/**
+ * ⚡ Import Orders from SHEET_ORDERS — parallel batches of 50
  */
 function bulkImportAllOrdersToCRM() {
   const sheet = getSheet(SHEET_ORDERS);
@@ -273,10 +370,12 @@ function bulkImportAllOrdersToCRM() {
 ### Step 2: รันที่ Apps Script editor
 
 1. Save (Ctrl+S)
-2. ที่ dropdown ข้างปุ่ม Run → เลือก **`bulkImportAllOrdersToCRM`**
+2. ที่ dropdown ข้างปุ่ม Run → เลือก **`bulkImportEverything`** (รันทั้ง Teams + Users + Orders)
 3. กด **▶ Run**
-4. ดู Execution log ด้านล่าง — จะเห็นความคืบหน้าทุก batch
-5. รอจน log บอก `✅ Done. Success: N, Failed: M, Total: T`
+4. ดู Execution log ด้านล่าง — จะเห็น 3 step ตามลำดับ
+5. รอจน log บอก `🎉 All done!`
+
+> หากต้องการรันเฉพาะอันใดอันหนึ่ง → เลือก `bulkImportAllTeamsToCRM` / `bulkImportAllUsersToCRM` / `bulkImportAllOrdersToCRM`
 
 ### Step 3: ตรวจสอบใน CRM
 
