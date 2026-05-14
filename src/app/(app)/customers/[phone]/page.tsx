@@ -380,20 +380,22 @@ export default async function CustomerProfilePage({ params }: Props) {
               </span>
             </div>
           </div>
-          <div className="profile-hero-actions">
-            <ReorderButton
-              customerPhone={decodedPhone}
-              customerName={name}
-              defaultAddress={latestOrder.address ?? ''}
-              defaultChannel={latestOrder.channel}
-              productSuggestions={allProducts.map(p => p.name)}
-              lastOrderProducts={
-                (Array.isArray(latestOrder.productsJson) ? (latestOrder.productsJson as { name?: string; quantity?: number }[]) : [])
-                  .filter(p => p.name)
-                  .map(p => ({ name: String(p.name), quantity: Number(p.quantity ?? 1) }))
-              }
-            />
-          </div>
+          {user.role !== 'ADMIN' && (
+            <div className="profile-hero-actions">
+              <ReorderButton
+                customerPhone={decodedPhone}
+                customerName={name}
+                defaultAddress={latestOrder.address ?? ''}
+                defaultChannel={latestOrder.channel}
+                productSuggestions={allProducts.map(p => p.name)}
+                lastOrderProducts={
+                  (Array.isArray(latestOrder.productsJson) ? (latestOrder.productsJson as { name?: string; quantity?: number }[]) : [])
+                    .filter(p => p.name)
+                    .map(p => ({ name: String(p.name), quantity: Number(p.quantity ?? 1) }))
+                }
+              />
+            </div>
+          )}
         </div>
       </div>
 

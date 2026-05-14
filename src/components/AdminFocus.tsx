@@ -1,0 +1,247 @@
+import Link from 'next/link';
+import type { AdminFocusData } from '@/lib/todaysFocus';
+
+export default function AdminFocus({ data, userName }: { data: AdminFocusData; userName: string }) {
+  if (data.isAllClear) {
+    return (
+      <div
+        className="card"
+        style={{
+          background: 'linear-gradient(135deg, rgba(47,160,132,0.08) 0%, rgba(47,160,132,0.03) 100%)',
+          border: '1.5px solid rgba(47,160,132,0.2)',
+          padding: '1.25rem 1.5rem',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+        }}
+      >
+        <div style={{
+          width: 48, height: 48, borderRadius: '50%',
+          background: 'rgba(47,160,132,0.15)', color: '#147a5e',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 24, flexShrink: 0,
+        }}>
+          <i className="ri-shield-check-line"></i>
+        </div>
+        <div>
+          <div className="fw-700" style={{ fontSize: 16, color: '#147a5e', marginBottom: 2 }}>
+            ระบบเรียบร้อย {userName} 🎉
+          </div>
+          <div className="text-sm text-muted">
+            ไม่มี sync ค้าง · เซลส์ทุกคน on track · ออเดอร์ flow ปกติ
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card" style={{
+      background: 'linear-gradient(135deg, #fff 0%, #fafbfc 100%)',
+      border: '1.5px solid var(--border)',
+      padding: 0,
+      marginBottom: '1.5rem',
+      overflow: 'hidden',
+    }}>
+      <div style={{
+        padding: '1rem 1.25rem',
+        borderBottom: '1px solid var(--border-light)',
+        background: 'linear-gradient(90deg, rgba(99,102,241,0.08), transparent)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '0.5rem',
+      }}>
+        <div>
+          <div className="fw-700" style={{ fontSize: 15 }}>
+            👁️ Oversight ของคุณวันนี้
+          </div>
+          <div className="text-sm text-muted" style={{ marginTop: 2 }}>
+            สิ่งที่ admin ต้องดูแล (ไม่ใช่งานรายลูกค้า)
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: '0.5rem 0' }}>
+        {/* Sync failed */}
+        {data.syncFailedCount > 0 && (
+          <Section
+            color="#dc2626"
+            bgTint="rgba(220,38,38,0.06)"
+            icon="ri-error-warning-line"
+            title="ออเดอร์ sync ไป Sheet ล้มเหลว"
+            count={data.syncFailedCount}
+            description="ออเดอร์ที่ CRM สร้างแต่ยังไม่ถึง Sheet — packer ไม่เห็น"
+          >
+            {data.syncFailedSample.map(o => (
+              <Link
+                key={o.id}
+                href="/admin/sync-failed"
+                style={rowStyle}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="fw-600" style={{ fontSize: 13 }}>
+                    {o.customerName ?? '(ไม่ระบุชื่อ)'}
+                  </div>
+                  <div className="text-sm text-muted" style={{ fontSize: 11, color: '#dc2626' }}>
+                    {(o.syncError ?? '').slice(0, 80)}
+                  </div>
+                </div>
+                <CTA color="#dc2626" label="แก้ไข" />
+              </Link>
+            ))}
+            <ViewAllRow href="/admin/sync-failed" label={`ดู ${data.syncFailedCount} รายการทั้งหมด`} />
+          </Section>
+        )}
+
+        {/* Low performers */}
+        {data.lowPerformersTotal > 0 && (
+          <Section
+            color="#f59e0b"
+            bgTint="rgba(245,158,11,0.06)"
+            icon="ri-line-chart-line"
+            title="เซลส์ที่ยังต่ำกว่า 50% ของเป้า"
+            count={data.lowPerformersTotal}
+            description="คอยช่วย/coach เซลส์ที่ยังไม่ถึงครึ่งของเป้าเดือนนี้"
+          >
+            {data.lowPerformers.map(p => (
+              <Link
+                key={p.userId}
+                href="/leaderboard"
+                style={rowStyle}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="fw-600" style={{ fontSize: 13 }}>
+                    {p.fullName}
+                    {p.teamName && (
+                      <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>
+                        · {p.teamName}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted" style={{ fontSize: 11 }}>
+                    ฿{p.totalRevenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })} / ฿{p.monthlyTarget.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
+                    <span style={{ marginLeft: 6, color: '#dc2626', fontWeight: 700 }}>
+                      {p.goalPercent.toFixed(0)}%
+                    </span>
+                  </div>
+                </div>
+                <CTA color="#f59e0b" label="ดู" />
+              </Link>
+            ))}
+          </Section>
+        )}
+
+        {/* Stuck orders (company-wide) */}
+        {data.stuckOrdersTotal > 0 && (
+          <Section
+            color="#0ea5e9"
+            bgTint="rgba(14,165,233,0.06)"
+            icon="ri-archive-2-line"
+            title="ออเดอร์ค้าง PENDING > 24 ชม. (ทั้งบริษัท)"
+            count={data.stuckOrdersTotal}
+            description="ออเดอร์ที่ค้างเกินไป — ทีมแพคหรือเซลส์ต้อง follow up"
+          >
+            <Link href="/orders?status=PENDING" style={rowStyle}>
+              <div style={{ flex: 1 }}>
+                <div className="fw-600" style={{ fontSize: 13 }}>
+                  ดูออเดอร์ PENDING ทั้งหมด
+                </div>
+                <div className="text-sm text-muted" style={{ fontSize: 11 }}>
+                  filter ตาม status=PENDING
+                </div>
+              </div>
+              <CTA color="#0ea5e9" label="ดูทั้งหมด" />
+            </Link>
+          </Section>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Section({ color, bgTint, icon, title, count, description, children }: {
+  color: string; bgTint: string; icon: string; title: string;
+  count: number; description: string; children: React.ReactNode;
+}) {
+  return (
+    <div style={{ marginBottom: '0.25rem' }}>
+      <div style={{
+        padding: '0.65rem 1.25rem',
+        background: bgTint,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.6rem',
+        borderTop: '1px solid var(--border-light)',
+        borderBottom: '1px solid var(--border-light)',
+      }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: 8,
+          background: '#fff', color, border: `1.5px solid ${color}33`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, flexShrink: 0,
+        }}>
+          <i className={icon}></i>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="fw-700" style={{ fontSize: 13 }}>
+            {title} <span style={{ color, marginLeft: 4 }}>({count})</span>
+          </div>
+          <div className="text-sm text-muted" style={{ fontSize: 11 }}>
+            {description}
+          </div>
+        </div>
+      </div>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+const rowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.75rem',
+  padding: '0.65rem 1.25rem',
+  borderBottom: '1px solid var(--border-light)',
+  textDecoration: 'none',
+  color: 'inherit',
+  transition: 'background 120ms',
+};
+
+function CTA({ color, label }: { color: string; label: string }) {
+  return (
+    <span style={{
+      background: color,
+      color: '#fff',
+      borderRadius: 6,
+      padding: '0.3rem 0.7rem',
+      fontSize: 12,
+      fontWeight: 700,
+      whiteSpace: 'nowrap',
+      flexShrink: 0,
+    }}>
+      {label} <i className="ri-arrow-right-line"></i>
+    </span>
+  );
+}
+
+function ViewAllRow({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      style={{
+        display: 'block',
+        padding: '0.5rem 1.25rem',
+        textAlign: 'center',
+        fontSize: 12,
+        color: 'var(--primary)',
+        textDecoration: 'none',
+        borderBottom: '1px solid var(--border-light)',
+        fontWeight: 600,
+      }}
+    >
+      {label} →
+    </Link>
+  );
+}

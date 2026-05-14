@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { OrderSource, SyncStatus } from '@prisma/client';
 import { aggregateOrdersByPhone } from './customer';
 import type { CurrentUser } from './auth';
 import { getOrderFilter, getQueueFilter } from './auth';
@@ -37,6 +38,25 @@ export type TodaysFocusData = {
   overdueTasks: OverdueTask[];
   overdueTasksTotal: number;
   stuckOrders: StuckOrder[];
+  stuckOrdersTotal: number;
+  isAllClear: boolean;
+};
+
+// Admin-specific focus — ไม่ใช่งานรายลูกค้า, แต่เป็น oversight items
+export type LowPerformer = {
+  userId: string;
+  fullName: string;
+  teamName: string | null;
+  goalPercent: number;
+  totalRevenue: number;
+  monthlyTarget: number;
+};
+
+export type AdminFocusData = {
+  syncFailedCount: number;
+  syncFailedSample: { id: string; customerName: string | null; syncError: string | null }[];
+  lowPerformers: LowPerformer[];
+  lowPerformersTotal: number;
   stuckOrdersTotal: number;
   isAllClear: boolean;
 };
@@ -194,6 +214,90 @@ export async function getTodaysFocus(user: CurrentUser): Promise<TodaysFocusData
     overdueTasks,
     overdueTasksTotal: overdueCount,
     stuckOrders,
+    stuckOrdersTotal: stuckCount,
+    isAllClear,
+  };
+}
+
+/**
+ * Today's Focus เวอร์ชัน ADMIN — oversight ไม่ใช่ daily sales work
+ *
+ * 3 หมวด:
+ *  1. ออเดอร์ CRM_REORDER ที่ sync ไม่ผ่าน (urgent fix)
+ *  2. เซลส์ที่ทำยอดต่ำกว่า 50% ของเป้าเดือนนี้
+ *  3. ออเดอร์ค้าง PENDING > 24 ชม. ทั้งบริษัท
+ */
+export async function getAdminFocus(): Promise<AdminFocusData> {
+  const now = new Date();
+  const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  const [syncFailedCount, syncFailedSample, stuckCount, userMonthly, allOrdersThisMonth] = await Promise.all([
+    prisma.sheetOrder.count({
+      where: {
+        source: OrderSource.CRM_REORDER,
+        syncStatus: { in: [SyncStatus.FAILED, SyncStatus.PENDING] },
+      },
+    }),
+    prisma.sheetOrder.findMany({
+      where: {
+        source: OrderSource.CRM_REORDER,
+        syncStatus: { in: [SyncStatus.FAILED, SyncStatus.PENDING] },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+      select: { id: true, customerName: true, syncError: true },
+    }),
+    prisma.sheetOrder.count({
+      where: {
+        status: 'PENDING',
+        createdAt: { lt: dayAgo },
+      },
+    }),
+    prisma.sheetUser.findMany({
+      where: { isActive: 'ACTIVE', role: { not: 'PACKER' } },
+      select: {
+        id: true,
+        fullName: true,
+        monthlySales: true,
+        team: { select: { name: true } },
+      },
+    }),
+    prisma.sheetOrder.groupBy({
+      by: ['salesRepId'],
+      where: { createdAt: { gte: monthStart, lt: monthEnd } },
+      _sum: { totalPrice: true },
+    }),
+  ]);
+
+  const revMap = new Map(allOrdersThisMonth.map(r => [r.salesRepId, Number(r._sum.totalPrice ?? 0)]));
+
+  const lowPerformersAll: LowPerformer[] = userMonthly
+    .map(u => {
+      const target = Number(u.monthlySales ?? 0) || 50000;
+      const revenue = revMap.get(u.id) ?? 0;
+      const goalPercent = target > 0 ? (revenue / target) * 100 : 0;
+      return {
+        userId: u.id,
+        fullName: u.fullName,
+        teamName: u.team?.name ?? null,
+        goalPercent,
+        totalRevenue: revenue,
+        monthlyTarget: target,
+      };
+    })
+    .filter(p => p.goalPercent < 50)
+    .sort((a, b) => a.goalPercent - b.goalPercent);
+
+  const isAllClear =
+    syncFailedCount === 0 && lowPerformersAll.length === 0 && stuckCount === 0;
+
+  return {
+    syncFailedCount,
+    syncFailedSample,
+    lowPerformers: lowPerformersAll.slice(0, 5),
+    lowPerformersTotal: lowPerformersAll.length,
     stuckOrdersTotal: stuckCount,
     isAllClear,
   };

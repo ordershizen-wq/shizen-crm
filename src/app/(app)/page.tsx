@@ -6,7 +6,8 @@ import DashboardCharts, { type DailyRevenue, type StageCount } from './Dashboard
 import SourceBadge from '@/components/SourceBadge';
 import { OrderSource } from '@prisma/client';
 import TodaysFocus from '@/components/TodaysFocus';
-import { getTodaysFocus } from '@/lib/todaysFocus';
+import AdminFocus from '@/components/AdminFocus';
+import { getTodaysFocus, getAdminFocus } from '@/lib/todaysFocus';
 import MyPerformance from '@/components/MyPerformance';
 import { getLeaderboard } from '@/lib/teamStats';
 
@@ -72,9 +73,11 @@ export default async function DashboardPage() {
   const last30Total = newCustRev + reorderRev;
   const reorderShare = last30Total > 0 ? (reorderRev / last30Total) * 100 : 0;
 
-  // Today's Focus + Leaderboard — ดึงพร้อมกัน
-  const [focus, leaderboard] = await Promise.all([
-    getTodaysFocus(user),
+  // Focus widget + Leaderboard — ADMIN ได้ admin-focus, อื่นได้ daily focus
+  const isAdmin = user.role === 'ADMIN';
+  const [focus, adminFocus, leaderboard] = await Promise.all([
+    isAdmin ? Promise.resolve(null) : getTodaysFocus(user),
+    isAdmin ? getAdminFocus() : Promise.resolve(null),
     getLeaderboard(user),
   ]);
   const myStats = leaderboard.rows.find(r => r.userId === user.id) ?? null;
@@ -155,16 +158,20 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Today's Focus — actionable items บนสุด */}
-      <TodaysFocus data={focus} userName={user.fullName.split(' ')[0]} />
+      {/* Focus widget — ADMIN เห็น oversight, อื่นเห็น daily action */}
+      {adminFocus
+        ? <AdminFocus data={adminFocus} userName={user.fullName.split(' ')[0]} />
+        : focus && <TodaysFocus data={focus} userName={user.fullName.split(' ')[0]} />}
 
-      {/* My Performance — rank + goal เดือนนี้ */}
-      <MyPerformance
-        stats={myStats}
-        myRank={leaderboard.myRank}
-        totalInScope={leaderboard.rows.length}
-        monthLabel={leaderboard.monthLabel}
-      />
+      {/* My Performance — ทุก role เห็น (ADMIN เห็น rank ของตัวเอง = null) */}
+      {!isAdmin && (
+        <MyPerformance
+          stats={myStats}
+          myRank={leaderboard.myRank}
+          totalInScope={leaderboard.rows.length}
+          monthLabel={leaderboard.monthLabel}
+        />
+      )}
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem', maxWidth: '100%' }}>

@@ -103,8 +103,9 @@ export default async function TasksPage({ searchParams }: Props) {
     }),
   ]);
 
-  // Suggestions โชว์เมื่อดูงาน "ค้างอยู่" (ทั้ง list และ kanban time mode)
+  // Suggestions โชว์เมื่อดูงาน "ค้างอยู่" — แต่ไม่โชว์ให้ ADMIN (ADMIN supervise ไม่ใช่ทำงานตามรายลูกค้า)
   const showSuggestions =
+    user.role !== 'ADMIN' &&
     status === 'pending' &&
     (view === 'list' || (view === 'kanban' && groupBy === 'time'));
   const suggestions = showSuggestions ? await getTaskSuggestions(user) : [];

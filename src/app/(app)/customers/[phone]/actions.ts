@@ -134,6 +134,11 @@ export async function createReorder(input: CreateReorderInput): Promise<CreateRe
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: 'ไม่ได้เข้าสู่ระบบ' };
 
+  // ADMIN ไม่ลงออเดอร์ — supervise เท่านั้น
+  if (user.role === 'ADMIN') {
+    return { ok: false, error: 'ADMIN ไม่สามารถลงออเดอร์ได้ — กรุณาให้เซลส์ลงเอง' };
+  }
+
   // Validation พื้นฐาน
   if (!input.customerPhone) return { ok: false, error: 'ไม่มีเบอร์ลูกค้า' };
   if (input.products.length === 0) return { ok: false, error: 'ยังไม่ได้เลือกสินค้า' };
