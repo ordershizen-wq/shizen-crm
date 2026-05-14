@@ -7,6 +7,8 @@ import SourceBadge from '@/components/SourceBadge';
 import { OrderSource } from '@prisma/client';
 import TodaysFocus from '@/components/TodaysFocus';
 import { getTodaysFocus } from '@/lib/todaysFocus';
+import MyPerformance from '@/components/MyPerformance';
+import { getLeaderboard } from '@/lib/teamStats';
 
 export default async function DashboardPage() {
   const user = (await getCurrentUser())!;
@@ -70,8 +72,12 @@ export default async function DashboardPage() {
   const last30Total = newCustRev + reorderRev;
   const reorderShare = last30Total > 0 ? (reorderRev / last30Total) * 100 : 0;
 
-  // Today's Focus — ดึงหลังจาก aggregate data หลักเสร็จ
-  const focus = await getTodaysFocus(user);
+  // Today's Focus + Leaderboard — ดึงพร้อมกัน
+  const [focus, leaderboard] = await Promise.all([
+    getTodaysFocus(user),
+    getLeaderboard(user),
+  ]);
+  const myStats = leaderboard.rows.find(r => r.userId === user.id) ?? null;
 
   const totalRevenue = Number(revenue._sum.totalPrice ?? 0);
   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
@@ -151,6 +157,14 @@ export default async function DashboardPage() {
 
       {/* Today's Focus — actionable items บนสุด */}
       <TodaysFocus data={focus} userName={user.fullName.split(' ')[0]} />
+
+      {/* My Performance — rank + goal เดือนนี้ */}
+      <MyPerformance
+        stats={myStats}
+        myRank={leaderboard.myRank}
+        totalInScope={leaderboard.rows.length}
+        monthLabel={leaderboard.monthLabel}
+      />
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem', maxWidth: '100%' }}>

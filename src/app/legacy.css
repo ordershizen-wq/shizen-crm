@@ -1006,6 +1006,38 @@ input[type="radio"] {
 @keyframes spinHint { to { transform: rotate(360deg); } }
 @keyframes fadeHintIn { to { opacity: 0.85; } }
 
+/* ── My Performance widget ── */
+.my-perf:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.my-perf-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.my-perf-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border-light);
+}
+@media (max-width: 540px) {
+  .my-perf-row { flex-direction: column; gap: 0.85rem; align-items: stretch; }
+  .my-perf-divider { width: 100%; height: 1px; }
+}
+
+/* ── Leaderboard podium ── */
+.podium-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr 1fr;
+  gap: 0.75rem;
+  align-items: end;
+}
+.podium-card {
+  border-radius: 14px;
+}
+@media (max-width: 640px) {
+  .podium-grid { grid-template-columns: 1fr; align-items: stretch; }
+  .podium-card { min-height: auto !important; }
+}
+
 /* ── Profile hero action area ── */
 .profile-hero-actions {
   display: flex;
