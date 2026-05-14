@@ -1,7 +1,33 @@
+'use client';
+
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import type { TodaysFocusData } from '@/lib/todaysFocus';
 
+const COLLAPSE_KEY = 'shizen.todaysFocus.collapsed';
+
 export default function TodaysFocus({ data, userName }: { data: TodaysFocusData; userName: string }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(COLLAPSE_KEY);
+      if (saved === '1') setCollapsed(true);
+    } catch {}
+    setHydrated(true);
+  }, []);
+
+  const toggle = () => {
+    setCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0'); } catch {}
+      return next;
+    });
+  };
+
+  const totalItems = data.vipAtRiskTotal + data.overdueTasksTotal + data.stuckOrdersTotal;
+
   if (data.isAllClear) {
     return (
       <div
@@ -47,27 +73,57 @@ export default function TodaysFocus({ data, userName }: { data: TodaysFocusData;
         overflow: 'hidden',
       }}
     >
-      {/* Header */}
-      <div style={{
-        padding: '1rem 1.25rem',
-        borderBottom: '1px solid var(--border-light)',
-        background: 'linear-gradient(90deg, rgba(47,160,132,0.06), transparent)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '0.5rem',
-      }}>
-        <div>
-          <div className="fw-700" style={{ fontSize: 15, color: 'var(--text-dark)' }}>
-            🎯 งานวันนี้ของคุณ
-          </div>
-          <div className="text-sm text-muted" style={{ marginTop: 2 }}>
-            สิ่งที่ต้องจัดการก่อนสิ่งอื่น
+      {/* Header — clickable to toggle */}
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={!collapsed}
+        style={{
+          width: '100%',
+          padding: collapsed ? '0.75rem 1.25rem' : '1rem 1.25rem',
+          borderBottom: collapsed ? 'none' : '1px solid var(--border-light)',
+          background: 'linear-gradient(90deg, rgba(47,160,132,0.06), transparent)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '0.5rem',
+          border: 'none',
+          borderTopLeftRadius: 11,
+          borderTopRightRadius: 11,
+          borderBottomLeftRadius: collapsed ? 11 : 0,
+          borderBottomRightRadius: collapsed ? 11 : 0,
+          cursor: 'pointer',
+          textAlign: 'left',
+          transition: 'padding 180ms ease',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0, flex: 1 }}>
+          <i
+            className={collapsed ? 'ri-arrow-right-s-line' : 'ri-arrow-down-s-line'}
+            style={{ color: 'var(--text-muted)', fontSize: 18, flexShrink: 0 }}
+          ></i>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div className="fw-700" style={{ fontSize: collapsed ? 14 : 15, color: 'var(--text-dark)' }}>
+              🎯 งานวันนี้ของคุณ
+            </div>
+            {!collapsed && (
+              <div className="text-sm text-muted" style={{ marginTop: 2 }}>
+                สิ่งที่ต้องจัดการก่อนสิ่งอื่น
+              </div>
+            )}
+            {collapsed && (
+              <div className="text-sm text-muted" style={{ fontSize: 11, marginTop: 1 }}>
+                {data.vipAtRiskTotal > 0 && <span style={{ color: '#dc2626', marginRight: 8 }}>🔥 VIP {data.vipAtRiskTotal}</span>}
+                {data.overdueTasksTotal > 0 && <span style={{ color: '#f59e0b', marginRight: 8 }}>⏰ task {data.overdueTasksTotal}</span>}
+                {data.stuckOrdersTotal > 0 && <span style={{ color: '#0ea5e9' }}>📦 ค้าง {data.stuckOrdersTotal}</span>}
+              </div>
+            )}
           </div>
         </div>
-        <TotalBadge total={data.vipAtRiskTotal + data.overdueTasksTotal + data.stuckOrdersTotal} />
-      </div>
+        <TotalBadge total={totalItems} />
+      </button>
 
+      {hydrated && collapsed ? null : (
       <div style={{ padding: '0.5rem 0' }}>
         {/* VIP at risk */}
         {data.vipAtRiskTotal > 0 && (
@@ -167,6 +223,7 @@ export default function TodaysFocus({ data, userName }: { data: TodaysFocusData;
           </Section>
         )}
       </div>
+      )}
     </div>
   );
 }
