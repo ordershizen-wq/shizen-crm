@@ -9,22 +9,28 @@ export default async function AppLayout({ children }: Readonly<{ children: React
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  const queueFilter = getQueueFilter(user);
-  const tomorrow = new Date(); tomorrow.setHours(0, 0, 0, 0); tomorrow.setDate(tomorrow.getDate() + 1);
-  const taskFilter = await getTaskFilter(user);
-
-  // ขนาน 2 queries: aggregate stages + count tasks
-  const [phoneAggs, taskCount] = await Promise.all([
-    aggregateOrdersByPhone(queueFilter),
-    prisma.customerTask.count({
-      where: { AND: [taskFilter, { status: 'PENDING', dueDate: { lt: tomorrow } }] },
-    }),
-  ]);
-
+  // ADMIN ไม่มี daily sales work → ข้าม atRisk/task count (ประหยัด query + ไม่โชว์ badge)
+  const isAdmin = user.role === 'ADMIN';
   let atRiskCount = 0;
-  for (const row of phoneAggs) {
-    const stage = calculateStage(row);
-    if (stage === 'AT_RISK' || stage === 'LAPSED') atRiskCount++;
+  let taskCount = 0;
+
+  if (!isAdmin) {
+    const queueFilter = getQueueFilter(user);
+    const tomorrow = new Date(); tomorrow.setHours(0, 0, 0, 0); tomorrow.setDate(tomorrow.getDate() + 1);
+    const taskFilter = await getTaskFilter(user);
+
+    const [phoneAggs, taskCountRes] = await Promise.all([
+      aggregateOrdersByPhone(queueFilter),
+      prisma.customerTask.count({
+        where: { AND: [taskFilter, { status: 'PENDING', dueDate: { lt: tomorrow } }] },
+      }),
+    ]);
+
+    for (const row of phoneAggs) {
+      const stage = calculateStage(row);
+      if (stage === 'AT_RISK' || stage === 'LAPSED') atRiskCount++;
+    }
+    taskCount = taskCountRes;
   }
 
   return (

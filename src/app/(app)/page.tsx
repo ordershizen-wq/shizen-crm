@@ -140,17 +140,19 @@ export default async function DashboardPage() {
           <p className="text-sm text-muted mt-1">{teamLabel}</p>
         </div>
         <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <Link href="/tasks" className="btn btn-primary" style={{ fontSize: 13 }}>
-            <i className="ri-task-line"></i> งานวันนี้
-            {(stageTally.AT_RISK + stageTally.LAPSED) > 0 && (
-              <span style={{
-                background: '#fff', color: 'var(--primary)', borderRadius: 20,
-                fontSize: 11, fontWeight: 700, padding: '0 6px', marginLeft: 4,
-              }}>
-                {stageTally.AT_RISK + stageTally.LAPSED}
-              </span>
-            )}
-          </Link>
+          {!isAdmin && (
+            <Link href="/tasks" className="btn btn-primary" style={{ fontSize: 13 }}>
+              <i className="ri-task-line"></i> งานวันนี้
+              {(stageTally.AT_RISK + stageTally.LAPSED) > 0 && (
+                <span style={{
+                  background: '#fff', color: 'var(--primary)', borderRadius: 20,
+                  fontSize: 11, fontWeight: 700, padding: '0 6px', marginLeft: 4,
+                }}>
+                  {stageTally.AT_RISK + stageTally.LAPSED}
+                </span>
+              )}
+            </Link>
+          )}
           <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
             <i className="ri-calendar-line text-blue"></i>{' '}
             {new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}

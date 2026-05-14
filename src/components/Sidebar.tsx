@@ -37,13 +37,14 @@ type NavItem = {
   text: string;
   badge?: 'atRisk' | 'task';
   adminOnly?: boolean;
+  hideFromAdmin?: boolean;   // งานรายลูกค้าซึ่ง ADMIN supervise ไม่ใช่ exec
 };
 
 const NAV: { label: string; items: NavItem[] }[] = [
   { label: 'เมนูหลัก', items: [
     { href: '/',          icon: 'ri-dashboard-3-line',    text: 'แดชบอร์ด' },
-    { href: '/tasks',     icon: 'ri-checkbox-line',       text: 'งาน',          badge: 'task' },
-    { href: '/calendar',  icon: 'ri-calendar-2-line',     text: 'ปฏิทินงาน' },
+    { href: '/tasks',     icon: 'ri-checkbox-line',       text: 'งาน',          badge: 'task', hideFromAdmin: true },
+    { href: '/calendar',  icon: 'ri-calendar-2-line',     text: 'ปฏิทินงาน',                  hideFromAdmin: true },
     { href: '/customers', icon: 'ri-group-2-line',         text: 'จัดการลูกค้า' },
     { href: '/orders',    icon: 'ri-shopping-bag-3-line',  text: 'ออเดอร์' },
     { href: '/products',  icon: 'ri-archive-2-line',       text: 'คลังสินค้า' },
@@ -103,7 +104,11 @@ export default function Sidebar({
       {/* Navigation */}
       <nav className="sidebar-menu">
         {NAV.map(group => {
-          const visibleItems = group.items.filter(it => !it.adminOnly || user.role === 'ADMIN');
+          const visibleItems = group.items.filter(it => {
+            if (it.adminOnly && user.role !== 'ADMIN') return false;
+            if (it.hideFromAdmin && user.role === 'ADMIN') return false;
+            return true;
+          });
           if (visibleItems.length === 0) return null;
           return (
           <div key={group.label}>
