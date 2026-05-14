@@ -207,6 +207,7 @@ export default function ReorderButton({
                         key={c.value}
                         type="button"
                         onClick={() => setChannel(c.value)}
+                        className="reorder-channel-pill"
                         style={{
                           padding: '0.45rem 0.85rem', border: `1.5px solid ${active ? c.color : 'var(--border)'}`,
                           background: active ? c.color : '#fff', color: active ? '#fff' : 'var(--text-dark)',
@@ -246,14 +247,14 @@ export default function ReorderButton({
                     <i className="ri-error-warning-line"></i> {error}
                   </div>
                 )}
-                <div className="flex-between" style={{ alignItems: 'center', gap: '1rem' }}>
+                <div className="flex-between reorder-modal-footer" style={{ alignItems: 'center', gap: '1rem' }}>
                   <div>
                     <div className="text-sm text-muted">รวม</div>
                     <div className="fw-700" style={{ fontSize: 20, color: 'var(--primary)' }}>
                       ฿{total.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div className="reorder-modal-footer-buttons" style={{ display: 'flex', gap: '0.5rem' }}>
                     <button
                       type="button"
                       onClick={closeModal}
@@ -308,7 +309,7 @@ function ProductRow({
       background: '#f8fafc', borderRadius: 10, padding: '0.6rem',
       border: '1px solid var(--border-light)',
       display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem',
-    }}>
+    }} className="reorder-product-row-wrap">
       <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
         <input
           list={listId}
@@ -338,7 +339,7 @@ function ProductRow({
           </button>
         )}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr 1fr', gap: '0.4rem', alignItems: 'center' }}>
+      <div className="reorder-product-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr 1fr', gap: '0.4rem', alignItems: 'center' }}>
         <div>
           <div className="text-sm text-muted" style={{ fontSize: 11, marginBottom: 2 }}>จำนวน</div>
           <input
