@@ -32,15 +32,19 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 /**
  * สร้าง Prisma filter สำหรับ SheetOrder ตาม role:
  * - ADMIN  → {} (เห็นทุกออเดอร์)
- * - LEADER → salesRepId IN [ทีมตัวเอง] (เห็นทั้งทีม)
+ * - LEADER → ขึ้นกับ view ('self' = ของตัวเอง, 'team' = ทั้งทีม, default = team)
  * - MEMBER → salesRepId = ตัวเอง (เห็นแค่ของตัวเอง)
  */
-export async function getOrderFilter(user: CurrentUser | null): Promise<Record<string, unknown>> {
+export async function getOrderFilter(
+  user: CurrentUser | null,
+  view: 'self' | 'team' = 'team',
+): Promise<Record<string, unknown>> {
   if (!user) return {};
 
   if (user.role === 'ADMIN') return {};
 
   if (user.role === 'LEADER' && user.teamId) {
+    if (view === 'self') return { salesRepId: user.id };
     const reps = await prisma.sheetUser.findMany({
       where: { teamId: user.teamId },
       select: { id: true },

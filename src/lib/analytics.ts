@@ -2,9 +2,10 @@ import { prisma } from './prisma';
 import { OrderSource } from '@prisma/client';
 import type { CurrentUser } from './auth';
 import { getOrderFilter, getQueueFilter } from './auth';
+import type { DateRange, ViewKey } from './dashboardFilters';
 
 // ─────────────────────────────────────────────────────────────
-// Date helpers
+// Date helpers — legacy (สำหรับ Velocity/Forecast ที่ยึดเดือน)
 // ─────────────────────────────────────────────────────────────
 function monthRange(d: Date = new Date()): { start: Date; end: Date; daysInMonth: number; dayOfMonth: number } {
   const start = new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
@@ -18,6 +19,17 @@ function prevMonthRange(d: Date = new Date()): { start: Date; end: Date } {
   const start = new Date(d.getFullYear(), d.getMonth() - 1, 1, 0, 0, 0, 0);
   const end = new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
   return { start, end };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Helper — apply DateRange filter เป็น Prisma where
+// ─────────────────────────────────────────────────────────────
+function whereWithRange(
+  base: Record<string, unknown>,
+  range?: DateRange,
+): Record<string, unknown> {
+  if (!range || !range.start || !range.end) return base;
+  return { ...base, createdAt: { gte: range.start, lt: range.end } };
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -195,17 +207,17 @@ export async function getMonthTrend(user: CurrentUser): Promise<TrendPoint[]> {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Channel mix (LINE/FB/TikTok) เดือนนี้
+// Channel mix (LINE/FB/TikTok) — ตาม range
 // ─────────────────────────────────────────────────────────────
 export type ChannelSlice = { channel: string; revenue: number; orders: number; share: number };
 
-export async function getChannelMix(user: CurrentUser): Promise<ChannelSlice[]> {
-  const orderFilter = (await getOrderFilter(user)) ?? {};
-  const { start, end } = monthRange();
+export async function getChannelMix(user: CurrentUser, range?: DateRange, view: ViewKey = 'team'): Promise<ChannelSlice[]> {
+  const orderFilter = (await getOrderFilter(user, view)) ?? {};
+  const where = whereWithRange(orderFilter, range);
 
   const grouped = await prisma.sheetOrder.groupBy({
     by: ['channel'],
-    where: { ...orderFilter, createdAt: { gte: start, lt: end } },
+    where,
     _sum: { totalPrice: true },
     _count: { _all: true },
   });
@@ -234,13 +246,13 @@ export type ProductStat = {
 
 type ProductRow = { name?: string; quantity?: number; unitPrice?: number; price?: number };
 
-export async function getBestProducts(user: CurrentUser, limit = 5): Promise<ProductStat[]> {
-  const orderFilter = (await getOrderFilter(user)) ?? {};
-  const { start, end } = monthRange();
+export async function getBestProducts(user: CurrentUser, limit = 5, range?: DateRange, view: ViewKey = 'team'): Promise<ProductStat[]> {
+  const orderFilter = (await getOrderFilter(user, view)) ?? {};
+  const where = whereWithRange(orderFilter, range);
 
   // productsJson — ต้องดึงมา parse ใน JS
   const orders = await prisma.sheetOrder.findMany({
-    where: { ...orderFilter, createdAt: { gte: start, lt: end } },
+    where,
     select: { productsJson: true },
   });
 
@@ -452,8 +464,10 @@ export type ProductPerf = {
   reorderRate: number;          // % ที่ลูกค้าซื้อสินค้าตัวนี้ซ้ำ
 };
 
-export async function getProductPerformance(limit = 10): Promise<ProductPerf[]> {
-  const { start, end } = monthRange();
+export async function getProductPerformance(limit = 10, range?: DateRange): Promise<ProductPerf[]> {
+  // ถ้าไม่มี range → ดูทั้งหมด แต่ลูกค้าเก่าก็คือ "ก่อนเริ่ม range"
+  const start = range?.start ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const end = range?.end ?? new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
 
   const orders = await prisma.sheetOrder.findMany({
     where: { createdAt: { gte: start, lt: end }, phone: { not: null } },

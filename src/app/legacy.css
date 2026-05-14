@@ -1053,6 +1053,41 @@ input[type="radio"] {
   .podium-card { min-height: auto !important; }
 }
 
+/* ── Dashboard filter segmented control ── */
+.filter-seg {
+  display: inline-flex;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  gap: 2px;
+}
+.filter-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-radius: calc(var(--radius-md) - 2px);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 120ms ease, color 120ms ease;
+}
+.filter-seg-btn:hover { color: var(--text-dark); }
+.filter-seg-btn.is-active {
+  background: var(--bg-card);
+  color: var(--primary);
+  font-weight: 600;
+  box-shadow: var(--shadow-xs);
+}
+.filter-seg-btn i { font-size: 14px; }
+
+@media (max-width: 640px) {
+  .filter-seg-btn { padding: 6px 10px; font-size: 12px; }
+}
+
 /* ── Dashboard 2-column layout ── */
 .dash-2col {
   display: grid;

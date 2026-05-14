@@ -23,21 +23,41 @@ import {
   getVelocity, getHotCustomers, getMonthTrend, getChannelMix, getBestProducts,
   getRevenueForecast, getTeamBattle, getAcquisitionFunnel, getProductPerformance,
 } from '@/lib/analytics';
+import { parseRange, parseView, resolveDateRange } from '@/lib/dashboardFilters';
+import DashboardFilters from '@/components/dashboard/DashboardFilters';
 
-export default async function DashboardPage() {
+type SearchParams = Promise<{ range?: string; view?: string }>;
+
+export default async function DashboardPage({ searchParams }: { searchParams: SearchParams }) {
   const user = (await getCurrentUser())!;
-  const orderFilter = (await getOrderFilter(user)) ?? {};
+  const params = await searchParams;
+  const isAdmin = user.role === 'ADMIN';
+  const isLeader = user.role === 'LEADER';
 
-  const now = new Date();
-  const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const d60 = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+  // Parse filter params
+  const range = parseRange(params.range, 'month');
+  // ADMIN: ไม่มี view toggle → ignore; LEADER: default 'team'; MEMBER: ของตัวเองเสมอ
+  const view = isAdmin ? 'team' : parseView(params.view, isLeader ? 'team' : 'team');
+  const dateRange = resolveDateRange(range);
 
-  // ทุก aggregate ทำใน DB (groupBy/aggregate/count) — ไม่ดึง row ทั้ง table มา process ใน JS อีกต่อไป
-  const [totalOrders, revenue, recentOrders, last30Orders, last30, prev30, phoneAggs, sourceBreakdown] = await Promise.all([
-    prisma.sheetOrder.count({ where: orderFilter }),
-    prisma.sheetOrder.aggregate({ where: orderFilter, _sum: { totalPrice: true } }),
+  const orderFilter = (await getOrderFilter(user, view)) ?? {};
+
+  // Build where clauses ใส่ date filter เมื่อมี range
+  const rangeWhere = dateRange.start && dateRange.end
+    ? { createdAt: { gte: dateRange.start, lt: dateRange.end } }
+    : {};
+  const prevWhere = dateRange.prevStart && dateRange.prevEnd
+    ? { createdAt: { gte: dateRange.prevStart, lt: dateRange.prevEnd } }
+    : null;
+
+  const filteredWhere = { ...orderFilter, ...rangeWhere };
+
+  // ทุก aggregate ทำใน DB
+  const [totalOrders, revenue, recentOrders, prevAgg, phoneAggs, sourceBreakdown] = await Promise.all([
+    prisma.sheetOrder.count({ where: filteredWhere }),
+    prisma.sheetOrder.aggregate({ where: filteredWhere, _sum: { totalPrice: true } }),
     prisma.sheetOrder.findMany({
-      where: orderFilter,
+      where: filteredWhere,
       orderBy: { createdAt: 'desc' },
       take: 10,
       select: {
@@ -52,27 +72,15 @@ export default async function DashboardPage() {
         source: true,
       },
     }),
-    // เฉพาะ 30 วันล่าสุดสำหรับกราฟ — แทนที่จะดึงทั้ง table
-    prisma.sheetOrder.findMany({
-      where: { ...orderFilter, createdAt: { gte: d30 } },
-      select: { totalPrice: true, createdAt: true },
-    }),
-    prisma.sheetOrder.aggregate({
-      where: { ...orderFilter, createdAt: { gte: d30 } },
-      _sum: { totalPrice: true },
-      _count: true,
-    }),
-    prisma.sheetOrder.aggregate({
-      where: { ...orderFilter, createdAt: { gte: d60, lt: d30 } },
-      _sum: { totalPrice: true },
-      _count: true,
-    }),
-    // GROUP BY phone ใน DB — คืนแค่ 1 row ต่อลูกค้า ไม่ใช่ทุก order
+    prevWhere
+      ? prisma.sheetOrder.aggregate({ where: { ...orderFilter, ...prevWhere }, _sum: { totalPrice: true }, _count: true })
+      : Promise.resolve(null),
+    // GROUP BY phone (ตลอดกาล — สำหรับ stage distribution)
     aggregateOrdersByPhone(orderFilter),
-    // แยกยอดตามที่มา 30 วันล่าสุด สำหรับ KPI Acquisition vs Retention
+    // Source split ตาม range ที่เลือก
     prisma.sheetOrder.groupBy({
       by: ['source'],
-      where: { ...orderFilter, createdAt: { gte: d30 } },
+      where: filteredWhere,
       _sum: { totalPrice: true },
       _count: true,
     }),
@@ -83,11 +91,21 @@ export default async function DashboardPage() {
   const newCustCount = sourceMap.get(OrderSource.SHEET)?._count ?? 0;
   const reorderRev = Number(sourceMap.get(OrderSource.CRM_REORDER)?._sum.totalPrice ?? 0);
   const reorderCount = sourceMap.get(OrderSource.CRM_REORDER)?._count ?? 0;
-  const last30Total = newCustRev + reorderRev;
-  const reorderShare = last30Total > 0 ? (reorderRev / last30Total) * 100 : 0;
+  const periodTotal = newCustRev + reorderRev;
+  const reorderShare = periodTotal > 0 ? (reorderRev / periodTotal) * 100 : 0;
 
-  // Focus + Analytics widgets — แยกตาม role
-  const isAdmin = user.role === 'ADMIN';
+  // Chart data: daily revenue ภายใน range (ถ้ามี range)
+  const chartOrders = dateRange.start && dateRange.end
+    ? await prisma.sheetOrder.findMany({
+        where: filteredWhere,
+        select: { totalPrice: true, createdAt: true },
+      })
+    : await prisma.sheetOrder.findMany({
+        where: { ...orderFilter, createdAt: { gte: new Date(Date.now() - 30 * 86400000) } },
+        select: { totalPrice: true, createdAt: true },
+      });
+
+  // Focus + Analytics widgets — แยกตาม role + ส่ง dateRange + view
   const [
     focus, adminFocus, leaderboard,
     velocity, hotCustomers, trend, channelMix, bestProducts,
@@ -96,37 +114,58 @@ export default async function DashboardPage() {
     isAdmin ? Promise.resolve(null) : getTodaysFocus(user),
     isAdmin ? getAdminFocus() : Promise.resolve(null),
     getLeaderboard(user),
-    // Sales analytics — สำหรับ MEMBER/LEADER เท่านั้น
+    // Sales analytics — สำหรับ MEMBER/LEADER เท่านั้น (ใช้ view + dateRange)
     isAdmin ? Promise.resolve(null) : getVelocity(user),
     isAdmin ? Promise.resolve([]) : getHotCustomers(user, 5),
     isAdmin ? Promise.resolve([]) : getMonthTrend(user),
-    isAdmin ? Promise.resolve([]) : getChannelMix(user),
-    isAdmin ? Promise.resolve([]) : getBestProducts(user, 5),
-    // Admin analytics — สำหรับ ADMIN เท่านั้น
+    isAdmin ? Promise.resolve([]) : getChannelMix(user, dateRange, view),
+    isAdmin ? Promise.resolve([]) : getBestProducts(user, 5, dateRange, view),
+    // Admin analytics
     isAdmin ? getRevenueForecast() : Promise.resolve(null),
     isAdmin ? getTeamBattle() : Promise.resolve([]),
     isAdmin ? getAcquisitionFunnel() : Promise.resolve(null),
-    isAdmin ? getProductPerformance(10) : Promise.resolve([]),
+    isAdmin ? getProductPerformance(10, dateRange) : Promise.resolve([]),
   ]);
   const myStats = leaderboard.rows.find(r => r.userId === user.id) ?? null;
 
   const totalRevenue = Number(revenue._sum.totalPrice ?? 0);
   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
-  const last30Rev = Number(last30._sum.totalPrice ?? 0);
-  const prev30Rev = Number(prev30._sum.totalPrice ?? 0);
-  const revGrowth = prev30Rev > 0 ? ((last30Rev - prev30Rev) / prev30Rev) * 100 : 0;
+  // Growth: เทียบกับช่วงก่อนหน้าตาม range
+  const prevRev = prevAgg ? Number(prevAgg._sum.totalPrice ?? 0) : 0;
+  const prevCount = prevAgg ? prevAgg._count : 0;
+  const revGrowth = prevRev > 0 ? ((totalRevenue - prevRev) / prevRev) * 100 : 0;
 
-  // --- Chart data: daily revenue (last 30 days) ---
+  // --- Chart data: aggregate ตามช่วง (เดือนเล็กลง = รายวัน, ปี = รายเดือน) ---
   const dailyMap = new Map<string, { revenue: number; orders: number }>();
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-    const key = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
-    dailyMap.set(key, { revenue: 0, orders: 0 });
+  const useMonthBuckets = range === 'year';
+  if (dateRange.start && dateRange.end && !useMonthBuckets) {
+    // เติม buckets รายวัน
+    const cur = new Date(dateRange.start);
+    while (cur < dateRange.end && cur <= new Date()) {
+      const key = cur.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+      dailyMap.set(key, { revenue: 0, orders: 0 });
+      cur.setDate(cur.getDate() + 1);
+    }
+  } else if (useMonthBuckets) {
+    for (let m = 0; m < 12; m++) {
+      const d = new Date(new Date().getFullYear(), m, 1);
+      const key = d.toLocaleDateString('th-TH', { month: 'short' });
+      dailyMap.set(key, { revenue: 0, orders: 0 });
+    }
+  } else {
+    // ไม่มี range — ดู 30 วันล่าสุด
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000);
+      const key = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+      dailyMap.set(key, { revenue: 0, orders: 0 });
+    }
   }
 
-  for (const o of last30Orders) {
-    const key = o.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+  for (const o of chartOrders) {
+    const key = useMonthBuckets
+      ? o.createdAt.toLocaleDateString('th-TH', { month: 'short' })
+      : o.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
     const entry = dailyMap.get(key);
     if (entry) {
       entry.revenue += Number(o.totalPrice ?? 0);
@@ -188,6 +227,14 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {/* Dashboard filters — range + view (LEADER) */}
+      <DashboardFilters
+        range={range}
+        view={view}
+        showViewToggle={isLeader}
+        rangeLabel={dateRange.label}
+      />
+
       {/* Focus widget — ADMIN เห็น oversight, อื่นเห็น daily action */}
       {adminFocus
         ? <AdminFocus data={adminFocus} userName={user.fullName.split(' ')[0]} />
@@ -229,7 +276,11 @@ export default async function DashboardPage() {
           iconColor="var(--success)"
           label="ยอดขายรวม"
           value={`฿${totalRevenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`}
-          sub={revGrowth !== 0 ? `${revGrowth > 0 ? '↑' : '↓'} ${Math.abs(revGrowth).toFixed(1)}% เทียบ 30 วันก่อน` : 'เทียบ 30 วันก่อน'}
+          sub={
+            prevAgg
+              ? (revGrowth !== 0 ? `${revGrowth > 0 ? '↑' : '↓'} ${Math.abs(revGrowth).toFixed(1)}% เทียบช่วงก่อน` : 'เทียบช่วงก่อน')
+              : dateRange.label
+          }
           subColor={revGrowth > 0 ? 'var(--success)' : revGrowth < 0 ? 'var(--danger)' : 'var(--text-muted)'}
         />
         <KpiCard
@@ -238,7 +289,7 @@ export default async function DashboardPage() {
           iconColor="var(--primary)"
           label="จำนวนออเดอร์"
           value={totalOrders.toLocaleString()}
-          sub={`${last30._count} รายการใน 30 วันล่าสุด`}
+          sub={prevAgg ? `เทียบ ${prevCount.toLocaleString()} รายการช่วงก่อน` : dateRange.label}
         />
         <KpiCard
           icon="ri-group-line"
@@ -257,11 +308,11 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Source split — Acquisition vs Retention (30 วันล่าสุด) */}
+      {/* Source split — Acquisition vs Retention */}
       <div className="card p-4 mb-4">
         <div className="flex-between mb-3">
           <h3 className="fw-600" style={{ fontSize: 15, margin: 0, fontFamily: "'Trirong', serif", letterSpacing: '-0.01em' }}>
-            ที่มาของออเดอร์ — 30 วันล่าสุด
+            ที่มาของออเดอร์ — {dateRange.label}
           </h3>
           <Link href="/orders" className="text-sm" style={{ color: 'var(--primary)' }}>
             ดูออเดอร์ทั้งหมด <i className="ri-arrow-right-line"></i>
@@ -274,7 +325,7 @@ export default async function DashboardPage() {
             subtitle="Acquisition"
             revenue={newCustRev}
             count={newCustCount}
-            share={last30Total > 0 ? 100 - reorderShare : 0}
+            share={periodTotal > 0 ? 100 - reorderShare : 0}
             href="/orders?source=SHEET"
           />
           <SourceKpi
