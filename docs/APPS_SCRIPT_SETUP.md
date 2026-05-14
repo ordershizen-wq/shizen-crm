@@ -28,20 +28,33 @@ function handleReorderSync_(body) {
     return { ok: false, error: 'sheet not found: ' + REORDER_SHEET_NAME };
   }
 
-  // ⚠️ ปรับ column order ให้ตรงกับ Sheet ของคุณ
-  // ตัวอย่างนี้: id | date | name | address | phone | products | totalPrice | status | channel | salesRepName | source
+  // Column order ตรงกับแท็บ Orders จริง (20 columns):
+  //  1=id  2=date  3=customerName  4=address  5=phone  6=products_json
+  //  7=totalPrice  8=status  9=paymentProofUrl  10=salesRepId  11=salesRepName
+  //  12=platform  13=createdAt  14=returnReason  15=gender  16=ageRange
+  //  17=province  18=isReturned  19=(empty)  20=birthYear
+  const now = new Date();
   const row = [
-    body.id || '',
-    body.date ? new Date(body.date) : new Date(),
-    body.customerName || '',
-    body.address || '',
-    body.phone || '',
-    body.productSummary || '',
-    Number(body.totalPrice || 0),
-    body.status || 'PENDING',
-    body.channel || '',
-    body.salesRepName || '',
-    body.source || 'CRM_REORDER',
+    body.id || '',                                                    // 1
+    body.date ? new Date(body.date) : now,                            // 2
+    body.customerName || '',                                          // 3
+    body.address || '',                                               // 4
+    body.phone || '',                                                 // 5
+    JSON.stringify(body.products || []),                              // 6 products_json (raw JSON)
+    Number(body.totalPrice || 0),                                     // 7
+    body.status || 'PENDING',                                         // 8
+    body.paymentProofUrl || '',                                       // 9
+    body.salesRepId || '',                                            // 10
+    body.salesRepName || '',                                          // 11
+    body.channel || '',                                               // 12 platform (CRM ส่งมาในชื่อ channel)
+    now,                                                              // 13 createdAt
+    '',                                                               // 14 returnReason (CRM reorder ไม่ตีกลับ)
+    '',                                                               // 15 gender (ยังไม่ส่งจาก CRM)
+    '',                                                               // 16 ageRange
+    '',                                                               // 17 province
+    body.isReturned ? true : false,                                   // 18 isReturned
+    '',                                                               // 19 column ว่าง
+    '',                                                               // 20 birthYear (ยังไม่ส่งจาก CRM)
   ];
   sheet.appendRow(row);
 
@@ -56,11 +69,15 @@ function testReorderSync() {
     customerName: 'ทดสอบ ระบบ',
     address: '123/45 ทดสอบ',
     phone: '0812345678',
+    products: [{ name: 'My Mild', quantity: 1, unitPrice: 890 }],
     productSummary: 'My Mild x1',
     totalPrice: 890,
     status: 'PENDING',
-    channel: 'LINE',
+    paymentProofUrl: '',
+    salesRepId: 'test-user-id',
     salesRepName: 'Test User',
+    channel: 'LINE',
+    isReturned: false,
     source: 'CRM_REORDER',
   });
   Logger.log(JSON.stringify(result));

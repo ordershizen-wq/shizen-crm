@@ -51,8 +51,11 @@ export async function syncOrderToSheet(orderId: string): Promise<{ ok: true } | 
       .join(', '),
     totalPrice: Number(order.totalPrice ?? 0),
     status: order.status,
-    channel: order.channel,
+    channel: order.channel,                 // → platform ใน Sheet
+    salesRepId: order.salesRepId,
     salesRepName: order.salesRepName,
+    paymentProofUrl: order.paymentProofUrl,
+    isReturned: order.isReturned,
     source: 'CRM_REORDER',
   };
 
