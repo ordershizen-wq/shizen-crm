@@ -138,15 +138,16 @@ export async function syncOrderToSheet(orderId: string): Promise<{ ok: true } | 
     }
 
     // Parse JSON
-    let parsed: { ok?: boolean; error?: string } | null = null;
+    type ScriptResp = { ok?: boolean; error?: string; id?: string };
+    let parsed: ScriptResp;
     try {
-      parsed = JSON.parse(finalText) as typeof parsed;
+      parsed = JSON.parse(finalText) as ScriptResp;
     } catch {
       throw new Error(`Non-JSON response [${trace.join(' | ')}]`);
     }
 
-    if (!parsed?.ok) {
-      throw new Error(`Apps Script returned not-ok: ${parsed?.error ?? 'unknown'} [${trace.join(' | ')}]`);
+    if (!parsed.ok) {
+      throw new Error(`Apps Script returned not-ok: ${parsed.error ?? 'unknown'} [${trace.join(' | ')}]`);
     }
 
     await prisma.sheetOrder.update({
