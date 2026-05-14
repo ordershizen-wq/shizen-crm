@@ -34,8 +34,12 @@ export async function syncOrderToSheet(orderId: string): Promise<{ ok: true } | 
     : [];
 
   const payload = {
-    // Apps Script doPost อ่าน HTTP header ไม่ได้ → ส่ง secret ใน body
+    // routing สำหรับ doPost ที่มีหลาย command — Apps Script จะใช้ field นี้แยก
+    command: 'reorder_sync',
+    // Apps Script doPost อ่าน HTTP header ไม่ได้ → ส่ง secret/apiKey ใน body
+    // ใส่ทั้ง 2 ชื่อเผื่อ doPost เดิมใช้ชื่ออื่น (เช่น apiKey)
     secret: secret ?? null,
+    apiKey: secret ?? null,
     id: order.id,
     date: order.date?.toISOString() ?? order.createdAt.toISOString(),
     customerName: order.customerName,

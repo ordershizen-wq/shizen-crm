@@ -3,66 +3,33 @@
 ออเดอร์รีออเดอร์ที่เซลส์สร้างใน CRM ต้องไปต่อท้าย Google Sheet โดยอัตโนมัติ
 เพื่อให้ทีม packer เห็นและจัดส่งได้ตามปกติ
 
-## ภาพรวม flow
-
-```
-[เซลส์กดบันทึก CRM modal]
-        ↓
-[CRM POST → Apps Script Web App URL]
-        ↓
-[Apps Script append แถวใน Sheet]
-        ↓
-[Apps Script trigger เดิมยิง webhook กลับ CRM (ปกติ)]
-        ↓
-[CRM upsert by id → row เดิมอยู่ครบ source=CRM_REORDER]
-```
+> ⚠️ **สำคัญ:** Apps Script project มี `doPost(e)` ได้แค่ **ตัวเดียว** ดังนั้น
+> **ห้ามสร้าง `doPost` ใหม่ทับของเดิม** — ต้องเพิ่ม route เข้าไปใน doPost ที่มีอยู่แล้ว
 
 ---
 
-## ขั้นตอน setup (ทำครั้งเดียว, ~10 นาที)
+## ขั้นตอน setup
 
-### 1. เปิด Apps Script ของ Sheet
+### 1. เพิ่ม Helper function (ของใหม่)
 
-1. เปิด Google Sheet ที่ใช้รับออเดอร์
-2. เมนู `Extensions` → `Apps Script`
-3. ในไฟล์ `Code.gs` ให้ paste โค้ดด้านล่าง **ต่อท้าย** ของเดิม (ไม่ต้องลบของเดิม)
-
-### 2. Paste โค้ดนี้ลงไป
+วาง **ท้ายไฟล์ `Code.gs`** (ไม่ทับของเดิม):
 
 ```js
 // ═══════════════════════════════════════════════════════════════
-// Receive reorder from CRM — append row to "Orders" sheet
+// CRM Reorder Sync Helper — เรียกจาก doPost เดิมเมื่อ command = 'reorder_sync'
 // ═══════════════════════════════════════════════════════════════
 
-// ⚠️ แก้ตัวแปร 2 ตัวนี้ให้ตรงกับของคุณ
-const CRM_WEBHOOK_SECRET = 'shizen-webhook-2026';   // ← ต้องตรงกับ SHEET_SYNC_SECRET ใน Vercel
-const ORDERS_SHEET_NAME  = 'Orders';                  // ← ชื่อแท็บ Sheet ที่เก็บออเดอร์ (เปลี่ยนตามจริง)
+const REORDER_SHEET_NAME = 'Orders';   // ← แก้ให้ตรงชื่อแท็บ Sheet จริง
 
-function doPost(e) {
-  // ตรวจ secret
-  const secret = e.parameter && e.parameter['x-webhook-secret'];
-  let body;
-  try {
-    body = JSON.parse(e.postData.contents);
-  } catch (err) {
-    return _jsonResponse({ ok: false, error: 'invalid json' }, 400);
-  }
-
-  // ตรวจ secret อีกครั้งจาก header ผ่าน parameter (Apps Script doPost ไม่มี header ตรงๆ)
-  // วิธีที่ทำได้คือใส่ secret ใน body หรือใน URL parameter
-  // จริงๆ Apps Script doPost รับ header ผ่าน e.parameter ไม่ได้
-  // → ตรวจจาก body.secret แทน
-  if (body.secret && body.secret !== CRM_WEBHOOK_SECRET) {
-    return _jsonResponse({ ok: false, error: 'unauthorized' }, 401);
-  }
-
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ORDERS_SHEET_NAME);
+function handleReorderSync_(body) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(REORDER_SHEET_NAME);
   if (!sheet) {
-    return _jsonResponse({ ok: false, error: 'sheet not found: ' + ORDERS_SHEET_NAME }, 500);
+    return { ok: false, error: 'sheet not found: ' + REORDER_SHEET_NAME };
   }
 
   // ⚠️ ปรับ column order ให้ตรงกับ Sheet ของคุณ
-  // ตัวอย่างนี้ตรงกับ Sheet ที่มี columns: id | date | name | address | phone | products | totalPrice | status | channel | salesRepName | source
+  // ตัวอย่างนี้: id | date | name | address | phone | products | totalPrice | status | channel | salesRepName | source
   const row = [
     body.id || '',
     body.date ? new Date(body.date) : new Date(),
@@ -76,81 +43,116 @@ function doPost(e) {
     body.salesRepName || '',
     body.source || 'CRM_REORDER',
   ];
-
   sheet.appendRow(row);
 
-  return _jsonResponse({ ok: true, id: body.id });
+  return { ok: true, id: body.id };
 }
 
-function _jsonResponse(obj, statusCode) {
-  // Apps Script ไม่รองรับ status code โดยตรง — return JSON ออกไป CRM ตรวจจาก ok field
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-// ทดสอบ doPost ด้วยตนเอง — เรียกฟังก์ชันนี้ใน Apps Script editor
-function testDoPost() {
-  const fakeEvent = {
-    postData: {
-      contents: JSON.stringify({
-        secret: CRM_WEBHOOK_SECRET,
-        id: 'TEST-' + Date.now(),
-        date: new Date().toISOString(),
-        customerName: 'ทดสอบ',
-        phone: '0812345678',
-        address: '123/45 ทดสอบ',
-        productSummary: 'My Mild x1',
-        totalPrice: 890,
-        status: 'PENDING',
-        channel: 'LINE',
-        salesRepName: 'Test User',
-        source: 'CRM_REORDER',
-      }),
-    },
-  };
-  const result = doPost(fakeEvent);
-  Logger.log(result.getContent());
+// Test ตัว helper โดยตรง (ไม่ต้องผ่าน doPost)
+function testReorderSync() {
+  const result = handleReorderSync_({
+    id: 'TEST-' + Date.now(),
+    date: new Date().toISOString(),
+    customerName: 'ทดสอบ ระบบ',
+    address: '123/45 ทดสอบ',
+    phone: '0812345678',
+    productSummary: 'My Mild x1',
+    totalPrice: 890,
+    status: 'PENDING',
+    channel: 'LINE',
+    salesRepName: 'Test User',
+    source: 'CRM_REORDER',
+  });
+  Logger.log(JSON.stringify(result));
 }
 ```
 
-### 3. Deploy เป็น Web App
+### 2. เพิ่ม route ใน `doPost` เดิม
 
-1. กดปุ่ม `Deploy` (มุมขวาบน) → `New deployment`
-2. เลือกประเภท: `Web app`
-3. ตั้งค่า:
-   - **Description:** `CRM Reorder Receiver`
-   - **Execute as:** `Me`
-   - **Who has access:** `Anyone` (จำเป็นเพราะ CRM ยิงจาก server ไม่ได้ login)
-4. กด `Deploy` → คัดลอก **Web app URL** ที่ขึ้นมา (เช่น `https://script.google.com/macros/s/AKfyc.../exec`)
+หา function `doPost(e)` ที่มีอยู่แล้ว (ประมาณบรรทัด 848 ตามที่บอก) แล้ว **ใส่ block นี้ไว้ตอนต้น** ของฟังก์ชัน — หลังจาก parse body แล้ว แต่ก่อนตรรกะอื่นๆ
+
+```js
+function doPost(e) {
+  // ───── (ของเดิม) parse body ─────
+  // var body = JSON.parse(e.postData.contents);   ← สมมติว่ามีอยู่แล้ว
+  //   ถ้าไม่มี ให้เพิ่ม parse ก่อน
+
+  // ───── ★ เพิ่มตรงนี้ ★ Route: รับ reorder จาก CRM ─────
+  if (body && body.command === 'reorder_sync') {
+    const result = handleReorderSync_(body);
+    return ContentService
+      .createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // ───── (ของเดิม) ตรรกะอื่นๆ ของ doPost เก่า ─────
+  // ... export_orders / import_order / ฯลฯ ของเดิม ...
+}
+```
+
+> ถ้า doPost เดิมยังไม่ได้ parse body แต่อ่านจาก `e.parameter` แทน
+> ให้เพิ่ม `var body = e.postData ? JSON.parse(e.postData.contents) : {};`
+> ที่บรรทัดบนสุดของ function
+
+### 3. (ถ้ายังไม่มี) Deploy เป็น Web App
+
+ถ้า doPost เดิม deploy เป็น Web app ไว้แล้ว → **ข้ามขั้นนี้** แค่ใช้ URL เดิม
+
+ถ้ายังไม่เคย deploy:
+1. กด `Deploy` → `New deployment` → ประเภท `Web app`
+2. **Execute as:** `Me`, **Who has access:** `Anyone`
+3. คัดลอก Web app URL
 
 ### 4. ตั้งค่าใน Vercel
 
-1. ไปที่ Vercel dashboard → CRM project → `Settings` → `Environment Variables`
-2. เพิ่ม 2 ตัว:
+ไปที่ Vercel → CRM project → `Settings` → `Environment Variables`:
 
 | Key | Value |
 |---|---|
-| `SHEET_SYNC_URL` | URL ที่คัดลอกจากขั้นตอน 3 |
-| `SHEET_SYNC_SECRET` | `shizen-webhook-2026` (หรือค่าใหม่ที่ปลอดภัยกว่า — แต่ต้องตรงกับ `CRM_WEBHOOK_SECRET` ใน Apps Script) |
+| `SHEET_SYNC_URL` | Web app URL ของ Apps Script |
+| `SHEET_SYNC_SECRET` | ค่าเดียวกับ `CRM_API_KEY` ที่ doPost เดิมตรวจ (ถ้าใช้) — ถ้าไม่ต้องใช้ใส่อะไรก็ได้ |
 
-3. **Redeploy** Vercel เพื่อให้ env vars ใหม่มีผล (กด `...` ใน deployment ล่าสุด → Redeploy)
+แล้ว **Redeploy** Vercel
 
 ### 5. ทดสอบ
 
-1. เข้า CRM → หน้าลูกค้าที่มีออเดอร์ → กด **"ลงออเดอร์ใหม่"**
-2. กรอกข้อมูล → กด **"บันทึก & sync"**
-3. ผลลัพธ์ควรเป็น:
-   - ✅ `บันทึก & sync เข้า Sheet สำเร็จ` → ดู Sheet จะมีแถวใหม่ขึ้น
-   - ⏳ `บันทึกแล้ว แต่ยังไม่ sync` → ไปดูที่ `/admin/sync-failed` แล้วกด Retry หรือ ตรวจ env vars
+**5.1 ทดสอบ helper ตรงๆ ใน Apps Script (ไม่ผ่าน HTTP):**
+- เลือก function `testReorderSync` → กด ▶ Run
+- ดู Execution log → ควรเห็น `{"ok":true,"id":"TEST-..."}`
+- เปิด Sheet → ควรมีแถวใหม่ขึ้นที่แท็บ `Orders` (หรือชื่อที่ตั้ง)
+
+**5.2 ทดสอบ end-to-end ผ่าน CRM:**
+- เข้า CRM → หน้าลูกค้า → กด "ลงออเดอร์ใหม่"
+- กรอกของ → กด "บันทึก & sync"
+- เห็น ✅ "บันทึก & sync เข้า Sheet สำเร็จ" + แถวใน Sheet ขึ้นมา
 
 ---
 
-## หมายเหตุ
+## CRM ส่งอะไรไปบ้าง
 
-- ⚠️ **Secret ใน body, ไม่ใช่ header** — Apps Script doPost ไม่อ่าน custom HTTP header ได้, CRM จะส่ง secret มาใน body ผ่าน `lib/orderSync.ts` (ดูในไฟล์)
-- 📋 **Column order** — ปรับใน `Code.gs` ให้ตรงกับ Sheet ของคุณ (ดู comment ที่ marked ⚠️)
-- 🔄 **CRM webhook ขาเข้า ไม่ได้ทำซ้ำ** — CRM upsert by id, ดังนั้นถ้า Apps Script trigger ปกติยิง webhook กลับมา CRM จะ update row เดิม ไม่ duplicate
-- 🛡️ **Retry** — ถ้า sync ล้มเหลว ออเดอร์ยังอยู่ใน CRM (status=PENDING, syncStatus=FAILED) — admin ไปกด Retry ได้ที่ `/admin/sync-failed`
+CRM POST JSON ไปยัง `SHEET_SYNC_URL` ด้วย shape:
+
+```json
+{
+  "command": "reorder_sync",
+  "secret": "...",
+  "apiKey": "...",
+  "id": "CRM-...",
+  "date": "2026-05-14T...",
+  "customerName": "...",
+  "address": "...",
+  "phone": "...",
+  "products": [{"name":"...", "quantity": 1, "unitPrice": 890}],
+  "productSummary": "My Mild x1",
+  "totalPrice": 890,
+  "status": "PENDING",
+  "channel": "LINE",
+  "salesRepName": "...",
+  "source": "CRM_REORDER"
+}
+```
+
+`secret` กับ `apiKey` ส่งค่าเดียวกัน — ใช้ตามชื่อที่ doPost เดิมต้องการ
 
 ---
 
@@ -158,7 +160,8 @@ function testDoPost() {
 
 | อาการ | สาเหตุ | แก้ |
 |---|---|---|
-| 401 unauthorized | secret ไม่ตรง | ตรวจ `SHEET_SYNC_SECRET` ใน Vercel = `CRM_WEBHOOK_SECRET` ใน Apps Script |
-| sheet not found | ชื่อแท็บผิด | แก้ `ORDERS_SHEET_NAME` ใน Apps Script |
-| timeout / network error | URL ผิด หรือ Apps Script ยังไม่ deploy | ตรวจ URL ใน Vercel = URL จาก Deploy step |
-| Sync สำเร็จแต่ packer ไม่เห็น | Apps Script ใส่ column ผิด | ปรับ row array ใน `doPost` ให้ตรง Sheet |
+| API เดิมพังหลัง paste | สร้าง `doPost` ใหม่ทับของเดิม | ลบ doPost ใหม่ทิ้ง → ทำตามขั้นที่ 2 (เพิ่ม route ใน doPost เดิม) |
+| `sheet not found` | `REORDER_SHEET_NAME` ไม่ตรงชื่อแท็บ | แก้ค่าตัวแปรในขั้นที่ 1 |
+| ไม่เห็นแถวขึ้นใน Sheet | doPost เดิมไม่ได้ route มาที่ helper | ตรวจว่า `if (body.command === 'reorder_sync')` อยู่ก่อนตรรกะอื่นๆ |
+| 401 / unauthorized | doPost เดิมเช็ค API key ก่อน route | ใน Vercel ตั้ง `SHEET_SYNC_SECRET` = ค่าเดียวกับ `CRM_API_KEY` ของ doPost เดิม |
+| Sync สำเร็จแต่ column เพี้ยน | row array ไม่ตรง column ใน Sheet | ปรับ `row` ใน `handleReorderSync_` ให้ตรงคอลัมน์จริง |
