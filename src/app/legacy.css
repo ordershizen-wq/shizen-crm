@@ -1038,6 +1038,30 @@ input[type="radio"] {
   .podium-card { min-height: auto !important; }
 }
 
+/* ── Dashboard 2-column layout ── */
+.dash-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.dash-2col > * { margin-bottom: 0 !important; }
+@media (max-width: 768px) {
+  .dash-2col { grid-template-columns: 1fr; }
+  .dash-2col > * { margin-bottom: 1.5rem !important; }
+}
+
+/* ── Revenue forecast grid ── */
+.forecast-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.85rem;
+}
+
+/* ── Velocity stats responsive ── */
+@media (max-width: 380px) {
+  .velocity-stats { grid-template-columns: 1fr !important; gap: 0.4rem !important; }
+}
+
 /* ── Profile hero action area ── */
 .profile-hero-actions {
   display: flex;

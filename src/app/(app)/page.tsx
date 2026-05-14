@@ -10,6 +10,19 @@ import AdminFocus from '@/components/AdminFocus';
 import { getTodaysFocus, getAdminFocus } from '@/lib/todaysFocus';
 import MyPerformance from '@/components/MyPerformance';
 import { getLeaderboard } from '@/lib/teamStats';
+import VelocityCard from '@/components/dashboard/VelocityCard';
+import HotCustomersWidget from '@/components/dashboard/HotCustomersWidget';
+import TrendChart from '@/components/dashboard/TrendChart';
+import ChannelMixWidget from '@/components/dashboard/ChannelMixWidget';
+import BestProductsWidget from '@/components/dashboard/BestProductsWidget';
+import RevenueForecastCard from '@/components/dashboard/RevenueForecast';
+import TeamBattleWidget from '@/components/dashboard/TeamBattleWidget';
+import FunnelWidget from '@/components/dashboard/FunnelWidget';
+import ProductPerformanceTable from '@/components/dashboard/ProductPerformanceTable';
+import {
+  getVelocity, getHotCustomers, getMonthTrend, getChannelMix, getBestProducts,
+  getRevenueForecast, getTeamBattle, getAcquisitionFunnel, getProductPerformance,
+} from '@/lib/analytics';
 
 export default async function DashboardPage() {
   const user = (await getCurrentUser())!;
@@ -73,12 +86,27 @@ export default async function DashboardPage() {
   const last30Total = newCustRev + reorderRev;
   const reorderShare = last30Total > 0 ? (reorderRev / last30Total) * 100 : 0;
 
-  // Focus widget + Leaderboard — ADMIN ได้ admin-focus, อื่นได้ daily focus
+  // Focus + Analytics widgets — แยกตาม role
   const isAdmin = user.role === 'ADMIN';
-  const [focus, adminFocus, leaderboard] = await Promise.all([
+  const [
+    focus, adminFocus, leaderboard,
+    velocity, hotCustomers, trend, channelMix, bestProducts,
+    revenueForecast, teamBattle, funnel, productPerf,
+  ] = await Promise.all([
     isAdmin ? Promise.resolve(null) : getTodaysFocus(user),
     isAdmin ? getAdminFocus() : Promise.resolve(null),
     getLeaderboard(user),
+    // Sales analytics — สำหรับ MEMBER/LEADER เท่านั้น
+    isAdmin ? Promise.resolve(null) : getVelocity(user),
+    isAdmin ? Promise.resolve([]) : getHotCustomers(user, 5),
+    isAdmin ? Promise.resolve([]) : getMonthTrend(user),
+    isAdmin ? Promise.resolve([]) : getChannelMix(user),
+    isAdmin ? Promise.resolve([]) : getBestProducts(user, 5),
+    // Admin analytics — สำหรับ ADMIN เท่านั้น
+    isAdmin ? getRevenueForecast() : Promise.resolve(null),
+    isAdmin ? getTeamBattle() : Promise.resolve([]),
+    isAdmin ? getAcquisitionFunnel() : Promise.resolve(null),
+    isAdmin ? getProductPerformance(10) : Promise.resolve([]),
   ]);
   const myStats = leaderboard.rows.find(r => r.userId === user.id) ?? null;
 
@@ -165,7 +193,17 @@ export default async function DashboardPage() {
         ? <AdminFocus data={adminFocus} userName={user.fullName.split(' ')[0]} />
         : focus && <TodaysFocus data={focus} userName={user.fullName.split(' ')[0]} />}
 
-      {/* My Performance — ทุก role เห็น (ADMIN เห็น rank ของตัวเอง = null) */}
+      {/* ──── ADMIN analytics ──── */}
+      {isAdmin && revenueForecast && <RevenueForecastCard data={revenueForecast} />}
+      {isAdmin && teamBattle.length > 0 && <TeamBattleWidget rows={teamBattle} />}
+      {isAdmin && funnel && <FunnelWidget data={funnel} />}
+
+      {/* ──── SALES analytics ──── */}
+      {!isAdmin && velocity && <VelocityCard stats={velocity} name={user.fullName.split(' ')[0]} />}
+      {!isAdmin && hotCustomers.length > 0 && <HotCustomersWidget customers={hotCustomers} />}
+      {!isAdmin && trend.length > 0 && <TrendChart points={trend} />}
+
+      {/* My Performance — เซลส์เห็น rank ของตัวเอง */}
       {!isAdmin && (
         <MyPerformance
           stats={myStats}
@@ -173,6 +211,14 @@ export default async function DashboardPage() {
           totalInScope={leaderboard.rows.length}
           monthLabel={leaderboard.monthLabel}
         />
+      )}
+
+      {/* 2-column row: Channel Mix + Best Products (เซลส์) */}
+      {!isAdmin && (channelMix.length > 0 || bestProducts.length > 0) && (
+        <div className="dash-2col">
+          {channelMix.length > 0 && <ChannelMixWidget slices={channelMix} />}
+          {bestProducts.length > 0 && <BestProductsWidget products={bestProducts} />}
+        </div>
       )}
 
       {/* KPI Cards */}
@@ -245,6 +291,9 @@ export default async function DashboardPage() {
 
       {/* Charts */}
       <DashboardCharts dailyRevenue={dailyRevenue} stageCounts={stageCounts} />
+
+      {/* Product Performance table — เฉพาะ ADMIN */}
+      {isAdmin && productPerf.length > 0 && <ProductPerformanceTable products={productPerf} />}
 
       {/* Stage summary pills */}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
