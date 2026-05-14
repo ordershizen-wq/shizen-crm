@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { FollowUpOutcome, OrderSource, OrderStatus, SyncStatus } from '@prisma/client';
 import { getCurrentUser } from '@/lib/auth';
+import { canModifyCustomer } from '@/lib/authz';
 import { syncOrderToSheet } from '@/lib/orderSync';
 
 export type ChecklistAnswers = {
@@ -33,6 +34,10 @@ export async function saveCustomerGrade({
   overrideGrade?: 'A' | 'B' | 'C' | null;
   gradeNote?: string;
 }) {
+  const user = await getCurrentUser();
+  const access = await canModifyCustomer(user, phone);
+  if (!access.ok) throw new Error(access.reason);
+
   const suggestedGrade = calcGrade(answers);
   const grade = overrideGrade ?? suggestedGrade;
 
@@ -64,6 +69,10 @@ export async function saveHealthConditions({
   phone: string;
   conditions: string[];
 }) {
+  const user = await getCurrentUser();
+  const access = await canModifyCustomer(user, phone);
+  if (!access.ok) throw new Error(access.reason);
+
   await prisma.sheetCustomerExtra.upsert({
     where: { phone },
     update: { healthConditionsJson: conditions },
@@ -88,6 +97,15 @@ export async function saveFollowUp({
   note: string;
   nextActionAt: string | null;
 }) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('ไม่ได้เข้าสู่ระบบ');
+  // ADMIN ไม่บันทึก followup เอง — เป็นงานของเซลส์
+  if (user.role === 'ADMIN') throw new Error('ADMIN ไม่สามารถบันทึกการติดตามเองได้');
+  // sheetUserId ต้องเป็นตัวเอง (กันใส่ id คนอื่น)
+  if (sheetUserId !== user.id) throw new Error('ไม่สามารถบันทึกแทนคนอื่นได้');
+  const access = await canModifyCustomer(user, customerPhone);
+  if (!access.ok) throw new Error(access.reason);
+
   const validOutcomes = new Set<string>(Object.values(FollowUpOutcome));
   const safeOutcome = validOutcomes.has(outcome) ? (outcome as FollowUpOutcome) : FollowUpOutcome.OTHER;
 
@@ -141,6 +159,10 @@ export async function createReorder(input: CreateReorderInput): Promise<CreateRe
 
   // Validation พื้นฐาน
   if (!input.customerPhone) return { ok: false, error: 'ไม่มีเบอร์ลูกค้า' };
+
+  // ลูกค้าต้องเป็นของ user (MEMBER) หรือทีมตัวเอง (LEADER)
+  const access = await canModifyCustomer(user, input.customerPhone);
+  if (!access.ok) return { ok: false, error: access.reason };
   if (input.products.length === 0) return { ok: false, error: 'ยังไม่ได้เลือกสินค้า' };
   for (const p of input.products) {
     if (!p.name) return { ok: false, error: 'ชื่อสินค้าไม่ครบ' };

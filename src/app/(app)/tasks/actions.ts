@@ -3,7 +3,37 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { canModifyCustomer } from '@/lib/authz';
 import { TaskType, TaskStatus, TaskPriority } from '@prisma/client';
+
+/**
+ * MEMBER → ส่ง assignedToId ได้เฉพาะตัวเอง (กัน assign งานให้คนอื่น)
+ * LEADER → assign ได้คนในทีมตัวเอง
+ * ADMIN  → assign ใครก็ได้
+ *
+ * คืน assignedToId ที่ "ถูกต้อง" ตาม role (resolve fallback = user.id)
+ */
+async function resolveAssignedToId(
+  user: { id: string; role: string; teamId: string | null },
+  requestedId: string | null | undefined,
+): Promise<string> {
+  const req = requestedId?.trim();
+  if (!req || req === user.id) return user.id;
+
+  if (user.role === 'ADMIN') return req;
+
+  if (user.role === 'LEADER' && user.teamId) {
+    const target = await prisma.sheetUser.findUnique({
+      where: { id: req },
+      select: { teamId: true },
+    });
+    if (target?.teamId === user.teamId) return req;
+    throw new Error('ไม่สามารถมอบหมายให้คนนอกทีมได้');
+  }
+
+  // MEMBER → ห้าม assign คนอื่น
+  throw new Error('คุณสามารถมอบหมายงานให้ตัวเองเท่านั้น');
+}
 
 function parseEnum<T extends Record<string, string>>(e: T, v: string | undefined, fallback: T[keyof T]): T[keyof T] {
   if (v && v in e) return e[v as keyof T];
@@ -29,6 +59,11 @@ export async function createTask(input: {
   const due = new Date(input.dueDate);
   if (isNaN(due.getTime())) throw new Error('วันที่ไม่ถูกต้อง');
 
+  const access = await canModifyCustomer(user, input.customerPhone.trim());
+  if (!access.ok) throw new Error(access.reason);
+
+  const assignedToId = await resolveAssignedToId(user, input.assignedToId);
+
   await prisma.customerTask.create({
     data: {
       customerPhone: input.customerPhone.trim(),
@@ -37,7 +72,7 @@ export async function createTask(input: {
       dueDate: due,
       type: parseEnum(TaskType, input.type, TaskType.CUSTOM),
       priority: parseEnum(TaskPriority, input.priority, TaskPriority.NORMAL),
-      assignedToId: input.assignedToId?.trim() || user.id,
+      assignedToId,
       createdById: user.id,
       orderId: input.orderId?.trim() || null,
     },
@@ -53,6 +88,8 @@ export async function completeTask(input: { taskId: string; resultNote?: string 
 
   const task = await prisma.customerTask.findUnique({ where: { id: input.taskId } });
   if (!task) throw new Error('ไม่พบงาน');
+  const access = await canModifyCustomer(user, task.customerPhone);
+  if (!access.ok) throw new Error(access.reason);
 
   await prisma.customerTask.update({
     where: { id: input.taskId },
@@ -74,6 +111,8 @@ export async function reopenTask(input: { taskId: string }) {
 
   const task = await prisma.customerTask.findUnique({ where: { id: input.taskId } });
   if (!task) throw new Error('ไม่พบงาน');
+  const access = await canModifyCustomer(user, task.customerPhone);
+  if (!access.ok) throw new Error(access.reason);
 
   await prisma.customerTask.update({
     where: { id: input.taskId },
@@ -95,6 +134,8 @@ export async function skipTask(input: { taskId: string; resultNote?: string }) {
 
   const task = await prisma.customerTask.findUnique({ where: { id: input.taskId } });
   if (!task) throw new Error('ไม่พบงาน');
+  const access = await canModifyCustomer(user, task.customerPhone);
+  if (!access.ok) throw new Error(access.reason);
 
   await prisma.customerTask.update({
     where: { id: input.taskId },
@@ -116,6 +157,8 @@ export async function deleteTask(input: { taskId: string }) {
 
   const task = await prisma.customerTask.findUnique({ where: { id: input.taskId } });
   if (!task) throw new Error('ไม่พบงาน');
+  const access = await canModifyCustomer(user, task.customerPhone);
+  if (!access.ok) throw new Error(access.reason);
 
   // เฉพาะ ADMIN/LEADER หรือผู้สร้างเท่านั้น
   if (user.role !== 'ADMIN' && user.role !== 'LEADER' && task.createdById !== user.id) {
@@ -139,7 +182,11 @@ export async function createTaskFromSuggestion(input: {
 }) {
   const user = await getCurrentUser();
   if (!user) throw new Error('Unauthorized');
+  if (user.role === 'ADMIN') throw new Error('ADMIN ไม่สามารถสร้าง task รายลูกค้าได้');
   if (!input.customerPhone.trim()) throw new Error('ไม่พบเบอร์ลูกค้า');
+
+  const access = await canModifyCustomer(user, input.customerPhone.trim());
+  if (!access.ok) throw new Error(access.reason);
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const title = input.stage === 'AT_RISK'
@@ -179,11 +226,15 @@ export async function batchCreateTasks(input: {
   if (!input.customerPhone.trim()) throw new Error('ไม่พบเบอร์ลูกค้า');
   if (!input.tasks.length) throw new Error('ไม่มีงานที่จะสร้าง');
 
-  const rows = input.tasks
-    .map(t => {
+  const access = await canModifyCustomer(user, input.customerPhone.trim());
+  if (!access.ok) throw new Error(access.reason);
+
+  const rowsAsync = await Promise.all(
+    input.tasks.map(async t => {
       if (!t.title.trim()) return null;
       const due = new Date(t.dueDate);
       if (isNaN(due.getTime())) return null;
+      const assignedToId = await resolveAssignedToId(user, t.assignedToId);
       return {
         customerPhone: input.customerPhone.trim(),
         title: t.title.trim(),
@@ -191,12 +242,13 @@ export async function batchCreateTasks(input: {
         dueDate: due,
         type: parseEnum(TaskType, t.type, TaskType.FOLLOW_UP),
         priority: parseEnum(TaskPriority, t.priority, TaskPriority.NORMAL),
-        assignedToId: t.assignedToId?.trim() || user.id,
+        assignedToId,
         createdById: user.id,
         orderId: input.orderId?.trim() || null,
       };
-    })
-    .filter((r): r is NonNullable<typeof r> => r !== null);
+    }),
+  );
+  const rows = rowsAsync.filter((r): r is NonNullable<typeof r> => r !== null);
 
   if (!rows.length) throw new Error('ไม่มีงานที่ถูกต้อง');
 
@@ -222,6 +274,8 @@ export async function updateTask(input: {
 
   const task = await prisma.customerTask.findUnique({ where: { id: input.taskId } });
   if (!task) throw new Error('ไม่พบงาน');
+  const access = await canModifyCustomer(user, task.customerPhone);
+  if (!access.ok) throw new Error(access.reason);
 
   const data: {
     title?: string;
@@ -257,7 +311,11 @@ export async function updateTask(input: {
       data.completedById = null;
     }
   }
-  if (input.assignedToId !== undefined) data.assignedToId = input.assignedToId?.trim() || null;
+  if (input.assignedToId !== undefined) {
+    data.assignedToId = input.assignedToId === null
+      ? null
+      : await resolveAssignedToId(user, input.assignedToId);
+  }
 
   await prisma.customerTask.update({ where: { id: input.taskId }, data });
 
