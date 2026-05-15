@@ -1,4 +1,6 @@
-import Link from 'next/link';
+'use client';
+
+import Link, { useLinkStatus } from 'next/link';
 import { RANGE_OPTIONS, type RangeKey, type ViewKey } from '@/lib/dashboardFilters';
 
 type Props = {
@@ -14,6 +16,31 @@ function buildHref(range: RangeKey, view: ViewKey): string {
   if (view !== 'team') p.set('view', view);
   const qs = p.toString();
   return `/${qs ? `?${qs}` : ''}`;
+}
+
+/** Spinner ภายในปุ่ม filter ที่กดแล้วยังโหลดไม่เสร็จ */
+function FilterPendingDot() {
+  const { pending } = useLinkStatus();
+  if (!pending) return null;
+  return <i className="ri-loader-4-line filter-spin" aria-hidden style={{ marginLeft: 4 }} />;
+}
+
+function FilterLink({
+  href, isActive, children,
+}: {
+  href: string; isActive: boolean; children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`filter-seg-btn${isActive ? ' is-active' : ''}`}
+      prefetch={false}
+      scroll={false}
+    >
+      {children}
+      <FilterPendingDot />
+    </Link>
+  );
 }
 
 export default function DashboardFilters({ range, view, showViewToggle, rangeLabel }: Props) {
@@ -39,18 +66,12 @@ export default function DashboardFilters({ range, view, showViewToggle, rangeLab
               มุมมอง
             </span>
             <div className="filter-seg">
-              <Link
-                href={buildHref(range, 'team')}
-                className={`filter-seg-btn${view === 'team' ? ' is-active' : ''}`}
-              >
+              <FilterLink href={buildHref(range, 'team')} isActive={view === 'team'}>
                 <i className="ri-team-line"></i> ทีม
-              </Link>
-              <Link
-                href={buildHref(range, 'self')}
-                className={`filter-seg-btn${view === 'self' ? ' is-active' : ''}`}
-              >
+              </FilterLink>
+              <FilterLink href={buildHref(range, 'self')} isActive={view === 'self'}>
                 <i className="ri-user-line"></i> ของฉัน
-              </Link>
+              </FilterLink>
             </div>
           </div>
           <div style={{ width: 1, height: 24, background: 'var(--border)' }} />
@@ -64,13 +85,9 @@ export default function DashboardFilters({ range, view, showViewToggle, rangeLab
         </span>
         <div className="filter-seg">
           {RANGE_OPTIONS.map(opt => (
-            <Link
-              key={opt.key}
-              href={buildHref(opt.key, view)}
-              className={`filter-seg-btn${range === opt.key ? ' is-active' : ''}`}
-            >
+            <FilterLink key={opt.key} href={buildHref(opt.key, view)} isActive={range === opt.key}>
               {opt.label}
-            </Link>
+            </FilterLink>
           ))}
         </div>
         <span className="text-sm text-muted" style={{ fontSize: 12, marginLeft: 'auto' }}>

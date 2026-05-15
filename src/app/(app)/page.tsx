@@ -8,21 +8,7 @@ import { OrderSource } from '@prisma/client';
 import TodaysFocus from '@/components/TodaysFocus';
 import AdminFocus from '@/components/AdminFocus';
 import { getTodaysFocus, getAdminFocus } from '@/lib/todaysFocus';
-import MyPerformance from '@/components/MyPerformance';
 import { getLeaderboard } from '@/lib/teamStats';
-import VelocityCard from '@/components/dashboard/VelocityCard';
-import HotCustomersWidget from '@/components/dashboard/HotCustomersWidget';
-import TrendChart from '@/components/dashboard/TrendChart';
-import ChannelMixWidget from '@/components/dashboard/ChannelMixWidget';
-import BestProductsWidget from '@/components/dashboard/BestProductsWidget';
-import RevenueForecastCard from '@/components/dashboard/RevenueForecast';
-import TeamBattleWidget from '@/components/dashboard/TeamBattleWidget';
-import FunnelWidget from '@/components/dashboard/FunnelWidget';
-import ProductPerformanceTable from '@/components/dashboard/ProductPerformanceTable';
-import {
-  getVelocity, getHotCustomers, getMonthTrend, getChannelMix, getBestProducts,
-  getRevenueForecast, getTeamBattle, getAcquisitionFunnel, getProductPerformance,
-} from '@/lib/analytics';
 import { parseRange, parseView, resolveDateRange } from '@/lib/dashboardFilters';
 import DashboardFilters from '@/components/dashboard/DashboardFilters';
 
@@ -34,15 +20,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
   const isAdmin = user.role === 'ADMIN';
   const isLeader = user.role === 'LEADER';
 
-  // Parse filter params
   const range = parseRange(params.range, 'month');
-  // ADMIN: ไม่มี view toggle → ignore; LEADER: default 'team'; MEMBER: ของตัวเองเสมอ
-  const view = isAdmin ? 'team' : parseView(params.view, isLeader ? 'team' : 'team');
+  const view = isAdmin ? 'team' : parseView(params.view, 'team');
   const dateRange = resolveDateRange(range);
 
   const orderFilter = (await getOrderFilter(user, view)) ?? {};
 
-  // Build where clauses ใส่ date filter เมื่อมี range
   const rangeWhere = dateRange.start && dateRange.end
     ? { createdAt: { gte: dateRange.start, lt: dateRange.end } }
     : {};
@@ -52,32 +35,22 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
 
   const filteredWhere = { ...orderFilter, ...rangeWhere };
 
-  // ทุก aggregate ทำใน DB
   const [totalOrders, revenue, recentOrders, prevAgg, phoneAggs, sourceBreakdown] = await Promise.all([
     prisma.sheetOrder.count({ where: filteredWhere }),
     prisma.sheetOrder.aggregate({ where: filteredWhere, _sum: { totalPrice: true } }),
     prisma.sheetOrder.findMany({
       where: filteredWhere,
       orderBy: { createdAt: 'desc' },
-      take: 10,
+      take: 6,
       select: {
-        id: true,
-        customerName: true,
-        phone: true,
-        totalPrice: true,
-        status: true,
-        channel: true,
-        salesRepName: true,
-        createdAt: true,
-        source: true,
+        id: true, customerName: true, phone: true, totalPrice: true,
+        status: true, salesRepName: true, createdAt: true, source: true,
       },
     }),
     prevWhere
       ? prisma.sheetOrder.aggregate({ where: { ...orderFilter, ...prevWhere }, _sum: { totalPrice: true }, _count: true })
       : Promise.resolve(null),
-    // GROUP BY phone (ตลอดกาล — สำหรับ stage distribution)
     aggregateOrdersByPhone(orderFilter),
-    // Source split ตาม range ที่เลือก
     prisma.sheetOrder.groupBy({
       by: ['source'],
       where: filteredWhere,
@@ -94,7 +67,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
   const periodTotal = newCustRev + reorderRev;
   const reorderShare = periodTotal > 0 ? (reorderRev / periodTotal) * 100 : 0;
 
-  // Chart data: daily revenue ภายใน range (ถ้ามี range)
   const chartOrders = dateRange.start && dateRange.end
     ? await prisma.sheetOrder.findMany({
         where: filteredWhere,
@@ -105,42 +77,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
         select: { totalPrice: true, createdAt: true },
       });
 
-  // Focus + Analytics widgets — แยกตาม role + ส่ง dateRange + view
-  const [
-    focus, adminFocus, leaderboard,
-    velocity, hotCustomers, trend, channelMix, bestProducts,
-    revenueForecast, teamBattle, funnel, productPerf,
-  ] = await Promise.all([
+  const [focus, adminFocus, leaderboard] = await Promise.all([
     isAdmin ? Promise.resolve(null) : getTodaysFocus(user),
     isAdmin ? getAdminFocus() : Promise.resolve(null),
     getLeaderboard(user),
-    // Sales analytics — สำหรับ MEMBER/LEADER เท่านั้น (ใช้ view + dateRange)
-    isAdmin ? Promise.resolve(null) : getVelocity(user),
-    isAdmin ? Promise.resolve([]) : getHotCustomers(user, 5),
-    isAdmin ? Promise.resolve([]) : getMonthTrend(user),
-    isAdmin ? Promise.resolve([]) : getChannelMix(user, dateRange, view),
-    isAdmin ? Promise.resolve([]) : getBestProducts(user, 5, dateRange, view),
-    // Admin analytics
-    isAdmin ? getRevenueForecast() : Promise.resolve(null),
-    isAdmin ? getTeamBattle() : Promise.resolve([]),
-    isAdmin ? getAcquisitionFunnel() : Promise.resolve(null),
-    isAdmin ? getProductPerformance(10, dateRange) : Promise.resolve([]),
   ]);
-  const myStats = leaderboard.rows.find(r => r.userId === user.id) ?? null;
 
   const totalRevenue = Number(revenue._sum.totalPrice ?? 0);
   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-
-  // Growth: เทียบกับช่วงก่อนหน้าตาม range
   const prevRev = prevAgg ? Number(prevAgg._sum.totalPrice ?? 0) : 0;
-  const prevCount = prevAgg ? prevAgg._count : 0;
   const revGrowth = prevRev > 0 ? ((totalRevenue - prevRev) / prevRev) * 100 : 0;
 
-  // --- Chart data: aggregate ตามช่วง (เดือนเล็กลง = รายวัน, ปี = รายเดือน) ---
+  // Chart buckets
   const dailyMap = new Map<string, { revenue: number; orders: number }>();
   const useMonthBuckets = range === 'year';
   if (dateRange.start && dateRange.end && !useMonthBuckets) {
-    // เติม buckets รายวัน
     const cur = new Date(dateRange.start);
     while (cur < dateRange.end && cur <= new Date()) {
       const key = cur.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
@@ -154,14 +105,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
       dailyMap.set(key, { revenue: 0, orders: 0 });
     }
   } else {
-    // ไม่มี range — ดู 30 วันล่าสุด
     for (let i = 29; i >= 0; i--) {
       const d = new Date(Date.now() - i * 86400000);
       const key = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
       dailyMap.set(key, { revenue: 0, orders: 0 });
     }
   }
-
   for (const o of chartOrders) {
     const key = useMonthBuckets
       ? o.createdAt.toLocaleDateString('th-TH', { month: 'short' })
@@ -172,22 +121,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
       entry.orders += 1;
     }
   }
-
   const dailyRevenue: DailyRevenue[] = Array.from(dailyMap.entries()).map(([label, v]) => ({
-    label,
-    revenue: v.revenue,
-    orders: v.orders,
+    label, revenue: v.revenue, orders: v.orders,
   }));
 
-  // --- Stage distribution ---
   const stageTally = tallyStages(phoneAggs);
   const customerCount = phoneAggs.length;
-
   const stageColors: Record<string, string> = {
-    VIP: '#f6c90e', NEW: '#0ea5e9', ACTIVE: '#2FA084',
-    AT_RISK: '#f8961e', LAPSED: '#6f42c1', LOST: '#e74a3b',
+    VIP: '#C9A961', NEW: '#5B7E92', ACTIVE: '#4A7C5E',
+    AT_RISK: '#C09155', LAPSED: '#715B7E', LOST: '#B85450',
   };
-
   const stageCounts: StageCount[] = Object.entries(stageTally).map(([stage, count]) => ({
     stage,
     label: STAGE_LABELS[stage as keyof typeof STAGE_LABELS],
@@ -195,39 +138,27 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
     color: stageColors[stage] ?? '#ccc',
   }));
 
-  const teamLabel = user.role === 'ADMIN' ? 'ภาพรวมทั้งระบบ'
-    : user.role === 'LEADER' ? `ภาพรวม ${user.team?.name ?? ''}`
-    : `ลูกค้าของ ${user.fullName}`;
+  const teamLabel = isAdmin ? 'ภาพรวมทั้งระบบ'
+    : isLeader ? `ภาพรวม ${user.team?.name ?? ''}`
+    : `ผลงานของ ${user.fullName}`;
+
+  const topFive = leaderboard.rows.slice(0, 5);
 
   return (
     <>
+      {/* Page header */}
       <div className="page-header flex-between mb-4">
         <div>
           <h1 className="page-title">แดชบอร์ด</h1>
           <p className="text-sm text-muted mt-1">{teamLabel}</p>
         </div>
-        <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          {!isAdmin && (
-            <Link href="/tasks" className="btn btn-primary" style={{ fontSize: 13 }}>
-              <i className="ri-task-line"></i> งานวันนี้
-              {(stageTally.AT_RISK + stageTally.LAPSED) > 0 && (
-                <span style={{
-                  background: '#fff', color: 'var(--primary)', borderRadius: 20,
-                  fontSize: 11, fontWeight: 700, padding: '0 6px', marginLeft: 4,
-                }}>
-                  {stageTally.AT_RISK + stageTally.LAPSED}
-                </span>
-              )}
-            </Link>
-          )}
-          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-            <i className="ri-calendar-line text-blue"></i>{' '}
-            {new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </div>
+        <div className="text-sm text-muted" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <i className="ri-calendar-line"></i>
+          {new Date().toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' })}
         </div>
       </div>
 
-      {/* Dashboard filters — range + view (LEADER) */}
+      {/* Filters */}
       <DashboardFilters
         range={range}
         view={view}
@@ -235,93 +166,57 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
         rangeLabel={dateRange.label}
       />
 
-      {/* Focus widget — ADMIN เห็น oversight, อื่นเห็น daily action */}
-      {adminFocus
-        ? <AdminFocus data={adminFocus} userName={user.fullName.split(' ')[0]} />
-        : focus && <TodaysFocus data={focus} userName={user.fullName.split(' ')[0]} />}
-
-      {/* ──── ADMIN analytics ──── */}
-      {isAdmin && revenueForecast && <RevenueForecastCard data={revenueForecast} />}
-      {isAdmin && teamBattle.length > 0 && <TeamBattleWidget rows={teamBattle} />}
-      {isAdmin && funnel && <FunnelWidget data={funnel} />}
-
-      {/* ──── SALES analytics ──── */}
-      {!isAdmin && velocity && <VelocityCard stats={velocity} name={user.fullName.split(' ')[0]} />}
-      {!isAdmin && hotCustomers.length > 0 && <HotCustomersWidget customers={hotCustomers} />}
-      {!isAdmin && trend.length > 0 && <TrendChart points={trend} />}
-
-      {/* My Performance — เซลส์เห็น rank ของตัวเอง */}
-      {!isAdmin && (
-        <MyPerformance
-          stats={myStats}
-          myRank={leaderboard.myRank}
-          totalInScope={leaderboard.rows.length}
-          monthLabel={leaderboard.monthLabel}
-        />
-      )}
-
-      {/* 2-column row: Channel Mix + Best Products (เซลส์) */}
-      {!isAdmin && (channelMix.length > 0 || bestProducts.length > 0) && (
-        <div className="dash-2col">
-          {channelMix.length > 0 && <ChannelMixWidget slices={channelMix} />}
-          {bestProducts.length > 0 && <BestProductsWidget products={bestProducts} />}
-        </div>
-      )}
-
-      {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem', maxWidth: '100%' }}>
-        <KpiCard
-          icon="ri-money-dollar-circle-line"
-          iconBg="var(--success-light)"
-          iconColor="var(--success)"
-          label="ยอดขายรวม"
+      {/* ════ KPI Pastel Row (Home Desk style) ════ */}
+      <div className="kpi-pastel-row mb-4">
+        <KpiPastel
+          tint="peach"
+          label="ยอดขาย"
           value={`฿${totalRevenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`}
-          sub={
-            prevAgg
-              ? (revGrowth !== 0 ? `${revGrowth > 0 ? '↑' : '↓'} ${Math.abs(revGrowth).toFixed(1)}% เทียบช่วงก่อน` : 'เทียบช่วงก่อน')
-              : dateRange.label
-          }
-          subColor={revGrowth > 0 ? 'var(--success)' : revGrowth < 0 ? 'var(--danger)' : 'var(--text-muted)'}
+          delta={prevAgg ? revGrowth : null}
+          subLabel={dateRange.label}
         />
-        <KpiCard
-          icon="ri-shopping-bag-3-line"
-          iconBg="var(--blue-light)"
-          iconColor="var(--primary)"
-          label="จำนวนออเดอร์"
+        <KpiPastel
+          tint="lavender"
+          label="ออเดอร์"
           value={totalOrders.toLocaleString()}
-          sub={prevAgg ? `เทียบ ${prevCount.toLocaleString()} รายการช่วงก่อน` : dateRange.label}
+          delta={prevAgg && prevAgg._count > 0 ? ((totalOrders - prevAgg._count) / prevAgg._count) * 100 : null}
+          subLabel={`${recentOrders.length > 0 ? recentOrders.length : 0} ล่าสุด`}
         />
-        <KpiCard
-          icon="ri-group-line"
-          iconBg="var(--purple-light)"
-          iconColor="#6f42c1"
-          label="จำนวนลูกค้า"
+        <KpiPastel
+          tint="mint"
+          label="ลูกค้า"
           value={customerCount.toLocaleString()}
-          sub="ไม่ซ้ำ (ตามเบอร์โทร)"
+          subLabel="ไม่ซ้ำ (ตามเบอร์)"
         />
-        <KpiCard
-          icon="ri-line-chart-line"
-          iconBg="var(--orange-light)"
-          iconColor="var(--orange)"
-          label="เฉลี่ยต่อออเดอร์"
+        <KpiPastel
+          tint="butter"
+          label="เฉลี่ย/ออเดอร์"
           value={`฿${avgOrderValue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`}
+          subLabel="AOV"
         />
       </div>
 
+      {/* ════ Tasks Hero (งานวันนี้ — full width) ════ */}
+      <div className="mb-4">
+        {adminFocus
+          ? <AdminFocus data={adminFocus} userName={user.fullName.split(' ')[0]} />
+          : focus && <TodaysFocus data={focus} userName={user.fullName.split(' ')[0]} />}
+      </div>
+
       {/* Source split — Acquisition vs Retention */}
-      <div className="card p-4 mb-4">
+      <div className="card mb-4" style={{ padding: '1rem 1.25rem' }}>
         <div className="flex-between mb-3">
-          <h3 className="fw-600" style={{ fontSize: 15, margin: 0, fontFamily: "'Trirong', serif", letterSpacing: '-0.01em' }}>
+          <h3 style={{ fontSize: 14, margin: 0, fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '-0.01em', color: 'var(--text-dark)', fontWeight: 600 }}>
             ที่มาของออเดอร์ — {dateRange.label}
           </h3>
           <Link href="/orders" className="text-sm" style={{ color: 'var(--primary)' }}>
             ดูออเดอร์ทั้งหมด <i className="ri-arrow-right-line"></i>
           </Link>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.85rem' }}>
           <SourceKpi
             source={OrderSource.SHEET}
-            title="ลูกค้าใหม่ (ลง Sheet)"
+            title="ลูกค้าใหม่"
             subtitle="Acquisition"
             revenue={newCustRev}
             count={newCustCount}
@@ -330,7 +225,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
           />
           <SourceKpi
             source={OrderSource.CRM_REORDER}
-            title="รีออเดอร์ (ลง CRM)"
+            title="ลูกค้าเก่ากลับมา"
             subtitle="Retention"
             revenue={reorderRev}
             count={reorderCount}
@@ -340,174 +235,214 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
         </div>
       </div>
 
-      {/* Charts */}
+      {/* Main charts: trend + stage */}
       <DashboardCharts dailyRevenue={dailyRevenue} stageCounts={stageCounts} />
 
-      {/* Product Performance table — เฉพาะ ADMIN */}
-      {isAdmin && productPerf.length > 0 && <ProductPerformanceTable products={productPerf} />}
-
-      {/* Stage summary pills */}
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-        {stageCounts.filter(s => s.count > 0).map(s => (
-          <Link
-            key={s.stage}
-            href={`/customers?stage=${s.stage}`}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '0.4rem',
-              background: stageColors[s.stage] + '18', color: stageColors[s.stage],
-              borderRadius: 20, padding: '0.3rem 0.85rem', fontSize: 12, fontWeight: 600,
-              textDecoration: 'none', border: `1px solid ${stageColors[s.stage]}44`,
-              transition: 'opacity 0.15s',
-            }}
-          >
-            {s.label} <span style={{ fontWeight: 700 }}>{s.count}</span>
-          </Link>
-        ))}
+      {/* Bottom row: Recent orders | Top 5 */}
+      <div className="dash-2col mt-4">
+        <RecentOrdersCard orders={recentOrders} />
+        <TopFiveCard rows={topFive} monthLabel={leaderboard.monthLabel} />
       </div>
 
-      {/* Recent Orders */}
-      <div className="card" style={{ padding: 0 }}>
-        <div className="flex-between" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-light)' }}>
-          <h3 className="fw-600" style={{ fontSize: 15 }}>
-            <i className="ri-history-line text-blue"></i> ออเดอร์ล่าสุด
-          </h3>
-          <Link href="/orders" className="text-sm" style={{ color: 'var(--primary)' }}>
-            ดูทั้งหมด <i className="ri-arrow-right-line"></i>
-          </Link>
+      {/* Insights link */}
+      <Link
+        href="/insights"
+        className="card insights-link"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '1rem 1.25rem', marginTop: '1.5rem',
+          textDecoration: 'none', color: 'var(--text-dark)',
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            ดูสถิติเชิงลึก
+          </div>
+          <div className="text-sm text-muted" style={{ marginTop: 2 }}>
+            {isAdmin ? 'พยากรณ์รายได้ · funnel · เปรียบเทียบทีม · สินค้าขายดี'
+                    : 'Velocity · ลูกค้าร้อน · ช่องทางที่ขายดี · สินค้าขายดี'}
+          </div>
         </div>
-        <div className="r-table-wrap">
-          <table className="r-table">
-            <thead>
-              <tr>
-                <th>ลูกค้า</th>
-                <th>เซลส์</th>
-                <th>ช่องทาง</th>
-                <th>สถานะ</th>
-                <th style={{ textAlign: 'right' }}>ยอด</th>
-                <th>วันที่</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="r-cell-block" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                    ยังไม่มีออเดอร์
-                  </td>
-                </tr>
-              ) : (
-                recentOrders.map(o => (
-                  <tr key={o.id}>
-                    <td data-label="ลูกค้า">
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          {o.phone ? (
-                            <Link href={`/customers/${o.phone}`} style={{ color: 'var(--primary)', fontWeight: 600 }}>
-                              {o.customerName || '-'}
-                            </Link>
-                          ) : (
-                            o.customerName || '-'
-                          )}
-                          <SourceBadge source={o.source} compact />
-                        </div>
-                        {o.phone && <div className="text-sm text-muted">{o.phone}</div>}
-                      </div>
-                    </td>
-                    <td className="text-sm" data-label="เซลส์">{o.salesRepName || '-'}</td>
-                    <td className="text-sm" data-label="ช่องทาง">{o.channel || '-'}</td>
-                    <td data-label="สถานะ"><StatusBadge status={o.status} /></td>
-                    <td className="fw-600" data-label="ยอด" style={{ textAlign: 'right' }}>
-                      ฿{Number(o.totalPrice ?? 0).toLocaleString('th-TH', { maximumFractionDigits: 0 })}
-                    </td>
-                    <td className="text-sm text-muted" data-label="วันที่">
-                      {o.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+        <i className="ri-arrow-right-line" style={{ fontSize: 20, color: 'var(--primary)' }}></i>
+      </Link>
     </>
   );
 }
 
-function KpiCard({ icon, iconBg, iconColor, label, value, sub, subColor }: {
-  icon: string; iconBg: string; iconColor: string;
-  label: string; value: string; sub?: string; subColor?: string;
+/* ────────────────────────────────────────────
+   KPI Pastel Card — Home Desk style
+   ──────────────────────────────────────────── */
+function KpiPastel({
+  tint, label, value, delta, subLabel,
+}: {
+  tint: 'peach' | 'lavender' | 'mint' | 'butter';
+  label: string;
+  value: string;
+  delta?: number | null;
+  subLabel?: string;
 }) {
+  const hasDelta = delta != null && Number.isFinite(delta);
+  const up = hasDelta && (delta as number) > 0;
+  const down = hasDelta && (delta as number) < 0;
   return (
-    <div className="card p-4">
-      <div className="flex-between mb-3">
-        <span className="text-sm text-muted fw-500">{label}</span>
-        <div className="icon-box rounded-circle" style={{ background: iconBg, color: iconColor, width: 40, height: 40, fontSize: '1.1rem' }}>
-          <i className={icon}></i>
-        </div>
+    <div className={`kpi-pastel kpi-pastel-${tint}`}>
+      <div className="kpi-pastel-label">{label}</div>
+      <div className="kpi-pastel-value">{value}</div>
+      <div className="kpi-pastel-foot">
+        {hasDelta ? (
+          <span className={`kpi-pastel-delta ${up ? 'is-up' : down ? 'is-down' : ''}`}>
+            {up ? '↑' : down ? '↓' : '·'} {Math.abs(delta as number).toFixed(1)}%
+          </span>
+        ) : (
+          <span className="kpi-pastel-delta is-neutral">—</span>
+        )}
+        {subLabel && <span className="kpi-pastel-sub">{subLabel}</span>}
       </div>
-      <div className="fw-700" style={{ fontSize: 24, color: 'var(--text-dark)' }}>{value}</div>
-      {sub && <div className="text-sm mt-1" style={{ color: subColor ?? 'var(--text-muted)' }}>{sub}</div>}
     </div>
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const config: Record<string, { bg: string; color: string; label: string }> = {
-    PAID: { bg: 'var(--success-light)', color: 'var(--success)', label: 'ชำระแล้ว' },
-    PACKED: { bg: 'var(--blue-light)', color: 'var(--primary)', label: 'แพ็คแล้ว' },
-    COD: { bg: 'var(--warning-light)', color: '#d39e00', label: 'COD' },
-    PENDING: { bg: 'var(--purple-light)', color: '#6f42c1', label: 'รอดำเนินการ' },
-    RETURNED: { bg: 'var(--danger-light)', color: 'var(--danger)', label: 'ตีกลับ' },
-    CANCELLED: { bg: 'var(--danger-light)', color: 'var(--danger)', label: 'ยกเลิก' },
-    OTHER: { bg: '#f1f5f9', color: '#64748b', label: 'อื่นๆ' },
-  };
-  const c = config[status] ?? config.OTHER;
-  return <span className="status-badge" style={{ background: c.bg, color: c.color }}>{c.label}</span>;
+/* ────────────────────────────────────────────
+   Recent Orders Card — compact list
+   ──────────────────────────────────────────── */
+function RecentOrdersCard({ orders }: { orders: Array<{
+  id: string; customerName: string | null; phone: string | null; totalPrice: unknown;
+  status: string; salesRepName: string | null; createdAt: Date; source: OrderSource;
+}> }) {
+  return (
+    <div className="card" style={{ padding: 0 }}>
+      <div className="flex-between" style={{ padding: '0.9rem 1.25rem', borderBottom: '1px solid var(--border-light)' }}>
+        <h3 style={{ fontSize: 14, margin: 0, fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '-0.01em', color: 'var(--text-dark)', fontWeight: 600 }}>
+          <i className="ri-history-line" style={{ color: 'var(--text-muted)', marginRight: 4 }}></i>
+          ออเดอร์ล่าสุด
+        </h3>
+        <Link href="/orders" className="text-sm" style={{ color: 'var(--primary)' }}>
+          ดูทั้งหมด →
+        </Link>
+      </div>
+      <div style={{ padding: '0.25rem 0' }}>
+        {orders.length === 0 ? (
+          <div style={{ padding: '2rem 1.25rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+            ยังไม่มีออเดอร์
+          </div>
+        ) : (
+          orders.map(o => (
+            <Link
+              key={o.id}
+              href={o.phone ? `/customers/${o.phone}` : '/orders'}
+              className="recent-order-row"
+            >
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div className="recent-order-name">
+                  {o.customerName || '—'}
+                  <SourceBadge source={o.source} compact />
+                </div>
+                <div className="recent-order-meta">
+                  {o.salesRepName || '—'} · {o.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div className="recent-order-price">
+                  ฿{Number(o.totalPrice ?? 0).toLocaleString('th-TH', { maximumFractionDigits: 0 })}
+                </div>
+                <StatusBadge status={o.status} />
+              </div>
+            </Link>
+          ))
+        )}
+      </div>
+    </div>
+  );
 }
 
-const stageColors: Record<string, string> = {
-  VIP: '#f6c90e', NEW: '#0ea5e9', ACTIVE: '#2FA084',
-  AT_RISK: '#f8961e', LAPSED: '#6f42c1', LOST: '#e74a3b',
-};
+/* ────────────────────────────────────────────
+   Top 5 Card — leaderboard summary
+   ──────────────────────────────────────────── */
+function TopFiveCard({ rows, monthLabel }: {
+  rows: Array<{ userId: string; fullName: string; totalRevenue: number; totalOrders: number }>;
+  monthLabel: string;
+}) {
+  return (
+    <div className="card" style={{ padding: 0 }}>
+      <div className="flex-between" style={{ padding: '0.9rem 1.25rem', borderBottom: '1px solid var(--border-light)' }}>
+        <h3 style={{ fontSize: 14, margin: 0, fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '-0.01em', color: 'var(--text-dark)', fontWeight: 600 }}>
+          <i className="ri-trophy-line" style={{ color: 'var(--gold, #C9A961)', marginRight: 4 }}></i>
+          Top 5 เซลส์ — {monthLabel}
+        </h3>
+        <Link href="/leaderboard" className="text-sm" style={{ color: 'var(--primary)' }}>
+          ดูทั้งหมด →
+        </Link>
+      </div>
+      <div style={{ padding: '0.25rem 0' }}>
+        {rows.length === 0 ? (
+          <div style={{ padding: '2rem 1.25rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+            ยังไม่มีข้อมูล
+          </div>
+        ) : (
+          rows.map((r, i) => (
+            <div key={r.userId} className="top-five-row">
+              <div className={`top-five-rank rank-${i + 1}`}>
+                {i + 1}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="top-five-name">{r.fullName}</div>
+                <div className="top-five-meta">{r.totalOrders.toLocaleString()} ออเดอร์</div>
+              </div>
+              <div className="top-five-amount">
+                ฿{r.totalRevenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────
+   Status / Source mini components
+   ──────────────────────────────────────────── */
+function StatusBadge({ status }: { status: string }) {
+  const config: Record<string, { bg: string; color: string; label: string }> = {
+    PAID:      { bg: 'var(--success-light)', color: 'var(--success)', label: 'ชำระแล้ว' },
+    PACKED:    { bg: 'var(--blue-light)',    color: 'var(--info)',    label: 'แพ็คแล้ว' },
+    COD:       { bg: 'var(--warning-light)', color: 'var(--warning)', label: 'COD' },
+    PENDING:   { bg: 'var(--purple-light)',  color: 'var(--purple)',  label: 'รอ' },
+    RETURNED:  { bg: 'var(--danger-light)',  color: 'var(--danger)',  label: 'ตีกลับ' },
+    CANCELLED: { bg: 'var(--danger-light)',  color: 'var(--danger)',  label: 'ยกเลิก' },
+    OTHER:     { bg: '#F1F3EF',              color: 'var(--text-muted)', label: 'อื่นๆ' },
+  };
+  const c = config[status] ?? config.OTHER;
+  return <span className="status-badge" style={{ background: c.bg, color: c.color, fontSize: 10.5, padding: '2px 8px' }}>{c.label}</span>;
+}
 
 function SourceKpi({
   source, title, subtitle, revenue, count, share, href,
 }: {
   source: OrderSource;
-  title: string;
-  subtitle: string;
-  revenue: number;
-  count: number;
-  share: number;
-  href: string;
+  title: string; subtitle: string;
+  revenue: number; count: number; share: number; href: string;
 }) {
   const accent = source === OrderSource.SHEET ? 'var(--info)' : 'var(--primary)';
-  const tint   = source === OrderSource.SHEET ? 'var(--info-light)' : 'var(--primary-light)';
   return (
     <Link
       href={href}
-      style={{
-        display: 'block', textDecoration: 'none', color: 'inherit',
-        background: tint, border: `1.5px solid ${accent}33`,
-        borderRadius: 12, padding: '0.85rem 1rem',
-      }}
+      className="source-kpi"
+      style={{ borderLeft: `3px solid ${accent}` }}
     >
-      <div className="flex-between" style={{ alignItems: 'flex-start', marginBottom: 6 }}>
+      <div className="flex-between" style={{ alignItems: 'flex-start', marginBottom: 4 }}>
         <div>
-          <SourceBadge source={source} />
-          <div className="text-sm fw-600 mt-1" style={{ color: 'var(--text-dark)', marginTop: 6 }}>{title}</div>
-          <div className="text-sm text-muted" style={{ fontSize: 11 }}>{subtitle}</div>
+          <div className="source-kpi-title">{title}</div>
+          <div className="source-kpi-subtitle">{subtitle}</div>
         </div>
-        <div style={{
-          fontSize: 11, fontWeight: 700, color: accent,
-          background: '#fff', borderRadius: 999, padding: '0.15rem 0.5rem',
-        }}>
+        <div className="source-kpi-share" style={{ color: accent }}>
           {share.toFixed(0)}%
         </div>
       </div>
-      <div className="fw-700" style={{ fontSize: 22, color: accent, lineHeight: 1.1 }}>
+      <div className="source-kpi-revenue" style={{ color: accent }}>
         ฿{revenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
       </div>
-      <div className="text-sm text-muted" style={{ marginTop: 2 }}>
+      <div className="source-kpi-count">
         {count.toLocaleString()} ออเดอร์
       </div>
     </Link>

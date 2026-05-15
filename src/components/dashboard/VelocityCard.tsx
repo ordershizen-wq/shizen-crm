@@ -27,7 +27,7 @@ export default function VelocityCard({ stats, name }: { stats: VelocityStats; na
           <div className="text-sm text-muted" style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             ผลงานของคุณวันนี้
           </div>
-          <div className="fw-600" style={{ fontSize: 14, marginTop: 4, color: 'var(--text-dark)', fontFamily: "'Trirong', serif" }}>
+          <div className="fw-600" style={{ fontSize: 14, marginTop: 4, color: 'var(--text-dark)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             {name} — {paceLabel}
           </div>
         </div>

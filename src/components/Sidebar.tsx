@@ -49,6 +49,7 @@ const NAV: { label: string; items: NavItem[] }[] = [
     { href: '/orders',    icon: 'ri-shopping-bag-3-line',  text: 'ออเดอร์' },
     { href: '/products',  icon: 'ri-archive-2-line',       text: 'คลังสินค้า' },
     { href: '/leaderboard', icon: 'ri-trophy-line',        text: 'Leaderboard' },
+    { href: '/insights',    icon: 'ri-bar-chart-2-line',   text: 'สถิติเชิงลึก' },
   ]},
   { label: 'แอดมิน', items: [
     { href: '/admin/sync-failed', icon: 'ri-refresh-line', text: 'ออเดอร์รอ sync', adminOnly: true },

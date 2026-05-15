@@ -6,7 +6,7 @@ export default function ProductPerformanceTable({ products }: { products: Produc
   return (
     <div className="card" style={{ padding: 0, marginBottom: '1.5rem' }}>
       <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-light)' }}>
-        <div className="fw-600" style={{ fontSize: 15, fontFamily: "'Trirong', serif", letterSpacing: '-0.01em' }}>
+        <div className="fw-600" style={{ fontSize: 15, fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '-0.01em' }}>
           ผลงานของสินค้า — เดือนนี้
         </div>
         <div className="text-sm text-muted" style={{ fontSize: 12, marginTop: 2 }}>
