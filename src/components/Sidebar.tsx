@@ -50,6 +50,7 @@ const NAV: { label: string; items: NavItem[] }[] = [
     { href: '/insights',    icon: 'ri-bar-chart-2-line',   text: 'สถิติเชิงลึก' },
   ]},
   { label: 'แอดมิน', items: [
+    { href: '/admin/users',       icon: 'ri-team-line',    text: 'จัดการผู้ใช้',    adminOnly: true },
     { href: '/admin/sync-failed', icon: 'ri-refresh-line', text: 'ออเดอร์รอ sync', adminOnly: true },
   ]},
 ];
