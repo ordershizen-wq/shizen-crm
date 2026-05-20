@@ -369,7 +369,7 @@ function TopFiveCard({ rows, monthLabel }: {
           <i className="ri-trophy-line" style={{ color: 'var(--gold, #C9A961)', marginRight: 4 }}></i>
           Top 5 เซลส์ — {monthLabel}
         </h3>
-        <Link href="/leaderboard" className="text-sm" style={{ color: 'var(--primary)' }}>
+        <Link href="/insights?tab=leaderboard" className="text-sm" style={{ color: 'var(--primary)' }}>
           ดูทั้งหมด →
         </Link>
       </div>

@@ -44,11 +44,9 @@ const NAV: { label: string; items: NavItem[] }[] = [
   { label: 'เมนูหลัก', items: [
     { href: '/',          icon: 'ri-dashboard-3-line',    text: 'แดชบอร์ด' },
     { href: '/tasks',     icon: 'ri-checkbox-line',       text: 'งาน',          badge: 'task', hideFromAdmin: true },
-    { href: '/calendar',  icon: 'ri-calendar-2-line',     text: 'ปฏิทินงาน',                  hideFromAdmin: true },
     { href: '/customers', icon: 'ri-group-2-line',         text: 'จัดการลูกค้า' },
     { href: '/orders',    icon: 'ri-shopping-bag-3-line',  text: 'ออเดอร์' },
     { href: '/products',  icon: 'ri-archive-2-line',       text: 'คลังสินค้า' },
-    { href: '/leaderboard', icon: 'ri-trophy-line',        text: 'Leaderboard' },
     { href: '/insights',    icon: 'ri-bar-chart-2-line',   text: 'สถิติเชิงลึก' },
   ]},
   { label: 'แอดมิน', items: [

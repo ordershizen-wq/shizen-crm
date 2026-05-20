@@ -7,7 +7,7 @@ type Props = {
   scope: 'all' | 'me';
   status: 'pending' | 'done' | 'all';
   range: 'today' | 'overdue' | 'week' | 'all';
-  view: 'list' | 'kanban';
+  view: 'list' | 'kanban' | 'calendar';
   groupBy: 'time' | 'type' | 'assignee' | 'workflow';
   canSeeAssignee: boolean;
 };
@@ -77,6 +77,16 @@ export default function TasksFilterClient({ scope, status, range, view, groupBy,
             <i className="ri-layout-column-line"></i>
             <span>Kanban</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setParam('view', 'calendar')}
+            className={`view-toggle-btn${view === 'calendar' ? ' active' : ''}`}
+            aria-pressed={view === 'calendar'}
+            aria-label="มุมมองปฏิทิน"
+          >
+            <i className="ri-calendar-2-line"></i>
+            <span>ปฏิทิน</span>
+          </button>
         </div>
       </div>
 
@@ -143,6 +153,16 @@ export default function TasksFilterClient({ scope, status, range, view, groupBy,
               >
                 <i className="ri-layout-column-line"></i>
                 <span>Kanban</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setParam('view', 'calendar')}
+                className={`view-toggle-btn${view === 'calendar' ? ' active' : ''}`}
+                aria-pressed={view === 'calendar'}
+                aria-label="มุมมองปฏิทิน"
+              >
+                <i className="ri-calendar-2-line"></i>
+                <span>ปฏิทิน</span>
               </button>
             </div>
           </FilterGroup>

@@ -22,7 +22,7 @@ export default function MyPerformance({
 
   return (
     <Link
-      href="/leaderboard"
+      href="/insights?tab=leaderboard"
       style={{
         display: 'block',
         textDecoration: 'none',

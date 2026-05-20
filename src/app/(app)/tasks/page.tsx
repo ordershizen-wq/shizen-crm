@@ -1,11 +1,13 @@
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getTaskFilter, getTaskSuggestions } from '@/lib/tasks';
+import { getCalendarEvents } from '@/lib/calendarEvents';
 import EmptyState from '@/components/EmptyState';
 import TasksFilterClient from './TasksFilterClient';
 import TasksList from './TasksList';
 import TasksKanban from './TasksKanban';
 import TaskSuggestionsSection from './TaskSuggestionsSection';
+import CalendarView from './CalendarView';
 
 type Props = { searchParams: Promise<{ scope?: string; status?: string; range?: string; view?: string; groupBy?: string }> };
 
@@ -14,8 +16,37 @@ export default async function TasksPage({ searchParams }: Props) {
   const scope    = (sp.scope    ?? 'all')      as 'all' | 'me';
   const status   = (sp.status   ?? 'pending')  as 'pending' | 'done' | 'all';
   const range    = (sp.range    ?? 'all')      as 'today' | 'overdue' | 'week' | 'all';
-  const view     = (sp.view     ?? 'list')     as 'list' | 'kanban';
+  const view     = (sp.view     ?? 'list')     as 'list' | 'kanban' | 'calendar';
   const user = (await getCurrentUser())!;
+
+  // Calendar view — โหลด events อย่างเดียว ไม่ต้อง fetch tasks/counters
+  if (view === 'calendar') {
+    const events = await getCalendarEvents(user);
+    const teamLabel =
+      user.role === 'ADMIN' ? 'ทั้งระบบ' :
+      user.role === 'LEADER' ? `ทีม ${user.team?.name ?? ''}` :
+      'ของฉัน';
+    return (
+      <>
+        <div className="flex-between mb-4" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div>
+            <h1 className="page-title">
+              <i className="ri-task-line text-primary"></i> งานทั้งหมด
+            </h1>
+            <p className="text-sm text-muted mt-1">{teamLabel} · มุมมองปฏิทิน</p>
+          </div>
+        </div>
+        <TasksFilterClient scope={scope} status={status} range={range} view={view} groupBy={'time'} canSeeAssignee={user.role === 'ADMIN' || user.role === 'LEADER'} />
+        <CalendarView
+          events={events}
+          initialYear={new Date().getFullYear()}
+          initialMonth={new Date().getMonth()}
+          userName={user.fullName}
+        />
+      </>
+    );
+  }
+
   const canSeeAssignee = user.role === 'ADMIN' || user.role === 'LEADER';
   const rawGroup = (sp.groupBy ?? 'time') as 'time' | 'type' | 'assignee' | 'workflow';
   const groupBy: 'time' | 'type' | 'assignee' | 'workflow' =

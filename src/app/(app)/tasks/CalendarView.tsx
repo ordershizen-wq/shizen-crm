@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import type { CalendarEvent } from './page';
+import type { CalendarEvent } from '@/lib/calendarEvents';
 
 const DAYS_TH = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
 const MONTHS_TH = [

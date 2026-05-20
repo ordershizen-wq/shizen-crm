@@ -175,7 +175,7 @@ export default function AdminFocus({ data, userName }: { data: AdminFocusData; u
             {data.lowPerformers.map(p => (
               <Link
                 key={p.userId}
-                href="/leaderboard"
+                href="/insights?tab=leaderboard"
                 style={rowStyle}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
