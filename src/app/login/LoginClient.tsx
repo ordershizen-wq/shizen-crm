@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { LoginResult } from '@/app/actions';
 
 type Props = {
@@ -10,6 +10,9 @@ type Props = {
 
 export default function LoginClient({ action }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const from = searchParams.get('from');
+  const safeFrom = from && from.startsWith('/') && !from.startsWith('//') ? from : null;
   const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +28,7 @@ export default function LoginClient({ action }: Props) {
         setError(res.error);
         return;
       }
-      router.push('/');
+      router.push(safeFrom ?? '/');
       router.refresh();
     });
   };

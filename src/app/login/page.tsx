@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
@@ -13,5 +14,9 @@ export default async function LoginPage() {
     }
   }
 
-  return <LoginClient action={loginWithCredentials} />;
+  return (
+    <Suspense fallback={null}>
+      <LoginClient action={loginWithCredentials} />
+    </Suspense>
+  );
 }
