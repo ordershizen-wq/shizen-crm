@@ -1,26 +1,24 @@
 import { cache } from 'react';
-import { cookies } from 'next/headers';
 import { prisma } from './prisma';
+import { getSession } from './session';
 import type { SheetUser } from '@prisma/client';
-
-const COOKIE_NAME = 'sheet_user_id';
 
 export type CurrentUser = SheetUser & {
   team: { id: string; name: string; color: string | null } | null;
 };
 
 /**
- * คืนค่า SheetUser (เซลส์) ปัจจุบัน จาก cookie
- * PACKER ไม่มีสิทธิ์เข้า CRM → return null
+ * คืนค่า SheetUser ปัจจุบันจาก iron-session
+ * - PACKER ไม่มีสิทธิ์เข้า CRM → return null
+ * - INACTIVE → return null
+ * - ไม่ได้ login → return null
  */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get(COOKIE_NAME)?.value;
-  if (!userId) return null;
+  const session = await getSession();
+  if (!session.userId) return null;
 
-  // join team ในรอบเดียว ลด round-trip
   const user = await prisma.sheetUser.findUnique({
-    where: { id: userId },
+    where: { id: session.userId },
     include: { team: { select: { id: true, name: true, color: true } } },
   });
   if (!user || user.isActive !== 'ACTIVE') return null;
@@ -30,10 +28,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 });
 
 /**
- * สร้าง Prisma filter สำหรับ SheetOrder ตาม role:
- * - ADMIN  → {} (เห็นทุกออเดอร์)
- * - LEADER → ขึ้นกับ view ('self' = ของตัวเอง, 'team' = ทั้งทีม, default = team)
- * - MEMBER → salesRepId = ตัวเอง (เห็นแค่ของตัวเอง)
+ * สร้าง Prisma filter สำหรับ SheetOrder ตาม role
  */
 export async function getOrderFilter(
   user: CurrentUser | null,
@@ -52,19 +47,11 @@ export async function getOrderFilter(
     return { salesRepId: { in: reps.map(r => r.id) } };
   }
 
-  // MEMBER (หรือ LEADER ที่ไม่มีทีม) → เห็นแค่ของตัวเอง
   return { salesRepId: user.id };
 }
 
-/**
- * Filter สำหรับ Follow-up Queue (งานวันนี้)
- * ทั้ง LEADER และ MEMBER เห็นแค่ลูกค้าของตัวเอง
- * ADMIN เห็นทุกคน
- */
 export function getQueueFilter(user: CurrentUser | null): Record<string, unknown> {
   if (!user) return {};
   if (user.role === 'ADMIN') return {};
   return { salesRepId: user.id };
 }
-
-export { COOKIE_NAME };

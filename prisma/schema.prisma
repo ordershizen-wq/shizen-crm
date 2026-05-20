@@ -77,14 +77,17 @@ model SheetTeam {
 
 model SheetUser {
   id           String     @id
-  employeeId   String?
+  employeeId   String?    @unique
   fullName     String
   role         UserRole   @default(MEMBER)
   email        String?
   phone        String?
   idCard       String?
   photoUrl     String?
+  /// bcrypt hash — null = user ยังไม่ได้ตั้งรหัส
   password     String?
+  /// timestamp ตอนผู้ใช้เปลี่ยนรหัสครั้งล่าสุด
+  passwordChangedAt  DateTime?
   monthlySales Decimal?   @default(0)
   isActive     UserStatus @default(ACTIVE)
   teamId       String?
