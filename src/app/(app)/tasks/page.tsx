@@ -2,40 +2,93 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getTaskFilter, getTaskSuggestions } from '@/lib/tasks';
 import { getCalendarEvents } from '@/lib/calendarEvents';
+import { getReorderQueue } from '@/lib/reorderQueue';
 import EmptyState from '@/components/EmptyState';
 import TasksFilterClient from './TasksFilterClient';
 import TasksList from './TasksList';
 import TasksKanban from './TasksKanban';
 import TaskSuggestionsSection from './TaskSuggestionsSection';
 import CalendarView from './CalendarView';
+import ReorderList from './ReorderList';
+import KindTabs from './KindTabs';
 
-type Props = { searchParams: Promise<{ scope?: string; status?: string; range?: string; view?: string; groupBy?: string }> };
+type Props = { searchParams: Promise<{ kind?: string; scope?: string; status?: string; range?: string; view?: string; groupBy?: string }> };
 
 export default async function TasksPage({ searchParams }: Props) {
   const sp = await searchParams;
+  const kind     = (sp.kind     ?? 'care')     as 'care' | 'reorder';
   const scope    = (sp.scope    ?? 'all')      as 'all' | 'me';
   const status   = (sp.status   ?? 'pending')  as 'pending' | 'done' | 'all';
   const range    = (sp.range    ?? 'all')      as 'today' | 'overdue' | 'week' | 'all';
   const view     = (sp.view     ?? 'list')     as 'list' | 'kanban' | 'calendar';
   const user = (await getCurrentUser())!;
 
-  // Calendar view — โหลด events อย่างเดียว ไม่ต้อง fetch tasks/counters
-  if (view === 'calendar') {
-    const events = await getCalendarEvents(user);
-    const teamLabel =
-      user.role === 'ADMIN' ? 'ทั้งระบบ' :
-      user.role === 'LEADER' ? `ทีม ${user.team?.name ?? ''}` :
-      'ของฉัน';
+  const baseFilter = await getTaskFilter(user);
+  const activeStatuses = ['PENDING' as const, 'IN_PROGRESS' as const, 'WAITING_REPLY' as const];
+
+  // นับ badge ของแต่ละ kind — ใช้กับ KindTabs
+  const [careCount, reorderQueueForCount] = await Promise.all([
+    prisma.customerTask.count({
+      where: { AND: [baseFilter, { status: { in: activeStatuses } }] },
+    }),
+    // คำนวณคิวรีออเดอร์ครั้งเดียว ใช้ทั้ง badge และ render
+    kind === 'reorder' ? getReorderQueue(user) : null,
+  ]);
+
+  // ถ้ายังไม่ได้คำนวณ reorder queue (อยู่ tab care) → นับเฉพาะตอนแสดงผล
+  const reorderQueue = kind === 'reorder'
+    ? reorderQueueForCount!
+    : await getReorderQueue(user);
+  const reorderCount = reorderQueue.length;
+
+  const teamLabel =
+    user.role === 'ADMIN' ? 'ทั้งระบบ' :
+    user.role === 'LEADER' ? `ทีม ${user.team?.name ?? ''}` :
+    'ของฉัน';
+
+  const pageHeader = (
+    <div className="flex-between mb-4" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
+      <div>
+        <h1 className="page-title">
+          <i className="ri-task-line text-primary"></i> งานทั้งหมด
+        </h1>
+        <p className="text-sm text-muted mt-1">
+          {teamLabel} · {kind === 'reorder' ? `รีออเดอร์ ${reorderCount} คน` : `ดูแลลูกค้า ${careCount} งาน`}
+        </p>
+      </div>
+      <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+        <i className="ri-calendar-line text-blue"></i>{' '}
+        {new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+      </div>
+    </div>
+  );
+
+  const kindTabs = <KindTabs kind={kind} careCount={careCount} reorderCount={reorderCount} />;
+
+  // ═══════════════════════════════════════════════════════════
+  // TAB: ตามรีออเดอร์ — virtual list, ไม่ใช้ filter/view เดิม
+  // ═══════════════════════════════════════════════════════════
+  if (kind === 'reorder') {
     return (
       <>
-        <div className="flex-between mb-4" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div>
-            <h1 className="page-title">
-              <i className="ri-task-line text-primary"></i> งานทั้งหมด
-            </h1>
-            <p className="text-sm text-muted mt-1">{teamLabel} · มุมมองปฏิทิน</p>
-          </div>
-        </div>
+        {pageHeader}
+        {kindTabs}
+        <ReorderList items={reorderQueue} />
+      </>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // TAB: ดูแลลูกค้า — flow เดิม (list/kanban/calendar)
+  // ═══════════════════════════════════════════════════════════
+
+  // Calendar view — โหลด events อย่างเดียว
+  if (view === 'calendar') {
+    const events = await getCalendarEvents(user);
+    return (
+      <>
+        {pageHeader}
+        {kindTabs}
         <TasksFilterClient scope={scope} status={status} range={range} view={view} groupBy={'time'} canSeeAssignee={user.role === 'ADMIN' || user.role === 'LEADER'} />
         <CalendarView
           events={events}
@@ -52,23 +105,17 @@ export default async function TasksPage({ searchParams }: Props) {
   const groupBy: 'time' | 'type' | 'assignee' | 'workflow' =
     rawGroup === 'assignee' && !canSeeAssignee ? 'time' : rawGroup;
 
-  const baseFilter = await getTaskFilter(user);
-
-  // status filter — "pending" = ค้างอยู่ (PENDING + IN_PROGRESS + WAITING_REPLY)
   const statusFilter =
-    status === 'pending' ? { status: { in: ['PENDING' as const, 'IN_PROGRESS' as const, 'WAITING_REPLY' as const] } } :
+    status === 'pending' ? { status: { in: activeStatuses } } :
     status === 'done'    ? { status: { in: ['DONE' as const, 'SKIPPED' as const] } } :
     {};
 
-  // scope filter (override permission filter when "ของฉัน")
   const scopeFilter = scope === 'me' ? { assignedToId: user.id } : {};
 
-  // range filter (เฉพาะตอน status=pending)
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
   const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
 
-  // kanban shows time-buckets เอง — ignore range filter
   const rangeFilter = (status === 'pending' && view === 'list')
     ? range === 'today'   ? { dueDate: { gte: today, lt: tomorrow } }
     : range === 'overdue' ? { dueDate: { lt: today } }
@@ -76,15 +123,10 @@ export default async function TasksPage({ searchParams }: Props) {
     : {}
     : {};
 
-  // Kanban needs broader window. Active = PENDING/IN_PROGRESS/WAITING_REPLY.
-  // - time mode: active ≤ 7 days + done last 14 days (bucket by due date)
-  // - workflow mode: all active (no dueDate cap) + recent done
-  // - type/assignee: active (≤ 7 days for size cap) + recent done
   let kanbanWhere: object = {};
   if (view === 'kanban') {
     const sevenDays = new Date(today); sevenDays.setDate(sevenDays.getDate() + 8);
     const fourteenDaysAgo = new Date(today); fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-    const activeStatuses = ['PENDING', 'IN_PROGRESS', 'WAITING_REPLY'] as const;
     const activeFilter = groupBy === 'workflow'
       ? { status: { in: activeStatuses } }
       : { status: { in: activeStatuses }, dueDate: { lt: sevenDays } };
@@ -107,7 +149,6 @@ export default async function TasksPage({ searchParams }: Props) {
     take: view === 'kanban' ? 400 : 200,
   });
 
-  // ดึงชื่อลูกค้าจาก order ล่าสุด — distinct on phone ให้ DB คืน 1 row ต่อเบอร์
   const phones = Array.from(new Set(tasks.map(t => t.customerPhone)));
   const orders = phones.length ? await prisma.sheetOrder.findMany({
     where: { phone: { in: phones } },
@@ -120,12 +161,7 @@ export default async function TasksPage({ searchParams }: Props) {
     if (o.phone && o.customerName) nameMap.set(o.phone, o.customerName);
   }
 
-  // counters สำหรับ summary — รันขนาน
-  const activeStatuses = ['PENDING' as const, 'IN_PROGRESS' as const, 'WAITING_REPLY' as const];
-  const [allMyPending, todayCount, overdueCount] = await Promise.all([
-    prisma.customerTask.count({
-      where: { AND: [baseFilter, { status: { in: activeStatuses } }] },
-    }),
+  const [todayCount, overdueCount] = await Promise.all([
     prisma.customerTask.count({
       where: { AND: [baseFilter, { status: { in: activeStatuses }, dueDate: { gte: today, lt: tomorrow } }] },
     }),
@@ -134,39 +170,21 @@ export default async function TasksPage({ searchParams }: Props) {
     }),
   ]);
 
-  // Suggestions โชว์เมื่อดูงาน "ค้างอยู่" — แต่ไม่โชว์ให้ ADMIN (ADMIN supervise ไม่ใช่ทำงานตามรายลูกค้า)
   const showSuggestions =
     user.role !== 'ADMIN' &&
     status === 'pending' &&
     (view === 'list' || (view === 'kanban' && groupBy === 'time'));
   const suggestions = showSuggestions ? await getTaskSuggestions(user) : [];
 
-  const teamLabel =
-    user.role === 'ADMIN' ? 'ทั้งระบบ' :
-    user.role === 'LEADER' ? `ทีม ${user.team?.name ?? ''}` :
-    'ของฉัน';
-
   return (
     <>
-      <div className="flex-between mb-4" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
-        <div>
-          <h1 className="page-title">
-            <i className="ri-task-line text-primary"></i> งานทั้งหมด
-          </h1>
-          <p className="text-sm text-muted mt-1">
-            {teamLabel} · ค้างทั้งหมด {allMyPending} งาน
-          </p>
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          <i className="ri-calendar-line text-blue"></i>{' '}
-          {new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </div>
-      </div>
+      {pageHeader}
+      {kindTabs}
 
       <div className="tasks-summary-pills">
         <SummaryPill label="วันนี้" count={todayCount} color="var(--orange)" bg="var(--orange-light)" />
         <SummaryPill label="เลยกำหนด" count={overdueCount} color="var(--danger)" bg="var(--danger-light)" />
-        <SummaryPill label="ค้างทั้งหมด" count={allMyPending} color="var(--primary)" bg="var(--blue-light)" />
+        <SummaryPill label="ค้างทั้งหมด" count={careCount} color="var(--primary)" bg="var(--blue-light)" />
       </div>
 
       <TasksFilterClient scope={scope} status={status} range={range} view={view} groupBy={groupBy} canSeeAssignee={canSeeAssignee} />
@@ -237,4 +255,3 @@ function SummaryPill({ label, count, color, bg }: { label: string; count: number
     </div>
   );
 }
-
