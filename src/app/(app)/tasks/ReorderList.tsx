@@ -30,7 +30,6 @@ export default function ReorderList({ items }: { items: ReorderItem[] }) {
     );
   }
 
-  // จัดกลุ่มตาม bucket
   const groups: Record<ReorderItem['bucket'], ReorderItem[]> = {
     overdue: [], today: [], soon: [], upcoming: [],
   };
@@ -46,15 +45,10 @@ export default function ReorderList({ items }: { items: ReorderItem[] }) {
         const cfg = BUCKET_CONFIG[bucket];
         return (
           <div key={bucket} className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '0.5rem',
-              padding: '0.75rem 1rem',
-              background: cfg.bg, color: cfg.color,
-              borderBottom: '1px solid var(--border-light)',
-            }}>
+            <div className="reorder-bucket-head" style={{ background: cfg.bg, color: cfg.color }}>
               <i className={cfg.icon}></i>
-              <span className="fw-700" style={{ fontSize: 13 }}>{cfg.label}</span>
-              <span style={{ fontSize: 12, opacity: 0.85 }}>{list.length} คน</span>
+              <span>{cfg.label}</span>
+              <span className="reorder-bucket-head-count">{list.length} คน</span>
             </div>
             <div>
               {list.map(item => (
@@ -71,42 +65,28 @@ export default function ReorderList({ items }: { items: ReorderItem[] }) {
 function ReorderRow({ item }: { item: ReorderItem }) {
   const cfg = BUCKET_CONFIG[item.bucket];
   return (
-    <Link
-      href={`/customers/${encodeURIComponent(item.phone)}`}
-      className="reorder-row"
-      style={{
-        display: 'flex', alignItems: 'center', gap: '1rem',
-        padding: '0.85rem 1rem',
-        borderBottom: '1px solid var(--border-light)',
-        textDecoration: 'none', color: 'inherit',
-      }}
-    >
-      <div style={{
-        width: 44, height: 44, borderRadius: '50%',
-        background: cfg.bg, color: cfg.color,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 18, flexShrink: 0,
-      }}>
+    <Link href={`/customers/${encodeURIComponent(item.phone)}`} className="reorder-row">
+      <div className="reorder-row-icon" style={{ background: cfg.bg, color: cfg.color }}>
         <i className="ri-refresh-line"></i>
       </div>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="fw-600" style={{ fontSize: 14 }}>{item.name}</div>
-        <div className="text-sm text-muted" style={{ fontSize: 12, marginTop: 2 }}>
+      <div className="reorder-row-body">
+        <div className="reorder-row-name">{item.name}</div>
+        <div className="reorder-row-meta">
           {item.phone} · สั่งล่าสุด {fmtDate(item.lastOrderAt)} ({item.daysSinceLast} วันก่อน) · รอบ {item.avgCycleDays} วัน
         </div>
       </div>
 
-      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <div className="fw-700" style={{ fontSize: 13, color: cfg.color }}>
+      <div className="reorder-row-side">
+        <div className="reorder-row-due" style={{ color: cfg.color }}>
           {dueLabel(item.daysUntilReorder)}
         </div>
-        <div className="text-sm text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+        <div className="reorder-row-sub">
           ฿{item.totalSpent.toLocaleString('th-TH', { maximumFractionDigits: 0 })} · {item.orderCount} ออเดอร์
         </div>
       </div>
 
-      <i className="ri-arrow-right-s-line text-muted" style={{ fontSize: 18, flexShrink: 0 }}></i>
+      <i className="ri-arrow-right-s-line reorder-row-chevron"></i>
     </Link>
   );
 }

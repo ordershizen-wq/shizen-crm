@@ -3227,3 +3227,181 @@ button, [role="button"], a.btn, .btn {
   overflow-wrap: anywhere;
   word-break: break-word;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   KIND TABS — ดูแลลูกค้า / ตามรีออเดอร์
+   ═══════════════════════════════════════════════════════════ */
+.kind-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.kind-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  text-decoration: none;
+  border: 2px solid var(--border-light);
+  background: #fff;
+  color: var(--text-dark);
+  transition: all 150ms;
+  min-height: 72px;       /* touch target */
+}
+.kind-tab:hover { border-color: var(--primary); }
+
+.kind-tab-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.kind-tab-body { flex: 1; min-width: 0; }
+.kind-tab-title { font-size: 15px; font-weight: 700; }
+.kind-tab-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kind-tab-count {
+  background: var(--bg-app);
+  color: var(--text-muted);
+  border-radius: 20px;
+  min-width: 36px;
+  height: 30px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Mobile: ลด padding + ขนาดให้พอดี 2 คอลัมน์บนจอแคบ */
+@media (max-width: 540px) {
+  .kind-tabs { gap: 0.5rem; }
+  .kind-tab {
+    padding: 0.75rem 0.7rem;
+    gap: 0.55rem;
+    border-radius: 12px;
+    min-height: 68px;
+  }
+  .kind-tab-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    font-size: 18px;
+  }
+  .kind-tab-title { font-size: 14px; }
+  .kind-tab-desc { font-size: 11px; }
+  .kind-tab-count {
+    min-width: 30px;
+    height: 26px;
+    padding: 0 8px;
+    font-size: 13px;
+  }
+}
+
+/* จอเล็กมาก (≤380px) — ซ่อน desc */
+@media (max-width: 380px) {
+  .kind-tab-desc { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   REORDER LIST — คิวรีออเดอร์
+   ═══════════════════════════════════════════════════════════ */
+.reorder-bucket-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 13px;
+  font-weight: 700;
+}
+.reorder-bucket-head-count { font-size: 12px; opacity: 0.85; font-weight: 500; }
+
+.reorder-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-light);
+  text-decoration: none;
+  color: inherit;
+  min-height: 64px;
+  transition: background 150ms;
+}
+.reorder-row:last-child { border-bottom: none; }
+.reorder-row:hover { background: var(--bg-app); }
+
+.reorder-row-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.reorder-row-body { flex: 1; min-width: 0; }
+.reorder-row-name {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reorder-row-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.reorder-row-side { text-align: right; flex-shrink: 0; }
+.reorder-row-due { font-size: 13px; font-weight: 700; }
+.reorder-row-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+.reorder-row-chevron { font-size: 18px; flex-shrink: 0; color: var(--text-muted); }
+
+/* Mobile: ซ่อน chevron, ย่อ avatar, จัด layout 2 บรรทัด */
+@media (max-width: 640px) {
+  .reorder-row {
+    padding: 0.75rem 0.85rem;
+    gap: 0.75rem;
+  }
+  .reorder-row-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+  .reorder-row-chevron { display: none; }
+  .reorder-row-name { font-size: 14px; }
+  .reorder-row-meta {
+    font-size: 11px;
+    white-space: normal;
+    line-height: 1.35;
+  }
+  .reorder-row-due { font-size: 12px; }
+  .reorder-row-sub { font-size: 10px; }
+}
+
+/* จอเล็กมาก — meta ย่อให้สั้น */
+@media (max-width: 380px) {
+  .reorder-row-sub { display: none; }
+}
+
