@@ -1,10 +1,12 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { getCurrentUser } from '@/lib/auth';
+import { checkRateLimit, resetRateLimit, getClientIp } from '@/lib/rateLimit';
 
 export type LoginResult =
   | { ok: true }
@@ -24,6 +26,19 @@ export async function loginWithCredentials(
     return { ok: false, error: 'กรุณากรอกรหัสพนักงานและรหัสผ่าน' };
   }
 
+  // Rate limit: 5 ครั้งผิดติด ๆ ต่อ IP+employeeId → lock 5 นาที
+  const ip = getClientIp(await headers());
+  const rlKey = `login:${ip}:${cleanId.toLowerCase()}`;
+  const rl = checkRateLimit(rlKey, {
+    max: 5,
+    windowMs: 15 * 60 * 1000,  // นับใน 15 นาที
+    lockMs: 5 * 60 * 1000,     // lock 5 นาที
+  });
+  if (!rl.allowed) {
+    const mins = Math.ceil(rl.retryAfterMs / 60000);
+    return { ok: false, error: `พยายามเข้าระบบเกินจำนวนที่กำหนด รอ ${mins} นาทีแล้วลองใหม่` };
+  }
+
   const user = await prisma.sheetUser.findUnique({
     where: { employeeId: cleanId },
     select: {
@@ -39,6 +54,9 @@ export async function loginWithCredentials(
   if (!match) {
     return { ok: false, error: 'รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง' };
   }
+
+  // ผ่าน — เคลียร์ counter
+  resetRateLimit(rlKey);
 
   const session = await getSession();
   session.userId = user.id;

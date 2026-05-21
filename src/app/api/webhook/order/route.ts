@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { OrderStatus, OrderSource, SyncStatus, Prisma } from '@prisma/client'
+import { verifyWebhookSecret } from '@/lib/webhookAuth'
 const VALID_STATUSES = new Set<string>(Object.values(OrderStatus))
 
 function parseStatus(raw: unknown): OrderStatus {
@@ -9,13 +10,8 @@ function parseStatus(raw: unknown): OrderStatus {
 }
 
 export async function POST(request: NextRequest) {
-  const secret = process.env.WEBHOOK_SECRET
-  if (secret) {
-    const provided = request.headers.get('x-webhook-secret')
-    if (provided !== secret) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-  }
+  const denied = verifyWebhookSecret(request)
+  if (denied) return denied
 
   let body: Record<string, unknown>
   try {

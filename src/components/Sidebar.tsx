@@ -174,25 +174,45 @@ export default function Sidebar({
                   {user.team && ` · ${user.team.name}`}
                 </div>
               </div>
-              <form action={logout}>
-                <button
-                  type="submit"
-                  title="ออกจากระบบ"
-                  aria-label="ออกจากระบบ"
+              <div style={{ display: 'flex', gap: 4 }}>
+                <Link
+                  href="/change-password"
+                  title="เปลี่ยนรหัสผ่าน"
+                  aria-label="เปลี่ยนรหัสผ่าน"
+                  onClick={onClose}
                   style={{
                     width: 32, height: 32,
-                    border: 'none', background: 'transparent',
-                    color: 'rgba(255,255,255,0.7)', cursor: 'pointer',
+                    color: 'rgba(255,255,255,0.7)',
                     borderRadius: '8px', display: 'flex',
                     alignItems: 'center', justifyContent: 'center',
                     fontSize: '1.1rem', transition: 'all 150ms',
+                    textDecoration: 'none',
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.20)'; (e.currentTarget as HTMLButtonElement).style.color = '#fca5a5'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.7)'; }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(99,102,241,0.20)'; (e.currentTarget as HTMLAnchorElement).style.color = '#a5b4fc'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.7)'; }}
                 >
-                  <i className="ri-logout-box-r-line"></i>
-                </button>
-              </form>
+                  <i className="ri-key-2-line"></i>
+                </Link>
+                <form action={logout}>
+                  <button
+                    type="submit"
+                    title="ออกจากระบบ"
+                    aria-label="ออกจากระบบ"
+                    style={{
+                      width: 32, height: 32,
+                      border: 'none', background: 'transparent',
+                      color: 'rgba(255,255,255,0.7)', cursor: 'pointer',
+                      borderRadius: '8px', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                      fontSize: '1.1rem', transition: 'all 150ms',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.20)'; (e.currentTarget as HTMLButtonElement).style.color = '#fca5a5'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.7)'; }}
+                  >
+                    <i className="ri-logout-box-r-line"></i>
+                  </button>
+                </form>
+              </div>
             </>
           )}
         </div>
