@@ -9,12 +9,15 @@ export function calculateStage(params: {
   lastOrderAt: Date | null;
   orderCount: number;
   totalSpent: number;
+  /** สำหรับ test — default = วันนี้ */
+  now?: Date;
 }): CustomerStage {
   const { lastOrderAt, orderCount, totalSpent } = params;
   if (!lastOrderAt) return 'NEW';
 
+  const nowMs = (params.now ?? new Date()).getTime();
   const daysSince = Math.floor(
-    (Date.now() - lastOrderAt.getTime()) / (1000 * 60 * 60 * 24)
+    (nowMs - lastOrderAt.getTime()) / (1000 * 60 * 60 * 24)
   );
 
   // VIP = ซื้อ ≥ 3 ครั้ง หรือยอดรวม ≥ 20,000

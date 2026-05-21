@@ -6,22 +6,9 @@ import { FollowUpOutcome, OrderSource, OrderStatus, SyncStatus } from '@prisma/c
 import { getCurrentUser } from '@/lib/auth';
 import { canModifyCustomer } from '@/lib/authz';
 import { syncOrderToSheet } from '@/lib/orderSync';
+import { suggestGradeFromAnswers, type ChecklistAnswers } from '@/lib/grade';
 
-export type ChecklistAnswers = {
-  exercise: 0 | 1 | 2;
-  diet: 0 | 1 | 2;
-  sleep: 0 | 1 | 2;
-  water: 0 | 1 | 2;
-  motivation: 0 | 1 | 2;
-  consistency: 0 | 1 | 2;
-};
-
-function calcGrade(answers: ChecklistAnswers): 'A' | 'B' | 'C' {
-  const total = Object.values(answers).reduce((s, v) => s + v, 0 as number);
-  if (total >= 9) return 'A';
-  if (total >= 5) return 'B';
-  return 'C';
-}
+export type { ChecklistAnswers };
 
 export async function saveCustomerGrade({
   phone,
@@ -38,7 +25,7 @@ export async function saveCustomerGrade({
   const access = await canModifyCustomer(user, phone);
   if (!access.ok) throw new Error(access.reason);
 
-  const suggestedGrade = calcGrade(answers);
+  const suggestedGrade = suggestGradeFromAnswers(answers);
   const grade = overrideGrade ?? suggestedGrade;
 
   await prisma.sheetCustomerExtra.upsert({
