@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { saveCustomerGrade, type ChecklistAnswers } from './actions';
+import { saveCustomerGrade } from './actions';
+import type { ChecklistAnswers } from '@/lib/grade';
 
 const CHECKLIST = [
   {

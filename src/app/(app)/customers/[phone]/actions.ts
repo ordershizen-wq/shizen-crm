@@ -8,8 +8,6 @@ import { canModifyCustomer } from '@/lib/authz';
 import { syncOrderToSheet } from '@/lib/orderSync';
 import { suggestGradeFromAnswers, type ChecklistAnswers } from '@/lib/grade';
 
-export type { ChecklistAnswers };
-
 export async function saveCustomerGrade({
   phone,
   answers,

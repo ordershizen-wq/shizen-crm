@@ -12,7 +12,7 @@ import SetTaskButton from './SetTaskButton';
 import ProfileTabs from './ProfileTabs';
 import ReorderButton from './ReorderButton';
 import SourceBadge from '@/components/SourceBadge';
-import type { ChecklistAnswers } from './actions';
+import type { ChecklistAnswers } from '@/lib/grade';
 
 type Props = { params: Promise<{ phone: string }> };
 
