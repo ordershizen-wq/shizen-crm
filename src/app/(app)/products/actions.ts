@@ -7,7 +7,7 @@ import { getCurrentUser } from '@/lib/auth';
 // ── Seed สินค้าเริ่มต้น (เรียกครั้งเดียว) ──────────────────────────────
 export async function seedDefaultProducts() {
   const user = await getCurrentUser();
-  if (user?.role !== 'ADMIN') throw new Error('ไม่มีสิทธิ์');
+  if (user?.role !== 'ADMIN') return;
 
   const count = await prisma.product.count();
   if (count > 0) return;
