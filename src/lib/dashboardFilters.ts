@@ -2,9 +2,10 @@
  * Dashboard filters — date range + view scope (สำหรับ LEADER)
  */
 
-export type RangeKey = 'day' | 'week' | 'month' | 'year' | 'all';
+export type RangeKey = 'day' | 'week' | 'month' | 'year' | 'all' | 'custom';
 export type ViewKey = 'self' | 'team';
 
+/** preset ที่แสดงเป็นปุ่มเรียงกัน (custom ไม่อยู่ในนี้ เพราะมี UI เฉพาะ) */
 export const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
   { key: 'day',   label: 'วันนี้' },
   { key: 'week',  label: 'สัปดาห์' },
@@ -13,7 +14,7 @@ export const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
   { key: 'all',   label: 'ทั้งหมด' },
 ];
 
-export const VALID_RANGES = new Set<string>(RANGE_OPTIONS.map(r => r.key));
+export const VALID_RANGES = new Set<string>([...RANGE_OPTIONS.map(r => r.key), 'custom']);
 export const VALID_VIEWS = new Set<string>(['self', 'team']);
 
 export type DateRange = {
@@ -75,6 +76,80 @@ export function resolveDateRange(range: RangeKey, now: Date = new Date()): DateR
 export function parseRange(raw: unknown, fallback: RangeKey = 'month'): RangeKey {
   if (typeof raw === 'string' && VALID_RANGES.has(raw)) return raw as RangeKey;
   return fallback;
+}
+
+/** แปลง Date เป็นสตริง YYYY-MM-DD ตาม local time (ตรงกับค่าใน <input type="date">) */
+export function toYmd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * parse พารามิเตอร์วันที่ YYYY-MM-DD → Date (เที่ยงคืน local) หรือ null ถ้าไม่ถูกต้อง
+ * ปฏิเสธวันที่เกินจริง เช่น 2026-02-31
+ */
+export function parseDateParam(raw: unknown): Date | null {
+  if (typeof raw !== 'string') return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  if (!m) return null;
+  const [, y, mo, d] = m;
+  const date = new Date(Number(y), Number(mo) - 1, Number(d));
+  if (
+    date.getFullYear() !== Number(y) ||
+    date.getMonth() !== Number(mo) - 1 ||
+    date.getDate() !== Number(d)
+  ) return null;
+  return date;
+}
+
+function fmtThai(d: Date, withYear: boolean): string {
+  return d.toLocaleDateString('th-TH', withYear
+    ? { day: 'numeric', month: 'short', year: '2-digit' }
+    : { day: 'numeric', month: 'short' });
+}
+
+/**
+ * ช่วงเวลาแบบกำหนดเอง (inclusive ทั้ง from และ to)
+ * end จะถูกเลื่อนไปเที่ยงคืนของวันถัดจาก to เพื่อให้ครอบคลุมทั้งวัน to
+ * ช่วงก่อนหน้า = ช่วงความยาวเท่ากันที่อยู่ติดกันก่อนหน้า (ไว้เทียบ growth)
+ */
+export function resolveCustomRange(from: Date, to: Date, _now: Date = new Date()): DateRange {
+  const start = new Date(from); start.setHours(0, 0, 0, 0);
+  const end = new Date(to); end.setHours(0, 0, 0, 0); end.setDate(end.getDate() + 1);
+  const span = end.getTime() - start.getTime();
+  const prevEnd = new Date(start);
+  const prevStart = new Date(start.getTime() - span);
+
+  const lastDay = new Date(end.getTime() - 86400000); // = to ที่เที่ยงคืน
+  const sameDay = start.getTime() === lastDay.getTime();
+  const crossYear = start.getFullYear() !== lastDay.getFullYear();
+  const label = sameDay
+    ? fmtThai(start, true)
+    : `${fmtThai(start, crossYear)} – ${fmtThai(lastDay, true)}`;
+
+  return { start, end, prevStart, prevEnd, label };
+}
+
+/**
+ * resolve ช่วงเวลาจาก search params รวม preset + custom ไว้ที่เดียว
+ * ถ้า range=custom แต่วันที่ไม่ถูกต้อง → fallback เป็น 'month'
+ */
+export function resolveRange(
+  params: { range?: string; from?: string; to?: string },
+  now: Date = new Date(),
+): { range: RangeKey; dateRange: DateRange; from?: string; to?: string } {
+  const range = parseRange(params.range, 'month');
+  if (range === 'custom') {
+    const from = parseDateParam(params.from);
+    const to = parseDateParam(params.to);
+    if (from && to && from.getTime() <= to.getTime()) {
+      return { range: 'custom', dateRange: resolveCustomRange(from, to, now), from: params.from, to: params.to };
+    }
+    return { range: 'month', dateRange: resolveDateRange('month', now) };
+  }
+  return { range, dateRange: resolveDateRange(range, now) };
 }
 
 export function parseView(raw: unknown, fallback: ViewKey = 'team'): ViewKey {

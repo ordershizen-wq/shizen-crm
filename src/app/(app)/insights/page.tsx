@@ -14,12 +14,12 @@ import {
   getVelocity, getHotCustomers, getMonthTrend, getChannelMix, getBestProducts,
   getRevenueForecast, getTeamBattle, getAcquisitionFunnel, getProductPerformance,
 } from '@/lib/analytics';
-import { parseRange, parseView, resolveDateRange } from '@/lib/dashboardFilters';
+import { parseView, resolveRange, toYmd } from '@/lib/dashboardFilters';
 import DashboardFilters from '@/components/dashboard/DashboardFilters';
 import { getLeaderboard, currentMonthValue } from '@/lib/teamStats';
 import LeaderboardView from './LeaderboardView';
 
-type SearchParams = Promise<{ range?: string; view?: string; tab?: string; month?: string }>;
+type SearchParams = Promise<{ range?: string; view?: string; tab?: string; month?: string; from?: string; to?: string }>;
 
 type Tab = 'overview' | 'leaderboard';
 
@@ -53,7 +53,7 @@ export default async function InsightsPage({ searchParams }: { searchParams: Sea
 
       {tab === 'leaderboard'
         ? <LeaderboardTab userId={user.id} role={user.role} teamId={user.teamId} teamName={user.team?.name ?? null} monthParam={params.month} />
-        : <OverviewTab isAdmin={isAdmin} isLeader={isLeader} userId={user.id} userName={user.fullName} userRole={user.role} teamId={user.teamId} rangeParam={params.range} viewParam={params.view} />
+        : <OverviewTab isAdmin={isAdmin} isLeader={isLeader} userId={user.id} userName={user.fullName} userRole={user.role} teamId={user.teamId} rangeParam={params.range} viewParam={params.view} fromParam={params.from} toParam={params.to} />
       }
     </>
   );
@@ -109,18 +109,17 @@ async function LeaderboardTab({
 }
 
 async function OverviewTab({
-  isAdmin, isLeader, userId, userName, userRole, teamId, rangeParam, viewParam,
+  isAdmin, isLeader, userId, userName, userRole, teamId, rangeParam, viewParam, fromParam, toParam,
 }: {
   isAdmin: boolean; isLeader: boolean;
   userId: string; userName: string; userRole: string; teamId: string | null;
-  rangeParam?: string; viewParam?: string;
+  rangeParam?: string; viewParam?: string; fromParam?: string; toParam?: string;
 }) {
   void userId; void userRole; void teamId;
   const user = (await getCurrentUser())!;
 
-  const range = parseRange(rangeParam, 'month');
+  const { range, dateRange, from, to } = resolveRange({ range: rangeParam, from: fromParam, to: toParam });
   const view = isAdmin ? 'team' : parseView(viewParam, 'team');
-  const dateRange = resolveDateRange(range);
 
   const orderFilter = (await getOrderFilter(user, view)) ?? {};
   const phoneAggs = await aggregateOrdersByPhone(orderFilter);
@@ -161,6 +160,8 @@ async function OverviewTab({
         view={view}
         showViewToggle={isLeader}
         rangeLabel={dateRange.label}
+        initialFrom={from ?? (dateRange.start ? toYmd(dateRange.start) : undefined)}
+        initialTo={to ?? (dateRange.end ? toYmd(new Date(dateRange.end.getTime() - 86400000)) : undefined)}
       />
 
       {!isAdmin && velocity && <VelocityCard stats={velocity} name={userName.split(' ')[0]} />}

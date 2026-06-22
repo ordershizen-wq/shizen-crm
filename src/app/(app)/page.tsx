@@ -9,10 +9,10 @@ import TodaysFocus from '@/components/TodaysFocus';
 import AdminFocus from '@/components/AdminFocus';
 import { getTodaysFocus, getAdminFocus } from '@/lib/todaysFocus';
 import { getLeaderboard } from '@/lib/teamStats';
-import { parseRange, parseView, resolveDateRange } from '@/lib/dashboardFilters';
+import { parseView, resolveRange, toYmd } from '@/lib/dashboardFilters';
 import DashboardFilters from '@/components/dashboard/DashboardFilters';
 
-type SearchParams = Promise<{ range?: string; view?: string }>;
+type SearchParams = Promise<{ range?: string; view?: string; from?: string; to?: string }>;
 
 export default async function DashboardPage({ searchParams }: { searchParams: SearchParams }) {
   const user = (await getCurrentUser())!;
@@ -20,9 +20,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
   const isAdmin = user.role === 'ADMIN';
   const isLeader = user.role === 'LEADER';
 
-  const range = parseRange(params.range, 'month');
+  const { range, dateRange, from, to } = resolveRange(params);
   const view = isAdmin ? 'team' : parseView(params.view, 'team');
-  const dateRange = resolveDateRange(range);
 
   const orderFilter = (await getOrderFilter(user, view)) ?? {};
 
@@ -90,7 +89,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
 
   // Chart buckets
   const dailyMap = new Map<string, { revenue: number; orders: number }>();
-  const useMonthBuckets = range === 'year';
+  const spanDays = dateRange.start && dateRange.end
+    ? (dateRange.end.getTime() - dateRange.start.getTime()) / 86400000
+    : 0;
+  // ช่วง custom ที่ยาวเกิน ~3 เดือน → สรุปเป็นรายเดือนเพื่อไม่ให้กราฟมีแท่งเยอะเกินไป
+  const isCustomLong = range === 'custom' && spanDays > 92;
+  const useMonthBuckets = range === 'year' || isCustomLong;
+  const monthKey = (d: Date) => d.toLocaleDateString('th-TH', isCustomLong
+    ? { month: 'short', year: '2-digit' }
+    : { month: 'short' });
+
   if (dateRange.start && dateRange.end && !useMonthBuckets) {
     const cur = new Date(dateRange.start);
     while (cur < dateRange.end && cur <= new Date()) {
@@ -98,11 +106,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
       dailyMap.set(key, { revenue: 0, orders: 0 });
       cur.setDate(cur.getDate() + 1);
     }
+  } else if (isCustomLong && dateRange.start && dateRange.end) {
+    const cur = new Date(dateRange.start.getFullYear(), dateRange.start.getMonth(), 1);
+    while (cur < dateRange.end && cur <= new Date()) {
+      dailyMap.set(monthKey(cur), { revenue: 0, orders: 0 });
+      cur.setMonth(cur.getMonth() + 1);
+    }
   } else if (useMonthBuckets) {
     for (let m = 0; m < 12; m++) {
       const d = new Date(new Date().getFullYear(), m, 1);
-      const key = d.toLocaleDateString('th-TH', { month: 'short' });
-      dailyMap.set(key, { revenue: 0, orders: 0 });
+      dailyMap.set(monthKey(d), { revenue: 0, orders: 0 });
     }
   } else {
     for (let i = 29; i >= 0; i--) {
@@ -113,7 +126,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
   }
   for (const o of chartOrders) {
     const key = useMonthBuckets
-      ? o.createdAt.toLocaleDateString('th-TH', { month: 'short' })
+      ? monthKey(o.createdAt)
       : o.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
     const entry = dailyMap.get(key);
     if (entry) {
@@ -164,6 +177,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
         view={view}
         showViewToggle={isLeader}
         rangeLabel={dateRange.label}
+        initialFrom={from ?? (dateRange.start ? toYmd(dateRange.start) : undefined)}
+        initialTo={to ?? (dateRange.end ? toYmd(new Date(dateRange.end.getTime() - 86400000)) : undefined)}
       />
 
       {/* ════ KPI Pastel Row (Home Desk style) ════ */}
