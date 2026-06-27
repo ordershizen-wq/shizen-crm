@@ -53,6 +53,9 @@ const NAV: { label: string; items: NavItem[] }[] = [
     { href: '/admin/users',       icon: 'ri-team-line',    text: 'จัดการผู้ใช้',    adminOnly: true },
     { href: '/admin/sync-failed', icon: 'ri-refresh-line', text: 'ออเดอร์รอ sync', adminOnly: true },
   ]},
+  { label: 'ช่วยเหลือ', items: [
+    { href: '/help', icon: 'ri-book-open-line', text: 'คู่มือการใช้งาน' },
+  ]},
 ];
 
 const ROLE_LABEL: Record<string, string> = {
