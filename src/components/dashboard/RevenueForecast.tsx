@@ -15,8 +15,6 @@ export default function RevenueForecastCard({ data }: { data: RevenueForecast })
   return (
     <div className="card" style={{
       padding: '1.15rem 1.25rem',
-      background: 'var(--bg-card)',
-      border: '1px solid var(--border)',
       borderLeft: `3px solid ${accent}`,
       marginBottom: '1.5rem',
     }}>
@@ -31,7 +29,7 @@ export default function RevenueForecastCard({ data }: { data: RevenueForecast })
         </div>
         <div style={{
           fontSize: 11, fontWeight: 600, color: growthUp ? 'var(--success)' : 'var(--danger)',
-          background: '#fff', border: `1px solid ${growthUp ? 'var(--success)' : 'var(--danger)'}40`,
+          background: 'rgba(255,255,255,0.55)', border: `1px solid ${growthUp ? 'var(--success)' : 'var(--danger)'}40`,
           borderRadius: 'var(--radius-sm)', padding: '3px 10px',
         }}>
           {growthUp ? '↑' : '↓'} {Math.abs(data.growthPercent).toFixed(1)}% เทียบเดือนก่อน

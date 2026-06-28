@@ -102,15 +102,6 @@ export default function TasksFilterClient({ scope, status, range, view, groupBy,
           <Pill active={status === 'all'}     onClick={() => setParam('status', 'all')}>ทั้งหมด</Pill>
         </FilterGroup>
 
-        {status === 'pending' && view === 'list' && (
-          <FilterGroup label="ช่วงเวลา">
-            <Pill active={range === 'all'}     onClick={() => setParam('range', 'all')}>ทั้งหมด</Pill>
-            <Pill active={range === 'today'}   onClick={() => setParam('range', 'today')}>วันนี้</Pill>
-            <Pill active={range === 'overdue'} onClick={() => setParam('range', 'overdue')}>เลยกำหนด</Pill>
-            <Pill active={range === 'week'}    onClick={() => setParam('range', 'week')}>7 วัน</Pill>
-          </FilterGroup>
-        )}
-
         {view === 'kanban' && (
           <FilterGroup label="จัดกลุ่มตาม">
             <Pill active={groupBy === 'time'} onClick={() => setParam('groupBy', 'time')}>

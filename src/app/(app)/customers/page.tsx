@@ -272,27 +272,22 @@ function CustomerCard({ customer: c }: { customer: CustomerRow }) {
   const daysSince = c.lastOrderAt
     ? Math.floor((Date.now() - c.lastOrderAt.getTime()) / (1000 * 60 * 60 * 24))
     : null;
+  const aov = c.orderCount > 0 ? c.totalSpent / c.orderCount : 0;
+  const atRisk = c.stage === 'AT_RISK' || c.stage === 'LAPSED' || c.stage === 'LOST';
 
   const gradeStyle = c.grade ? GRADE_BADGE[c.grade] : null;
 
   return (
     <Link href={`/customers/${c.phone}`} className={`customer-card ${c.stage === 'VIP' ? 'vip' : ''}`}>
-      <div className="flex-between mb-3">
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 className="fw-700" style={{ fontSize: 15, color: 'var(--text-dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            <i className="ri-user-line text-muted"></i> {c.name || 'ไม่ระบุชื่อ'}
-          </h3>
-          <p className="text-sm text-muted">
-            <i className="ri-phone-line"></i> {c.phone}
-          </p>
+      {/* head: name/phone + chips */}
+      <div className="cust-card-head">
+        <div className="cust-id">
+          <div className="cust-name">{c.name || 'ไม่ระบุชื่อ'}</div>
+          <div className="cust-phone">{c.phone}</div>
         </div>
-        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexShrink: 0 }}>
+        <div className="cust-chips">
           {gradeStyle && (
-            <span style={{
-              background: gradeStyle.bg, color: gradeStyle.color,
-              borderRadius: 20, padding: '0.25rem 0.6rem',
-              fontSize: 11, fontWeight: 800,
-            }}>
+            <span className="cust-grade" style={{ background: gradeStyle.bg, color: gradeStyle.color }}>
               {c.grade}
             </span>
           )}
@@ -302,30 +297,29 @@ function CustomerCard({ customer: c }: { customer: CustomerRow }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
-        <div>
-          <div className="text-sm text-muted">ยอดสะสม</div>
-          <div className="fw-700 text-blue">฿{c.totalSpent.toLocaleString('th-TH', { maximumFractionDigits: 0 })}</div>
+      {/* 3-stat strip: ยอดรวม / ออเดอร์ / AOV */}
+      <div className="cust-strip">
+        <div className="cust-stat">
+          <div className="cust-stat-val">฿{c.totalSpent.toLocaleString('th-TH', { maximumFractionDigits: 0 })}</div>
+          <div className="cust-stat-lbl">ยอดรวม</div>
         </div>
-        <div>
-          <div className="text-sm text-muted">จำนวนออเดอร์</div>
-          <div className="fw-700">{c.orderCount} ครั้ง</div>
+        <div className="cust-stat">
+          <div className="cust-stat-val">{c.orderCount}</div>
+          <div className="cust-stat-lbl">ออเดอร์</div>
+        </div>
+        <div className="cust-stat">
+          <div className="cust-stat-val">฿{aov.toLocaleString('th-TH', { maximumFractionDigits: 0 })}</div>
+          <div className="cust-stat-lbl">/บิล</div>
         </div>
       </div>
 
-      <div className="border-top pt-3" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-        <div className="flex-between" style={{ marginBottom: '0.25rem' }}>
-          <span><i className="ri-calendar-line"></i> สั่งล่าสุด</span>
-          <span className="fw-600" style={{ color: 'var(--text-dark)' }}>
-            {daysSince !== null ? `${daysSince} วันที่แล้ว` : '-'}
-          </span>
-        </div>
-        <div className="flex-between">
-          <span><i className="ri-user-star-line"></i> เซลส์</span>
-          <span className="fw-500" style={{ color: 'var(--text-dark)' }}>
-            {c.lastSalesRep || '-'}
-          </span>
-        </div>
+      {/* footer: recency + sales rep */}
+      <div className="cust-foot">
+        <span className={atRisk ? 'cust-recency warn' : undefined}>
+          ล่าสุด {daysSince !== null ? `${daysSince} วัน` : '-'}
+        </span>
+        <span className="sep">·</span>
+        <span>เซลส์ <b>{c.lastSalesRep || '-'}</b></span>
       </div>
     </Link>
   );

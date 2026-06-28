@@ -55,8 +55,8 @@ export default function TrendChart({ points }: { points: TrendPoint[] }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.85rem', fontSize: 11 }}>
-          <Legend color="var(--primary)" label={`เดือนนี้ ฿${thisSum.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`} solid />
-          <Legend color="var(--text-light)" label={`เดือนก่อน ฿${lastSum.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`} />
+          <Legend color="#6366F1" label={`เดือนนี้ ฿${thisSum.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`} solid />
+          <Legend color="rgba(99,102,241,0.5)" label={`เดือนก่อน ฿${lastSum.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`} />
         </div>
       </div>
 
@@ -64,16 +64,16 @@ export default function TrendChart({ points }: { points: TrendPoint[] }) {
         {/* grid lines */}
         {[0.25, 0.5, 0.75, 1].map(p => {
           const y = 12 + 126 * (1 - p);
-          return <line key={p} x1={12} x2={width - 12} y1={y} y2={y} stroke="#EFECE4" strokeWidth={0.5} />;
+          return <line key={p} x1={12} x2={width - 12} y1={y} y2={y} stroke="rgba(99,102,241,0.08)" strokeWidth={0.8} />;
         })}
         {/* last month dashed */}
-        <path d={paths.lastMonth} fill="none" stroke="#A4ADA1" strokeWidth={1.5} strokeDasharray="3,3" />
+        <path d={paths.lastMonth} fill="none" stroke="rgba(99,102,241,0.35)" strokeWidth={1.5} strokeDasharray="4,3" />
         {/* this month solid */}
-        <path d={paths.thisMonth} fill="none" stroke="#2F5D52" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+        <path d={paths.thisMonth} fill="none" stroke="#6366F1" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
         {/* x-axis labels */}
         {[1, 7, 14, 21, points.length].filter(d => d <= points.length).map(day => {
           const x = 12 + ((day - 1) / Math.max(1, points.length - 1)) * (width - 24);
-          return <text key={day} x={x} y={154} textAnchor="middle" fontSize={10} fill="#6B7568">{day}</text>;
+          return <text key={day} x={x} y={154} textAnchor="middle" fontSize={10} fill="#8E8AA8">{day}</text>;
         })}
       </svg>
     </div>

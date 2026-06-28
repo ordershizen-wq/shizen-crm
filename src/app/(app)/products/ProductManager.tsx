@@ -32,9 +32,9 @@ const GRADE_OPTIONS = [
 ];
 
 const GRADE_COLOR: Record<string, { color: string; bg: string }> = {
-  ALL:  { color: '#1F6F5F', bg: '#E6F4EE' },
-  'A':  { color: '#2FA084', bg: '#E6F4EE' },
-  'A,B':{ color: '#2FA084', bg: '#E6F4EE' },
+  ALL:  { color: '#6366F1', bg: 'rgba(99,102,241,0.1)' },
+  'A':  { color: '#059669', bg: '#d1fae5' },
+  'A,B':{ color: '#059669', bg: '#d1fae5' },
   'B':  { color: '#f59e0b', bg: '#fef3c7' },
   'B,C':{ color: '#f59e0b', bg: '#fef3c7' },
   'C':  { color: '#ef4444', bg: '#fee2e2' },
@@ -147,24 +147,12 @@ export default function ProductManager({
 
       {/* ── Modal Form ── */}
       {showForm && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 1000,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-          padding: '0',
-        }}
+        <div
+          className="product-modal-overlay"
           onClick={e => { if (e.target === e.currentTarget) setShowForm(false); }}
         >
-          <div style={{
-            background: '#fff',
-            borderRadius: '20px 20px 0 0',
-            width: '100%', maxWidth: 600,
-            maxHeight: '92vh', overflowY: 'auto',
-            padding: '1.5rem',
-            boxShadow: '0 -8px 40px rgba(0,0,0,0.2)',
-          }}>
-            {/* Handle bar */}
-            <div style={{ width: 40, height: 4, borderRadius: 2, background: '#e2e8f0', margin: '0 auto 1.5rem' }} />
+          <div className="product-modal">
+            <div className="product-modal-handle" />
 
             <div className="flex-between mb-4">
               <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-dark)' }}>
@@ -326,60 +314,46 @@ function ProductCard({ p, isAdmin, onEdit, onToggle }: {
   const gradeLabel = GRADE_OPTIONS.find(g => g.value === p.gradeMatch)?.label ?? p.gradeMatch;
 
   return (
-    <div style={{
-      background: p.isActive ? '#fff' : '#f8fafc',
-      border: `1.5px solid ${p.isActive ? 'var(--border-light)' : '#e2e8f0'}`,
-      borderRadius: 14,
-      padding: '1.1rem',
-      opacity: p.isActive ? 1 : 0.65,
-      transition: 'all 200ms',
-      display: 'flex', flexDirection: 'column', gap: '0.75rem',
-    }}>
+    <div className={`product-card${p.isActive ? '' : ' is-inactive'}`}>
       {/* Header */}
-      <div className="flex-between" style={{ gap: '0.5rem' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 15.5, color: 'var(--text-dark)' }}>{p.name}</div>
-          {p.shortDesc && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{p.shortDesc}</div>}
+      <div className="product-card-head">
+        <div className="product-card-info">
+          <div className="product-card-name">{p.name}</div>
+          {p.shortDesc && <div className="product-card-desc">{p.shortDesc}</div>}
         </div>
-        <span style={{
-          background: gc.bg, color: gc.color,
-          fontSize: 11, fontWeight: 700, padding: '0.2rem 0.6rem',
-          borderRadius: '9999px', whiteSpace: 'nowrap', flexShrink: 0,
-        }}>
+        <span
+          className="product-card-grade"
+          style={{ background: gc.bg, color: gc.color }}
+        >
           {gradeLabel}
         </span>
       </div>
 
       {/* Problem tags */}
       {problems.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+        <div className="product-card-tags">
           {problems.slice(0, 6).map(tag => (
-            <span key={tag} style={{
-              background: 'var(--primary-light)', color: 'var(--primary)',
-              fontSize: 11.5, padding: '0.15rem 0.55rem', borderRadius: '9999px', fontWeight: 500,
-            }}>
-              {tag}
-            </span>
+            <span key={tag} className="product-card-tag">{tag}</span>
           ))}
           {problems.length > 6 && (
-            <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>+{problems.length - 6}</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>+{problems.length - 6}</span>
           )}
         </div>
       )}
 
       {/* Contraindications */}
       {contras.length > 0 && (
-        <div style={{ fontSize: 11.5, color: '#ef4444', display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+        <div className="product-card-contra">
           <i className="ri-alert-line"></i>
           {contras.map(c => (
-            <span key={c} style={{ background: '#fee2e2', padding: '0.1rem 0.45rem', borderRadius: '9999px' }}>{c}</span>
+            <span key={c} className="product-card-contra-tag">{c}</span>
           ))}
         </div>
       )}
 
       {/* Admin actions */}
       {isAdmin && (
-        <div style={{ display: 'flex', gap: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-light)', marginTop: 'auto' }}>
+        <div className="product-card-foot">
           <button
             onClick={() => onEdit(p)}
             className="btn btn-secondary"
@@ -391,7 +365,7 @@ function ProductCard({ p, isAdmin, onEdit, onToggle }: {
             onClick={() => onToggle(p.id)}
             style={{
               height: 36, padding: '0 0.75rem', borderRadius: 8, border: 'none',
-              background: p.isActive ? '#fee2e2' : '#d1fae5',
+              background: p.isActive ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)',
               color: p.isActive ? '#ef4444' : '#10b981',
               cursor: 'pointer', fontSize: 12.5, fontWeight: 600,
               display: 'flex', alignItems: 'center', gap: 4,

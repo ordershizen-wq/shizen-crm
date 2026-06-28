@@ -1,13 +1,12 @@
 import type { ChannelSlice } from '@/lib/analytics';
 
-// Refined palette — desaturated, premium
 const CHANNEL_COLORS: Record<string, string> = {
-  LINE: '#4A7C5E',       // sage (was bright green)
-  FB: '#5B7E92',         // muted slate-blue
-  FACEBOOK: '#5B7E92',
-  TIKTOK: '#1F2A24',     // deep ink
-  TEL: '#715B7E',        // muted purple
-  OTHER: '#A4ADA1',      // muted gray-sage
+  LINE: '#22C55E',
+  FB: '#3B82F6',
+  FACEBOOK: '#3B82F6',
+  TIKTOK: '#1E1B30',
+  TEL: '#8B5CF6',
+  OTHER: '#94A3B8',
 };
 
 function colorFor(ch: string): string {
@@ -50,11 +49,11 @@ export default function ChannelMixWidget({ slices }: { slices: ChannelSlice[] })
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
         <svg viewBox="0 0 150 150" style={{ width: 130, height: 130, flexShrink: 0 }}>
           {arcs.map(a => (
-            <path key={a.channel} d={a.d} fill={a.color} stroke="#fff" strokeWidth={1} />
+            <path key={a.channel} d={a.d} fill={a.color} stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} />
           ))}
           {/* center label */}
-          <text x={cx} y={cy - 4} textAnchor="middle" fontSize={10} fill="#64748b">รวม</text>
-          <text x={cx} y={cy + 12} textAnchor="middle" fontSize={12} fontWeight={700} fill="#0f172a">
+          <text x={cx} y={cy - 4} textAnchor="middle" fontSize={10} fill="#8E8AA8">รวม</text>
+          <text x={cx} y={cy + 12} textAnchor="middle" fontSize={12} fontWeight={700} fill="#1E1B30">
             ฿{(totalRev / 1000).toFixed(0)}K
           </text>
         </svg>

@@ -16,8 +16,6 @@ export default function VelocityCard({ stats, name }: { stats: VelocityStats; na
       className="card"
       style={{
         padding: '1.15rem 1.25rem',
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
         borderLeft: `3px solid ${paceColor}`,
         marginBottom: '1.5rem',
       }}
@@ -33,7 +31,7 @@ export default function VelocityCard({ stats, name }: { stats: VelocityStats; na
         </div>
         <div style={{
           fontSize: 11, fontWeight: 600, color: paceColor,
-          background: '#fff', border: `1px solid ${paceColor}40`,
+          background: 'rgba(255,255,255,0.55)', border: `1px solid ${paceColor}40`,
           borderRadius: 'var(--radius-sm)', padding: '3px 10px',
         }}>
           {pacePercent.toFixed(0)}%

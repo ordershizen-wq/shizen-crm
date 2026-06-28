@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getTaskFilter, getTaskSuggestions } from '@/lib/tasks';
@@ -8,6 +9,7 @@ import TasksFilterClient from './TasksFilterClient';
 import TasksList from './TasksList';
 import TasksKanban from './TasksKanban';
 import TaskSuggestionsSection from './TaskSuggestionsSection';
+import TaskFocusHero, { type FocusTask } from './TaskFocusHero';
 import CalendarView from './CalendarView';
 import ReorderList from './ReorderList';
 import KindTabs from './KindTabs';
@@ -161,14 +163,51 @@ export default async function TasksPage({ searchParams }: Props) {
     if (o.phone && o.customerName) nameMap.set(o.phone, o.customerName);
   }
 
-  const [todayCount, overdueCount] = await Promise.all([
+  const [todayCount, overdueCount, weekCount] = await Promise.all([
     prisma.customerTask.count({
       where: { AND: [baseFilter, { status: { in: activeStatuses }, dueDate: { gte: today, lt: tomorrow } }] },
     }),
     prisma.customerTask.count({
       where: { AND: [baseFilter, { status: { in: activeStatuses }, dueDate: { lt: today } }] },
     }),
+    prisma.customerTask.count({
+      where: { AND: [baseFilter, { status: { in: activeStatuses }, dueDate: { gte: today, lt: weekEnd } }] },
+    }),
   ]);
+
+  // pills สรุป = ตัวกรองช่วงเวลา (กดได้เฉพาะ list + ค้างอยู่)
+  const rangeActive = status === 'pending' && view === 'list';
+  const buildRangeHref = (r: 'all' | 'today' | 'overdue' | 'week') => {
+    const p = new URLSearchParams();
+    if (scope !== 'all') p.set('scope', scope);
+    if (status !== 'pending') p.set('status', status);
+    if (view !== 'list') p.set('view', view);
+    if (r !== 'all') p.set('range', r);
+    return `/tasks${p.toString() ? `?${p.toString()}` : ''}`;
+  };
+
+  // จุดโฟกัส "ทำต่อไป" = งานค้างที่ด่วนสุด (due เก่าสุด)
+  const nextTaskRaw = await prisma.customerTask.findFirst({
+    where: { AND: [baseFilter, { status: { in: activeStatuses } }] },
+    orderBy: [{ dueDate: 'asc' }],
+    select: { id: true, title: true, dueDate: true, customerPhone: true },
+  });
+  let focusTask: FocusTask | null = null;
+  if (nextTaskRaw) {
+    const dueDay = new Date(nextTaskRaw.dueDate); dueDay.setHours(0, 0, 0, 0);
+    const overdue = dueDay.getTime() < today.getTime();
+    const daysOverdue = overdue ? Math.floor((today.getTime() - dueDay.getTime()) / 86400000) : 0;
+    const isToday = dueDay.getTime() === today.getTime();
+    focusTask = {
+      id: nextTaskRaw.id,
+      title: nextTaskRaw.title,
+      customerName: nameMap.get(nextTaskRaw.customerPhone) ?? nextTaskRaw.customerPhone,
+      customerPhone: nextTaskRaw.customerPhone,
+      overdue,
+      daysOverdue,
+      dueText: isToday ? 'กำหนดวันนี้' : `กำหนด ${nextTaskRaw.dueDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}`,
+    };
+  }
 
   const showSuggestions =
     user.role !== 'ADMIN' &&
@@ -181,10 +220,17 @@ export default async function TasksPage({ searchParams }: Props) {
       {pageHeader}
       {kindTabs}
 
+      {focusTask && <TaskFocusHero task={focusTask} remaining={Math.max(0, careCount - 1)} />}
+
       <div className="tasks-summary-pills">
-        <SummaryPill label="วันนี้" count={todayCount} color="var(--orange)" bg="var(--orange-light)" />
-        <SummaryPill label="เลยกำหนด" count={overdueCount} color="var(--danger)" bg="var(--danger-light)" />
-        <SummaryPill label="ค้างทั้งหมด" count={careCount} color="var(--primary)" bg="var(--blue-light)" />
+        <SummaryPill label="ค้างทั้งหมด" count={careCount} color="var(--primary)" bg="var(--blue-light)"
+          href={rangeActive ? buildRangeHref('all') : undefined} active={rangeActive && range === 'all'} />
+        <SummaryPill label="วันนี้" count={todayCount} color="var(--orange)" bg="var(--orange-light)"
+          href={rangeActive ? buildRangeHref('today') : undefined} active={rangeActive && range === 'today'} />
+        <SummaryPill label="เลยกำหนด" count={overdueCount} color="var(--danger)" bg="var(--danger-light)"
+          href={rangeActive ? buildRangeHref('overdue') : undefined} active={rangeActive && range === 'overdue'} />
+        <SummaryPill label="ใน 7 วัน" count={weekCount} color="var(--success)" bg="var(--success-light)"
+          href={rangeActive ? buildRangeHref('week') : undefined} active={rangeActive && range === 'week'} />
       </div>
 
       <TasksFilterClient scope={scope} status={status} range={range} view={view} groupBy={groupBy} canSeeAssignee={canSeeAssignee} />
@@ -239,19 +285,29 @@ export default async function TasksPage({ searchParams }: Props) {
   );
 }
 
-function SummaryPill({ label, count, color, bg }: { label: string; count: number; color: string; bg: string }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: '0.5rem',
-      background: bg, color, borderRadius: 20, padding: '0.4rem 1rem',
-      fontSize: 13, fontWeight: 600,
-    }}>
+function SummaryPill({ label, count, color, bg, href, active }: {
+  label: string; count: number; color: string; bg: string;
+  href?: string; active?: boolean;
+}) {
+  const inner = (
+    <>
       <span>{label}</span>
       <span style={{
         background: color, color: '#fff', borderRadius: 20,
         minWidth: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 11, padding: '0 6px',
       }}>{count}</span>
-    </div>
+    </>
   );
+  const style: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: '0.5rem',
+    background: bg, color, borderRadius: 20, padding: '0.4rem 1rem',
+    fontSize: 13, fontWeight: 600, textDecoration: 'none',
+    border: active ? `1.5px solid ${color}` : '1.5px solid transparent',
+    boxShadow: active ? 'var(--shadow-sm)' : 'none',
+  };
+  if (href) {
+    return <Link href={href} className="summary-pill-link" style={style}>{inner}</Link>;
+  }
+  return <div style={style}>{inner}</div>;
 }

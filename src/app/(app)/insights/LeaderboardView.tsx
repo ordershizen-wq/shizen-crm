@@ -44,7 +44,7 @@ export default function LeaderboardView({ data, monthValue, currentUserId, scope
                 href={`${pathPrefix}${sep}month=${m.value}`}
                 className="btn"
                 style={{
-                  background: active ? 'var(--primary)' : 'var(--bg-app)',
+                  background: active ? 'var(--primary)' : 'rgba(255,255,255,0.45)',
                   color: active ? '#fff' : 'var(--text-muted)',
                   padding: '0.4rem 0.85rem',
                   fontSize: 12,
@@ -118,7 +118,7 @@ export default function LeaderboardView({ data, monthValue, currentUserId, scope
                       const rank = i + 4;
                       const isMe = r.userId === currentUserId;
                       return (
-                        <tr key={r.userId} style={isMe ? { background: 'rgba(47,160,132,0.06)' } : undefined}>
+                        <tr key={r.userId} style={isMe ? { background: 'rgba(99,102,241,0.08)' } : undefined}>
                           <td data-label="อันดับ" className="fw-700" style={{ color: 'var(--text-muted)' }}>
                             #{rank}
                           </td>

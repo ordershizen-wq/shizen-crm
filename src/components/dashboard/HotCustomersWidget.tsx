@@ -9,15 +9,13 @@ export default function HotCustomersWidget({ customers }: { customers: HotCustom
   return (
     <div className="card" style={{
       padding: 0,
-      border: '1px solid var(--border)',
       borderLeft: '3px solid var(--warning)',
       marginBottom: '1.5rem',
       overflow: 'hidden',
     }}>
       <div style={{
         padding: '0.95rem 1.25rem',
-        background: 'var(--bg-card)',
-        borderBottom: '1px solid var(--border-light)',
+        borderBottom: '1px solid rgba(99,102,241,0.1)',
       }}>
         <div className="fw-600" style={{ fontSize: 15, fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '-0.01em', color: 'var(--text-dark)' }}>
           ลูกค้าที่กำลังถึงรอบซื้อซ้ำ
@@ -40,7 +38,7 @@ export default function HotCustomersWidget({ customers }: { customers: HotCustom
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.75rem',
                 padding: '0.7rem 1.25rem',
-                borderBottom: '1px solid var(--border-light)',
+                borderBottom: '1px solid rgba(99,102,241,0.08)',
                 textDecoration: 'none', color: 'inherit',
                 transition: 'background 120ms',
               }}

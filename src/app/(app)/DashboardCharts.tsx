@@ -28,6 +28,33 @@ Chart.register(
   Filler,
 );
 
+// ── ฟอนต์ + สีฐานของกราฟทั้งหมด (ให้เข้าชุดกับเว็บ) ──
+Chart.defaults.font.family = "'Anuphan', 'Plus Jakarta Sans', sans-serif";
+Chart.defaults.color = '#8E8AA8';
+
+// palette ผูกกับแบรนด์ indigo จริง
+const C = {
+  revenue: '#6366F1',
+  orders: '#10B981',
+  grid: 'rgba(30,27,48,0.06)',
+  tick: '#8E8AA8',
+  cardBg: '#FFFFFF',
+};
+
+// tooltip เข้ม มุมมน ใช้ซ้ำทั้ง 2 กราฟ
+const tooltipStyle = {
+  backgroundColor: '#1E1B30',
+  titleColor: '#F7F7FB',
+  bodyColor: '#F7F7FB',
+  cornerRadius: 10,
+  padding: 10,
+  boxPadding: 4,
+  usePointStyle: true,
+  borderWidth: 0,
+  titleFont: { size: 12, weight: 600 as const },
+  bodyFont: { size: 12 },
+};
+
 export type DailyRevenue = { label: string; revenue: number; orders: number };
 export type StageCount = { stage: string; label: string; count: number; color: string };
 
@@ -50,10 +77,21 @@ function RevenueChart({ data }: { data: DailyRevenue[] }) {
   const chartRef = useRef<Chart | null>(null);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     chartRef.current?.destroy();
 
-    chartRef.current = new Chart(canvasRef.current, {
+    // gradient fill ใต้เส้นรายได้
+    const ctx = canvas.getContext('2d');
+    let revenueFill: CanvasGradient | string = C.revenue + '22';
+    if (ctx) {
+      const g = ctx.createLinearGradient(0, 0, 0, 240);
+      g.addColorStop(0, 'rgba(99,102,241,0.22)');
+      g.addColorStop(1, 'rgba(99,102,241,0)');
+      revenueFill = g;
+    }
+
+    chartRef.current = new Chart(canvas, {
       type: 'line',
       data: {
         labels: data.map(d => d.label),
@@ -61,11 +99,14 @@ function RevenueChart({ data }: { data: DailyRevenue[] }) {
           {
             label: 'รายได้ (฿)',
             data: data.map(d => d.revenue),
-            borderColor: '#4e73df',
-            backgroundColor: 'rgba(78,115,223,0.08)',
+            borderColor: C.revenue,
+            backgroundColor: revenueFill,
             borderWidth: 2.5,
-            pointRadius: 3,
-            pointBackgroundColor: '#4e73df',
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointBackgroundColor: C.revenue,
+            pointHoverBorderColor: '#fff',
+            pointHoverBorderWidth: 2,
             fill: true,
             tension: 0.4,
             yAxisID: 'y',
@@ -73,11 +114,12 @@ function RevenueChart({ data }: { data: DailyRevenue[] }) {
           {
             label: 'ออเดอร์',
             data: data.map(d => d.orders),
-            borderColor: '#1cc88a',
+            borderColor: C.orders,
             backgroundColor: 'transparent',
             borderWidth: 2,
-            pointRadius: 2,
-            pointBackgroundColor: '#1cc88a',
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            pointBackgroundColor: C.orders,
             fill: false,
             tension: 0.4,
             yAxisID: 'y2',
@@ -88,12 +130,15 @@ function RevenueChart({ data }: { data: DailyRevenue[] }) {
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
+        animation: { duration: 700, easing: 'easeOutQuart' },
         plugins: {
           legend: {
             position: 'top',
-            labels: { font: { size: 12, family: "'Prompt', sans-serif" }, boxWidth: 16, padding: 12 },
+            align: 'end',
+            labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 8, padding: 14, font: { size: 12 } },
           },
           tooltip: {
+            ...tooltipStyle,
             callbacks: {
               label(ctx) {
                 if (ctx.datasetIndex === 0) {
@@ -106,21 +151,26 @@ function RevenueChart({ data }: { data: DailyRevenue[] }) {
         },
         scales: {
           x: {
-            grid: { color: 'rgba(0,0,0,0.04)' },
-            ticks: { font: { size: 11, family: "'Prompt', sans-serif" }, maxRotation: 45 },
+            grid: { display: false },
+            border: { display: false },
+            ticks: { font: { size: 11 }, color: C.tick, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 },
           },
           y: {
             position: 'left',
-            grid: { color: 'rgba(0,0,0,0.06)' },
+            grid: { color: C.grid },
+            border: { display: false },
             ticks: {
-              font: { size: 11, family: "'Prompt', sans-serif" },
+              font: { size: 11 },
+              color: C.tick,
+              maxTicksLimit: 5,
               callback: (v) => `฿${Number(v).toLocaleString('th-TH', { maximumFractionDigits: 0 })}`,
             },
           },
           y2: {
             position: 'right',
             grid: { drawOnChartArea: false },
-            ticks: { font: { size: 11, family: "'Prompt', sans-serif" } },
+            border: { display: false },
+            ticks: { font: { size: 11 }, color: C.tick, maxTicksLimit: 5 },
           },
         },
       },
@@ -141,15 +191,6 @@ function RevenueChart({ data }: { data: DailyRevenue[] }) {
   );
 }
 
-const STAGE_COLORS: Record<string, string> = {
-  VIP: '#f6c90e',
-  NEW: '#4e73df',
-  ACTIVE: '#1cc88a',
-  AT_RISK: '#f8961e',
-  LAPSED: '#6f42c1',
-  LOST: '#e74a3b',
-};
-
 function StageChart({ data }: { data: StageCount[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
@@ -166,22 +207,24 @@ function StageChart({ data }: { data: StageCount[] }) {
         labels: active.map(d => d.label),
         datasets: [{
           data: active.map(d => d.count),
-          backgroundColor: active.map(d => STAGE_COLORS[d.stage] ?? '#ccc'),
+          backgroundColor: active.map(d => d.color ?? '#ccc'),
           borderWidth: 2,
-          borderColor: '#fff',
-          hoverOffset: 6,
+          borderColor: C.cardBg,
+          hoverOffset: 8,
         }],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: '65%',
+        cutout: '66%',
+        animation: { animateRotate: true, animateScale: true, duration: 700, easing: 'easeOutQuart' },
         plugins: {
           legend: {
             position: 'bottom',
-            labels: { font: { size: 11, family: "'Prompt', sans-serif" }, boxWidth: 12, padding: 8 },
+            labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 8, padding: 10, font: { size: 11 } },
           },
           tooltip: {
+            ...tooltipStyle,
             callbacks: {
               label(ctx) {
                 const total = (ctx.dataset.data as number[]).reduce((a, b) => a + b, 0);

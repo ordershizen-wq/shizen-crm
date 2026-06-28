@@ -181,14 +181,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
         initialTo={to ?? (dateRange.end ? toYmd(new Date(dateRange.end.getTime() - 86400000)) : undefined)}
       />
 
-      {/* ════ KPI Pastel Row (Home Desk style) ════ */}
-      <div className="kpi-pastel-row mb-4">
-        <KpiPastel
-          tint="peach"
+      {/* ════ KPI Bento (ฮีโร่ยอดขาย + 3 ใบเล็ก) — glass ════ */}
+      <div className="kpi-bento kpi-bento-glass mb-4">
+        <KpiHero
           label="ยอดขาย"
           value={`฿${totalRevenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`}
           delta={prevAgg ? revGrowth : null}
           subLabel={dateRange.label}
+          series={dailyRevenue.map((d) => d.revenue)}
         />
         <KpiPastel
           tint="lavender"
@@ -314,6 +314,69 @@ function KpiPastel({
         {subLabel && <span className="kpi-pastel-sub">{subLabel}</span>}
       </div>
     </div>
+  );
+}
+
+/* ────────────────────────────────────────────
+   KPI Hero — ใบฮีโร่ยอดขาย (bento) + sparkline
+   ──────────────────────────────────────────── */
+function KpiHero({
+  label, value, delta, subLabel, series,
+}: {
+  label: string;
+  value: string;
+  delta?: number | null;
+  subLabel?: string;
+  series: number[];
+}) {
+  const hasDelta = delta != null && Number.isFinite(delta);
+  const up = hasDelta && (delta as number) > 0;
+  const down = hasDelta && (delta as number) < 0;
+  return (
+    <div className="kpi-hero">
+      <div className="kpi-hero-label">
+        {label}
+        <span className="en">Revenue</span>
+      </div>
+      <div className="kpi-hero-value">{value}</div>
+      <div className="kpi-hero-foot">
+        {hasDelta ? (
+          <span className={`kpi-hero-delta ${up ? 'is-up' : down ? 'is-down' : 'is-neutral'}`}>
+            {up ? '↑' : down ? '↓' : '·'} {Math.abs(delta as number).toFixed(1)}%
+          </span>
+        ) : (
+          <span className="kpi-hero-delta is-neutral">—</span>
+        )}
+        {subLabel && <span className="kpi-hero-sub">{subLabel}</span>}
+      </div>
+      <Sparkline series={series} />
+    </div>
+  );
+}
+
+/* SVG sparkline จาก array ตัวเลข (ภาพประกอบบนใบฮีโร่) */
+function Sparkline({ series }: { series: number[] }) {
+  if (!series || series.length < 2) return null;
+  const w = 280;
+  const h = 48;
+  const max = Math.max(...series);
+  const min = Math.min(...series);
+  const range = max - min || 1;
+  const step = w / (series.length - 1);
+  const pts = series.map((v, i) => [i * step, h - ((v - min) / range) * h] as const);
+  const line = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const area = `${line} L${w},${h} L0,${h} Z`;
+  return (
+    <svg className="kpi-spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="kpiSparkFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--chart-revenue)" stopOpacity="0.20" />
+          <stop offset="100%" stopColor="var(--chart-revenue)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#kpiSparkFill)" />
+      <path className="kpi-spark-line" d={line} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 

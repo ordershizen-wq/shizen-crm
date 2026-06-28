@@ -122,7 +122,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
               href={href}
               className="btn"
               style={{
-                background: active ? '#147a5e' : 'var(--bg-app)',
+                background: active ? 'var(--primary)' : 'var(--bg-app)',
                 color: active ? '#fff' : 'var(--text-muted)',
                 padding: '0.4rem 0.85rem',
                 fontSize: 12,
@@ -190,8 +190,8 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
         {statusFilter && <input type="hidden" name="status" value={statusFilter} />}
       </form>
 
-      {/* Orders table */}
-      <div className="card" style={{ padding: 0 }}>
+      {/* Orders table (desktop) */}
+      <div className="card orders-table-card" style={{ padding: 0 }}>
         <div className="r-table-wrap">
           <table className="r-table">
             <thead>
@@ -267,7 +267,74 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
           </div>
         )}
       </div>
+
+      {/* Orders cards (mobile — receipt style) */}
+      <div className="orders-cards">
+        {filtered.length === 0 ? (
+          <div className="card p-4 text-center" style={{ color: 'var(--text-muted)' }}>
+            <i className="ri-inbox-line" style={{ fontSize: 36 }}></i>
+            <p className="mt-1">ไม่พบออเดอร์</p>
+          </div>
+        ) : (
+          filtered.map(o => <OrderCard key={o.id} order={o} />)
+        )}
+        {filtered.length >= 200 && (
+          <p className="text-center text-sm text-muted mt-1">แสดง 200 รายการล่าสุด — ใช้ตัวกรองเพื่อค้นหาเพิ่มเติม</p>
+        )}
+      </div>
     </>
+  );
+}
+
+type OrderRow = {
+  id: string;
+  customerName: string | null;
+  phone: string | null;
+  totalPrice: unknown;
+  status: string;
+  channel: string | null;
+  salesRepName: string | null;
+  createdAt: Date;
+  productsJson: unknown;
+  source: OrderSource;
+};
+
+function OrderCard({ order: o }: { order: OrderRow }) {
+  const products = Array.isArray(o.productsJson)
+    ? (o.productsJson as { name?: string; quantity?: number }[])
+    : [];
+  const style = STATUS_STYLE[o.status] ?? STATUS_STYLE.OTHER;
+  const productText = products.length > 0
+    ? products.map(p => `${p.name ?? '-'} x${p.quantity ?? 1}`).join(' · ')
+    : '-';
+  const meta = [o.salesRepName || null, o.channel || null,
+    o.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })]
+    .filter(Boolean).join(' · ');
+
+  return (
+    <div className="order-card">
+      <div className="order-card-top">
+        <span className="order-card-name">
+          {o.phone ? (
+            <Link href={`/customers/${o.phone}`}>{o.customerName || '(ไม่ระบุ)'}</Link>
+          ) : (
+            <span>{o.customerName || '(ไม่ระบุ)'}</span>
+          )}
+          <SourceBadge source={o.source} compact />
+        </span>
+        <span className="order-card-amt">
+          ฿{Number(o.totalPrice ?? 0).toLocaleString('th-TH', { maximumFractionDigits: 0 })}
+        </span>
+      </div>
+      <div className="order-card-sub">
+        <span className="order-card-phone">{o.phone || '—'}</span>
+        <span className="status-badge" style={{ background: style.bg, color: style.color }}>
+          {style.label}
+        </span>
+      </div>
+      <div className="order-card-products">{productText}</div>
+      <div className="order-card-foot">{meta}</div>
+    </div>
   );
 }
 
