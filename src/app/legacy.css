@@ -643,6 +643,9 @@ textarea:focus-visible {
 /* ── Main Content ── */
 .main-content {
   flex: 1;
+  /* min-width:0 — กัน flex item ขยายตามลูกที่กว้าง (เช่น kanban grid) จนทะลุจอ/มุดใต้ sidebar
+     เมื่อ shrink ได้ overflow-x ของ .kanban-board จะ scroll ภายในเองตามตั้งใจ */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   margin-left: 248px;
@@ -3126,7 +3129,12 @@ a.card:active,
   .sidebar {
     transform: translateX(-100%);
     transition: transform var(--transition-slow);
-    z-index: 200;
+    /* drawer ต้องอยู่เหนือ top-header (z-sticky 200) ไม่งั้น search/header จะทับ sidebar */
+    z-index: 1100;
+    /* ทึบเฉพาะมือถือ — กัน gradient/เนื้อหาด้านหลังทะลุผ่านกระจกจนดูรก */
+    background: #fff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   .sidebar.open { transform: translateX(0); }
@@ -3138,7 +3146,8 @@ a.card:active,
     overflow-x: hidden;
   }
 
-  .sidebar-backdrop { display: block; }
+  /* อยู่เหนือ header (200) แต่ใต้ drawer (1100) → คลุมทั้งจอรวมหัว */
+  .sidebar-backdrop { display: block; z-index: 1090; }
 
   .hamburger-btn { display: flex; }
 
