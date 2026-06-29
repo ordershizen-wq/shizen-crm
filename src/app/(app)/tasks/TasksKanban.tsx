@@ -462,21 +462,20 @@ function KanbanCard({
             {task.assignedToName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
           </span>
         )}
+        {/* K2: inside foot so mobile (hover:none) flows naturally in the row */}
+        {!isClosed && (
+          <div className="t2-kcard-quick" onClick={e => { e.stopPropagation(); onComplete(task.id); }}>
+            <button
+              type="button"
+              title="ทำเสร็จแล้ว"
+              aria-label="ทำเสร็จแล้ว"
+              tabIndex={-1}
+            >
+              <i className="ri-check-line"></i>
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* K2: Quick complete button (hidden on closed tasks) */}
-      {!isClosed && (
-        <div className="t2-kcard-quick" onClick={e => { e.stopPropagation(); onComplete(task.id); }}>
-          <button
-            type="button"
-            title="ทำเสร็จแล้ว"
-            aria-label="ทำเสร็จแล้ว"
-            tabIndex={-1}
-          >
-            <i className="ri-check-line"></i>
-          </button>
-        </div>
-      )}
     </div>
   );
 }

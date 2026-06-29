@@ -4570,14 +4570,26 @@ button, [role="button"], a.btn, .btn {
 
 /* ── K2: Kanban quick-complete button ──────────────────── */
 .t2-bcard { position: relative; }
-.t2-kcard-quick {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  opacity: 0;
-  transition: opacity 150ms;
+
+/* Desktop (real hover): absolute top-right, hidden until hover */
+@media (hover: hover) {
+  .t2-kcard-quick {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    opacity: 0;
+    transition: opacity 150ms;
+  }
+  .t2-bcard:hover .t2-kcard-quick { opacity: 1; }
 }
-.t2-bcard:hover .t2-kcard-quick { opacity: 1; }
+
+/* Mobile (no hover): flows inside kanban-card-foot, pushed to the right */
+@media (hover: none) {
+  .t2-kcard-quick {
+    margin-left: auto;
+  }
+}
+
 .t2-kcard-quick button {
   width: 28px;
   height: 28px;
@@ -4595,9 +4607,6 @@ button, [role="button"], a.btn, .btn {
 .t2-kcard-quick button:hover {
   background: var(--success);
   color: #fff;
-}
-@media (max-width: 768px) {
-  .t2-kcard-quick { opacity: 1; }
 }
 
 /* ── K3: Priority border color override ─────────────────── */
