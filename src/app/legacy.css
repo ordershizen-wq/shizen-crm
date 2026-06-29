@@ -2171,6 +2171,14 @@ a.card:active,
     align-items: center;
     gap: 0.4rem;
   }
+  /* icon-only view switcher บน mobile — ซ่อน text ป้องกัน "ปฏิทิน" ถูก clip
+     แต่ละปุ่ม 40px × 3 = 120px รวม container ~132px < 240px ที่เหลือ */
+  .tasks-filter-mobile-head .view-toggle-btn {
+    padding: 0.4rem;
+    width: 40px;
+    justify-content: center;
+  }
+  .tasks-filter-mobile-head .view-toggle-btn span { display: none; }
   .tasks-filter-body {
     display: none;
     flex-direction: column;
