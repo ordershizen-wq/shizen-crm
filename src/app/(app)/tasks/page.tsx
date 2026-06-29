@@ -72,11 +72,11 @@ export default async function TasksPage({ searchParams }: Props) {
   // ═══════════════════════════════════════════════════════════
   if (kind === 'reorder') {
     return (
-      <>
+      <div className="tasks-page">
         {pageHeader}
         {kindTabs}
         <ReorderList items={reorderQueue} />
-      </>
+      </div>
     );
   }
 
@@ -88,7 +88,7 @@ export default async function TasksPage({ searchParams }: Props) {
   if (view === 'calendar') {
     const events = await getCalendarEvents(user);
     return (
-      <>
+      <div className="tasks-page">
         {pageHeader}
         {kindTabs}
         <TasksFilterClient scope={scope} status={status} range={range} view={view} groupBy={'time'} canSeeAssignee={user.role === 'ADMIN' || user.role === 'LEADER'} />
@@ -98,7 +98,7 @@ export default async function TasksPage({ searchParams }: Props) {
           initialMonth={new Date().getMonth()}
           userName={user.fullName}
         />
-      </>
+      </div>
     );
   }
 
@@ -152,18 +152,48 @@ export default async function TasksPage({ searchParams }: Props) {
   });
 
   const phones = Array.from(new Set(tasks.map(t => t.customerPhone)));
+  // ออเดอร์ล่าสุดต่อเบอร์ (distinct + order by createdAt desc) → ชื่อ + บริบทลูกค้า
   const orders = phones.length ? await prisma.sheetOrder.findMany({
     where: { phone: { in: phones } },
     orderBy: [{ phone: 'asc' }, { createdAt: 'desc' }],
     distinct: ['phone'],
-    select: { phone: true, customerName: true },
+    select: { phone: true, customerName: true, totalPrice: true, productsJson: true },
   }) : [];
-  const nameMap = new Map<string, string>();
-  for (const o of orders) {
-    if (o.phone && o.customerName) nameMap.set(o.phone, o.customerName);
+  // คุยล่าสุดต่อเบอร์ จาก CrmFollowUp
+  const lastContacts = phones.length ? await prisma.crmFollowUp.groupBy({
+    by: ['customerPhone'],
+    where: { customerPhone: { in: phones } },
+    _max: { createdAt: true },
+  }) : [];
+  const contactMap = new Map<string, Date>();
+  for (const c of lastContacts) {
+    if (c._max.createdAt) contactMap.set(c.customerPhone, c._max.createdAt);
   }
 
-  const [todayCount, overdueCount, weekCount] = await Promise.all([
+  const fmtBaht = (n: number) => `฿${n.toLocaleString('th-TH')}`;
+  const daysAgoText = (d: Date | undefined): string => {
+    if (!d) return '—';
+    const diff = Math.floor((today.getTime() - new Date(d).setHours(0, 0, 0, 0)) / 86400000);
+    if (diff <= 0) return 'วันนี้';
+    if (diff === 1) return 'เมื่อวาน';
+    return `${diff} วันก่อน`;
+  };
+
+  type TaskContext = { lastOrderText: string; currentSet: string; lastContactText: string };
+  const nameMap = new Map<string, string>();
+  const contextMap = new Map<string, TaskContext>();
+  for (const o of orders) {
+    if (!o.phone) continue;
+    if (o.customerName) nameMap.set(o.phone, o.customerName);
+    const products = Array.isArray(o.productsJson) ? (o.productsJson as { name?: string }[]) : [];
+    contextMap.set(o.phone, {
+      lastOrderText: o.totalPrice != null ? fmtBaht(Number(o.totalPrice)) : '—',
+      currentSet: products[0]?.name?.trim() || '—',
+      lastContactText: daysAgoText(contactMap.get(o.phone)),
+    });
+  }
+
+  const [todayCount, overdueCount, weekCount, doneTodayCount] = await Promise.all([
     prisma.customerTask.count({
       where: { AND: [baseFilter, { status: { in: activeStatuses }, dueDate: { gte: today, lt: tomorrow } }] },
     }),
@@ -172,6 +202,10 @@ export default async function TasksPage({ searchParams }: Props) {
     }),
     prisma.customerTask.count({
       where: { AND: [baseFilter, { status: { in: activeStatuses }, dueDate: { gte: today, lt: weekEnd } }] },
+    }),
+    // ทำเสร็จแล้ววันนี้ — ใช้กับแถบความคืบหน้า
+    prisma.customerTask.count({
+      where: { AND: [baseFilter, { status: { in: ['DONE' as const, 'SKIPPED' as const] }, completedAt: { gte: today, lt: tomorrow } }] },
     }),
   ]);
 
@@ -215,21 +249,23 @@ export default async function TasksPage({ searchParams }: Props) {
     (view === 'list' || (view === 'kanban' && groupBy === 'time'));
   const suggestions = showSuggestions ? await getTaskSuggestions(user) : [];
 
+  const progressTotal = doneTodayCount + careCount;
+
   return (
-    <>
+    <div className="tasks-page">
       {pageHeader}
       {kindTabs}
 
       {focusTask && <TaskFocusHero task={focusTask} remaining={Math.max(0, careCount - 1)} />}
 
-      <div className="tasks-summary-pills">
-        <SummaryPill label="ค้างทั้งหมด" count={careCount} color="var(--primary)" bg="var(--blue-light)"
+      <div className="t2-chips">
+        <SummaryPill label="ค้างทั้งหมด" count={careCount} dot={null}
           href={rangeActive ? buildRangeHref('all') : undefined} active={rangeActive && range === 'all'} />
-        <SummaryPill label="วันนี้" count={todayCount} color="var(--orange)" bg="var(--orange-light)"
+        <SummaryPill label="วันนี้" count={todayCount} dot="var(--orange)"
           href={rangeActive ? buildRangeHref('today') : undefined} active={rangeActive && range === 'today'} />
-        <SummaryPill label="เลยกำหนด" count={overdueCount} color="var(--danger)" bg="var(--danger-light)"
+        <SummaryPill label="เลยกำหนด" count={overdueCount} dot="var(--danger)"
           href={rangeActive ? buildRangeHref('overdue') : undefined} active={rangeActive && range === 'overdue'} />
-        <SummaryPill label="ใน 7 วัน" count={weekCount} color="var(--success)" bg="var(--success-light)"
+        <SummaryPill label="ใน 7 วัน" count={weekCount} dot="var(--success)"
           href={rangeActive ? buildRangeHref('week') : undefined} active={rangeActive && range === 'week'} />
       </div>
 
@@ -249,6 +285,9 @@ export default async function TasksPage({ searchParams }: Props) {
           assignedToId: t.assignedTo?.id ?? null,
           assignedToName: t.assignedTo?.fullName ?? null,
           resultNote: t.resultNote,
+          lastOrderText: contextMap.get(t.customerPhone)?.lastOrderText ?? '—',
+          currentSet: contextMap.get(t.customerPhone)?.currentSet ?? '—',
+          lastContactText: contextMap.get(t.customerPhone)?.lastContactText ?? '—',
         }));
 
         if (view === 'kanban') {
@@ -277,37 +316,27 @@ export default async function TasksPage({ searchParams }: Props) {
         return (
           <>
             {showSuggestions && <TaskSuggestionsSection suggestions={suggestions} />}
-            <TasksList tasks={taskList} />
+            <TasksList tasks={taskList} doneToday={doneTodayCount} total={progressTotal} />
           </>
         );
       })()}
-    </>
+    </div>
   );
 }
 
-function SummaryPill({ label, count, color, bg, href, active }: {
-  label: string; count: number; color: string; bg: string;
+function SummaryPill({ label, count, dot, href, active }: {
+  label: string; count: number; dot: string | null;
   href?: string; active?: boolean;
 }) {
   const inner = (
     <>
-      <span>{label}</span>
-      <span style={{
-        background: color, color: '#fff', borderRadius: 20,
-        minWidth: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 11, padding: '0 6px',
-      }}>{count}</span>
+      {dot && <span className="dot" style={{ background: dot }}></span>}
+      <span className="n tnum">{count}</span> {label}
     </>
   );
-  const style: React.CSSProperties = {
-    display: 'flex', alignItems: 'center', gap: '0.5rem',
-    background: bg, color, borderRadius: 20, padding: '0.4rem 1rem',
-    fontSize: 13, fontWeight: 600, textDecoration: 'none',
-    border: active ? `1.5px solid ${color}` : '1.5px solid transparent',
-    boxShadow: active ? 'var(--shadow-sm)' : 'none',
-  };
+  const cls = `t2-chip${active ? ' active' : ''}`;
   if (href) {
-    return <Link href={href} className="summary-pill-link" style={style}>{inner}</Link>;
+    return <Link href={href} className={cls}>{inner}</Link>;
   }
-  return <div style={style}>{inner}</div>;
+  return <span className={cls}>{inner}</span>;
 }

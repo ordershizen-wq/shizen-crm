@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tasks Redesign v2 — Linear/Vercel style</title>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<style>
+  :root{
+    --primary:#6366F1; --primary-hover:#4F46E5; --primary-deep:#3730A3;
+    --primary-light:#EEF0FF; --primary-tint:#F5F4FF; --primary-soft:#C7D2FE;
+    --bg-app:#FAFAFC; --bg-card:#FFFFFF; --bg-subtle:#F4F4F8; --bg-hover:#F7F7FB;
+    --text-dark:#18162B; --text-body:#3A3654; --text-muted:#6E6A86; --text-light:#A5A1BC;
+    /* hairline borders — Linear/Vercel signature */
+    --border:#ECECF1; --border-soft:#F2F2F6; --border-strong:#DEDEE6;
+    --success:#10B981; --success-bg:#ECFDF5;
+    --warning:#F59E0B; --warning-bg:#FFFBEB;
+    --danger:#EF4444; --danger-bg:#FEF2F2;
+    --info:#3B82F6; --info-bg:#EFF6FF;
+    --sky:#0EA5E9; --violet:#8B5CF6; --orange:#F97316;
+    --glass:rgba(255,255,255,0.7); --glass-border:rgba(255,255,255,0.8);
+    --shadow-xs:0 1px 2px rgba(24,22,43,.04);
+    --shadow-sm:0 1px 3px rgba(24,22,43,.06),0 1px 2px rgba(24,22,43,.04);
+    --shadow-md:0 4px 16px rgba(24,22,43,.08);
+    --shadow-pane:0 1px 2px rgba(24,22,43,.04);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:'Anuphan','Inter',system-ui,sans-serif;
+    color:var(--text-body);font-size:14px;line-height:1.55;
+    background:var(--bg-app);
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:'Plus Jakarta Sans','Anuphan',sans-serif;color:var(--text-dark);letter-spacing:-0.02em;}
+  .tnum{font-feature-settings:'tnum' on,'lnum' on;}
+  .kbd{font-family:'IBM Plex Mono',monospace;font-size:10.5px;background:var(--bg-subtle);border:1px solid var(--border);border-radius:5px;padding:1px 5px;color:var(--text-muted);line-height:1;}
+  button{font-family:inherit;cursor:pointer;}
+
+  /* ===== Shell ===== */
+  .wrap{display:flex;min-height:100vh;}
+
+  /* Sidebar — keep subtle glass as accent */
+  .sidebar{
+    width:236px;flex-shrink:0;display:flex;flex-direction:column;
+    background:rgba(255,255,255,0.65);backdrop-filter:blur(18px) saturate(150%);
+    border-right:1px solid var(--border);
+    position:sticky;top:0;height:100vh;align-self:flex-start;
+  }
+  .brand{height:60px;display:flex;align-items:center;gap:.6rem;padding:0 1.1rem;border-bottom:1px solid var(--border-soft);}
+  .brand-logo{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#818CF8,#6366F1 60%,#7C3AED);color:#fff;font-size:1rem;box-shadow:0 3px 8px rgba(99,102,241,.3);}
+  .brand-text{font-family:'Plus Jakarta Sans';font-weight:600;font-size:.98rem;color:var(--text-dark);letter-spacing:-0.01em;}
+  .brand-sub{font-size:10px;color:var(--text-muted);margin-top:-2px;}
+  .nav{padding:.85rem .55rem;flex:1;overflow-y:auto;}
+  .nav-label{padding:0 .7rem;font-size:10px;text-transform:uppercase;color:var(--text-light);font-weight:700;letter-spacing:.07em;margin:.5rem 0 .3rem;}
+  .nav-item{display:flex;align-items:center;gap:.7rem;height:38px;padding:0 .75rem;border-radius:8px;color:var(--text-muted);font-weight:500;font-size:13.5px;text-decoration:none;position:relative;}
+  .nav-item i{font-size:1.05rem;width:18px;}
+  .nav-item:hover{background:var(--bg-hover);color:var(--text-dark);}
+  .nav-item.active{background:var(--primary-light);color:var(--primary-deep);font-weight:600;}
+  .nav-item.active i{color:var(--primary);}
+  .nav-badge{margin-left:auto;background:var(--primary);color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 5px;}
+  .nav-spacer{flex:1;}
+
+  /* Main column */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .topbar{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 1.4rem;border-bottom:1px solid var(--border);background:var(--glass);backdrop-filter:blur(14px) saturate(160%);position:sticky;top:0;z-index:20;}
+  .crumb{display:flex;align-items:center;gap:.5rem;font-size:13.5px;color:var(--text-muted);}
+  .crumb b{color:var(--text-dark);font-weight:600;}
+  .cmdk{display:flex;align-items:center;gap:.5rem;height:34px;padding:0 .7rem 0 .8rem;border:1px solid var(--border-strong);border-radius:8px;background:var(--bg-card);color:var(--text-light);font-size:13px;min-width:210px;}
+  .cmdk i{font-size:1rem;}
+  .cmdk .kbd{margin-left:auto;}
+  .topbar-right{display:flex;align-items:center;gap:.8rem;}
+  .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#818CF8,#6366F1);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;}
+
+  /* ===== Page scroller ===== */
+  .page{flex:1;display:flex;flex-direction:column;}
+  .page-inner{padding:1.25rem 1.4rem;display:flex;flex-direction:column;min-height:0;flex:1;}
+
+  /* Header row */
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;}
+  .head h1{font-size:1.4rem;font-weight:700;display:flex;align-items:center;gap:.5rem;}
+  .head .sub{font-size:12.5px;color:var(--text-muted);margin-top:3px;}
+
+  /* ===== Premium toolbar ===== */
+  .toolbar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.85rem;}
+  .seg{display:inline-flex;background:var(--bg-subtle);border:1px solid var(--border);border-radius:9px;padding:3px;gap:2px;}
+  .seg-btn{display:inline-flex;align-items:center;gap:.4rem;height:30px;padding:0 .75rem;border:none;background:transparent;color:var(--text-muted);border-radius:7px;font-size:12.5px;font-weight:600;}
+  .seg-btn i{font-size:.95rem;}
+  .seg-btn.active{background:var(--bg-card);color:var(--text-dark);box-shadow:var(--shadow-xs);}
+  .seg-btn .cnt{font-size:11px;background:rgba(24,22,43,.07);color:var(--text-muted);border-radius:6px;padding:0 5px;font-weight:700;}
+  .seg-btn.active .cnt{background:var(--primary);color:#fff;}
+
+  .tb-spacer{flex:1;}
+  .tb-btn{display:inline-flex;align-items:center;gap:.4rem;height:34px;padding:0 .75rem;border:1px solid var(--border-strong);border-radius:8px;background:var(--bg-card);color:var(--text-body);font-size:12.5px;font-weight:600;}
+  .tb-btn i{font-size:1rem;color:var(--text-muted);}
+  .tb-btn:hover{background:var(--bg-hover);border-color:var(--text-light);}
+  .tb-btn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .tb-btn.primary i{color:#fff;}
+  .tb-btn.primary:hover{background:var(--primary-hover);}
+  .tb-btn .kbd{background:rgba(255,255,255,.18);border-color:transparent;color:rgba(255,255,255,.85);}
+  /* icon-only view switch */
+  .vswitch{display:inline-flex;background:var(--bg-subtle);border:1px solid var(--border);border-radius:8px;padding:3px;gap:2px;}
+  .vbtn{width:32px;height:28px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:6px;font-size:1rem;}
+  .vbtn.active{background:var(--bg-card);color:var(--primary);box-shadow:var(--shadow-xs);}
+
+  /* ===== Up-next banner (slim Focus Hero) ===== */
+  .upnext{display:flex;align-items:center;gap:1rem;padding:.75rem 1rem;border-radius:12px;margin-bottom:.85rem;
+    background:linear-gradient(100deg,rgba(238,240,255,.9),rgba(245,244,255,.6));
+    border:1px solid var(--primary-soft);}
+  .upnext-flag{display:inline-flex;align-items:center;gap:.35rem;font-size:11px;font-weight:700;color:var(--primary-deep);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
+  .upnext-body{flex:1;min-width:0;}
+  .upnext-title{font-size:14px;font-weight:600;color:var(--text-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .upnext-meta{font-size:12px;color:var(--text-muted);margin-top:1px;}
+  .upnext-meta .od{color:var(--danger);font-weight:600;}
+  .upnext-actions{display:flex;gap:.4rem;flex-shrink:0;}
+  .un-btn{display:inline-flex;align-items:center;gap:.35rem;height:34px;padding:0 .8rem;border-radius:8px;font-size:12.5px;font-weight:600;border:1px solid transparent;}
+  .un-btn.call{background:var(--primary);color:#fff;}
+  .un-btn.done{background:var(--bg-card);color:var(--text-dark);border-color:var(--border-strong);}
+  .un-btn.skip{background:transparent;color:var(--text-muted);}
+
+  /* ===== Filter chips ===== */
+  .chips{display:flex;gap:.45rem;margin-bottom:.85rem;flex-wrap:wrap;align-items:center;}
+  .chip{display:inline-flex;align-items:center;gap:.45rem;height:30px;padding:0 .75rem;border-radius:8px;font-size:12.5px;font-weight:600;border:1px solid var(--border);background:var(--bg-card);color:var(--text-muted);}
+  .chip .dot{width:7px;height:7px;border-radius:50%;}
+  .chip .n{font-weight:700;color:var(--text-dark);}
+  .chip.active{background:var(--text-dark);color:#fff;border-color:var(--text-dark);}
+  .chip.active .n{color:#fff;}
+  .chips-right{margin-left:auto;font-size:12px;color:var(--text-light);display:flex;align-items:center;gap:.3rem;}
+
+  /* ===== Split body (master-detail) ===== */
+  .split{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:1rem;align-items:start;}
+  .queue{display:flex;flex-direction:column;min-height:0;}
+  .queue-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.55rem;}
+  .queue-head .t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);}
+  .queue-list{display:flex;flex-direction:column;gap:.45rem;padding-right:2px;}
+
+  /* Task row — white solid, hairline, compact */
+  .task{display:flex;align-items:center;gap:.7rem;padding:.7rem .85rem;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-pane);position:relative;transition:border-color .12s,box-shadow .12s,background .12s;}
+  .task:hover{border-color:var(--primary-soft);background:var(--bg-hover);}
+  .task.sel{border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.12);background:var(--bg-card);}
+  .task::before{content:'';position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--accent,#0ea5e9);}
+  .task-ticon{width:30px;height:30px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1rem;background:var(--accent-bg);color:var(--accent);}
+  .task-main{flex:1;min-width:0;}
+  .task-title{font-size:13.5px;font-weight:600;color:var(--text-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .task-sub{font-size:11.5px;color:var(--text-muted);margin-top:1px;display:flex;align-items:center;gap:.4rem;}
+  .task-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;}
+  .pri{font-size:10px;font-weight:700;padding:1px 7px;border-radius:999px;}
+  .pri.hi{background:var(--danger-bg);color:var(--danger);}
+  .pri.nm{background:var(--info-bg);color:var(--info);}
+  .pri.lo{background:var(--bg-subtle);color:var(--text-muted);}
+  .due{font-size:11px;font-weight:600;white-space:nowrap;}
+  .due.od{color:var(--danger);}
+  .due.td{color:var(--orange);}
+  .due.fu{color:var(--text-muted);}
+
+  /* Detail pane */
+  .detail{display:flex;flex-direction:column;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-sm);position:sticky;top:76px;max-height:calc(100vh - 92px);overflow:hidden;}
+  .detail-head{padding:1rem 1.1rem;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;}
+  .tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;}
+  .detail-x{margin-left:auto;width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-muted);display:flex;align-items:center;justify-content:center;}
+  .detail-body{padding:1.1rem;overflow-y:auto;flex:1;min-height:0;}
+  .detail-title{font-size:17px;font-weight:700;color:var(--text-dark);line-height:1.35;}
+  .detail-meta{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-top:.55rem;font-size:12.5px;}
+  .detail-meta .od{color:var(--danger);font-weight:700;}
+  .box{border:1px solid var(--border);border-radius:10px;padding:.8rem .9rem;margin-top:.85rem;}
+  .box.note{background:var(--primary-tint);border-color:var(--primary-soft);}
+  .box-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:.35rem;display:flex;align-items:center;gap:.35rem;}
+  .cust{display:flex;align-items:center;gap:.7rem;}
+  .cust-av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#6FCF97,#2FA084);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
+  .cust-name{font-size:13.5px;font-weight:700;color:var(--text-dark);}
+  .cust-phone{font-size:12px;color:var(--text-muted);}
+  .cust-open{margin-left:auto;display:inline-flex;align-items:center;gap:.3rem;height:32px;padding:0 .7rem;border:1px solid var(--border-strong);border-radius:7px;background:var(--bg-card);color:var(--text-body);font-size:12px;font-weight:600;text-decoration:none;}
+  .wf{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.5rem;}
+  .wf-pill{font-size:12px;font-weight:600;padding:6px 11px;border-radius:8px;border:1px solid transparent;}
+  .input{width:100%;height:40px;border:1px solid var(--border-strong);border-radius:9px;padding:0 .8rem;font-family:inherit;font-size:13.5px;color:var(--text-body);margin-top:.4rem;outline:none;}
+  .input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.14);}
+  .detail-foot{padding:.8rem 1.1rem;border-top:1px solid var(--border-soft);display:flex;gap:.5rem;}
+  .df-btn{height:40px;border-radius:9px;font-size:13.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;border:1px solid transparent;}
+  .df-btn.del{flex:0 0 auto;width:44px;background:var(--bg-card);border-color:var(--border-strong);color:var(--danger);}
+  .df-btn.skip{flex:1;background:var(--bg-card);border-color:var(--border-strong);color:var(--text-body);}
+  .df-btn.done{flex:2;background:var(--primary);color:#fff;}
+
+  /* ===== Board (kanban) view ===== */
+  .board{display:none;gap:.75rem;overflow-x:auto;flex:1;padding-bottom:.5rem;}
+  .board.show{display:flex;}
+  .split.hide{display:none;}
+  .bcol{flex:0 0 250px;display:flex;flex-direction:column;background:var(--bg-subtle);border:1px solid var(--border);border-radius:11px;max-height:100%;}
+  .bcol-head{display:flex;align-items:center;gap:.5rem;padding:.6rem .75rem;border-bottom:1px solid var(--border);border-top:2px solid var(--bcolor,#0ea5e9);border-radius:11px 11px 0 0;}
+  .bcol-ic{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.85rem;background:var(--bcolor-bg);color:var(--bcolor);}
+  .bcol-title{font-size:12.5px;font-weight:700;color:var(--text-dark);}
+  .bcol-cnt{margin-left:auto;font-size:11px;font-weight:800;color:var(--text-muted);background:var(--bg-card);border-radius:999px;padding:1px 8px;}
+  .bcol-body{padding:.55rem;display:flex;flex-direction:column;gap:.5rem;overflow-y:auto;}
+  .bcard{background:var(--bg-card);border:1px solid var(--border);border-left:3px solid var(--accent,#0ea5e9);border-radius:9px;padding:.6rem .7rem;box-shadow:var(--shadow-xs);}
+  .bcard-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+  .bcard-type{font-size:10.5px;font-weight:700;color:var(--accent);display:inline-flex;align-items:center;gap:3px;}
+  .bcard-title{font-size:12.5px;font-weight:600;color:var(--text-dark);line-height:1.35;}
+  .bcard-foot{display:flex;align-items:center;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text-muted);}
+
+  /* ===== Suggestions (collapsible, end) ===== */
+  .sugg{margin-top:1rem;border:1px solid var(--border);border-radius:11px;background:var(--bg-card);overflow:hidden;}
+  .sugg-head{display:flex;align-items:center;gap:.5rem;padding:.7rem .9rem;cursor:pointer;}
+  .sugg-head i.lead{color:var(--warning);font-size:1.05rem;}
+  .sugg-head .t{font-size:13px;font-weight:700;color:var(--text-dark);}
+  .sugg-head .c{background:var(--primary);color:#fff;border-radius:999px;font-size:10.5px;font-weight:700;padding:1px 7px;}
+  .sugg-head .chev{margin-left:auto;color:var(--text-muted);}
+  .sugg-body{padding:0 .9rem .8rem;display:none;flex-direction:column;gap:.45rem;}
+  .sugg-body.open{display:flex;}
+  .sgg{display:flex;align-items:center;gap:.6rem;padding:.55rem .7rem;border:1px solid var(--border);border-radius:9px;border-left:3px solid var(--danger);}
+  .sgg-tag{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--danger-bg);color:var(--danger);white-space:nowrap;}
+  .sgg-info{flex:1;min-width:0;}
+  .sgg-name{font-size:13px;font-weight:700;color:var(--text-dark);}
+  .sgg-meta{font-size:11.5px;color:var(--text-muted);}
+  .sgg-add{height:30px;padding:0 .7rem;border-radius:7px;background:var(--primary);color:#fff;border:none;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:.3rem;}
+
+  .hint{margin-top:1rem;padding:.7rem .9rem;border:1px dashed var(--border-strong);border-radius:10px;font-size:12px;color:var(--text-muted);background:var(--bg-card);}
+  .hint b{color:var(--text-dark);}
+
+  /* ===== ADDED: daily progress (subtle, single line) ===== */
+  .progress-mini{display:flex;align-items:center;gap:.5rem;font-size:11.5px;color:var(--text-muted);font-weight:600;}
+  .progress-track{width:84px;height:5px;border-radius:999px;background:var(--bg-subtle);overflow:hidden;}
+  .progress-fill{height:100%;width:67%;border-radius:999px;background:linear-gradient(90deg,var(--primary),#818CF8);}
+
+  /* ===== ADDED: queue time sections (structure, not clutter) ===== */
+  .qsection{display:flex;align-items:center;gap:.45rem;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin:.5rem 0 .1rem;padding:0 .15rem;}
+  .qsection:first-child{margin-top:0;}
+  .qsection .qs-dot{width:7px;height:7px;border-radius:50%;}
+  .qsection .qs-n{margin-left:auto;color:var(--text-light);font-weight:700;}
+
+  /* ===== ADDED: quick actions on hover (hidden at rest = zero clutter) ===== */
+  .task-quick{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);display:flex;gap:.3rem;opacity:0;pointer-events:none;transition:opacity .12s;padding-left:2.5rem;background:linear-gradient(90deg,transparent,var(--bg-hover) 30%);}
+  .task:hover .task-quick{opacity:1;pointer-events:auto;}
+  .task:hover .task-right{opacity:0;}
+  .qbtn{width:30px;height:30px;border-radius:7px;border:1px solid var(--border-strong);background:var(--bg-card);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:.95rem;transition:all .12s;}
+  .qbtn:hover{color:#fff;transform:translateY(-1px);}
+  .qbtn.call:hover{background:var(--primary);border-color:var(--primary);}
+  .qbtn.snooze:hover{background:var(--text-muted);border-color:var(--text-muted);}
+  .qbtn.done:hover{background:var(--success);border-color:var(--success);}
+
+  /* ===== ADDED: channel buttons + customer context in detail ===== */
+  .channels{display:flex;gap:.4rem;margin-top:.6rem;}
+  .ch-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;height:38px;border-radius:9px;font-size:13px;font-weight:600;border:1px solid transparent;text-decoration:none;}
+  .ch-btn.call{background:var(--primary);color:#fff;}
+  .ch-btn.line{background:#06C755;color:#fff;}
+  .ctx{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-top:.6rem;}
+  .ctx-cell{text-align:center;padding:.5rem .3rem;border:1px solid var(--border);border-radius:9px;background:var(--bg-app);}
+  .ctx-val{font-size:13px;font-weight:700;color:var(--text-dark);font-family:'Plus Jakarta Sans';}
+  .ctx-lbl{font-size:10px;color:var(--text-muted);margin-top:1px;}
+
+  /* ===== Responsive → mobile single column ===== */
+  @media(max-width:1000px){
+    .split{grid-template-columns:1fr;}
+    .detail{display:none;}            /* on mobile detail becomes a drawer (shown here as hidden) */
+  }
+  @media(max-width:820px){
+    .sidebar{display:none;}
+    .cmdk{display:none;}
+    .upnext{flex-wrap:wrap;}
+    .upnext-actions{width:100%;}
+    .un-btn{flex:1;justify-content:center;height:42px;}
+    .toolbar{gap:.5rem;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo"><i class="ri-leaf-line"></i></div>
+      <div><div class="brand-text">Shizen CRM</div><div class="brand-sub">ระบบจัดการลูกค้า</div></div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">เมนูหลัก</div>
+      <a class="nav-item"><i class="ri-dashboard-3-line"></i> แดชบอร์ด</a>
+      <a class="nav-item active"><i class="ri-checkbox-line"></i> งาน <span class="nav-badge">12</span></a>
+      <a class="nav-item"><i class="ri-group-2-line"></i> จัดการลูกค้า</a>
+      <a class="nav-item"><i class="ri-shopping-bag-3-line"></i> ออเดอร์</a>
+      <a class="nav-item"><i class="ri-archive-2-line"></i> คลังสินค้า</a>
+      <a class="nav-item"><i class="ri-bar-chart-2-line"></i> สถิติเชิงลึก</a>
+      <div class="nav-spacer"></div>
+      <a class="nav-item"><i class="ri-book-open-line"></i> คู่มือการใช้งาน</a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="crumb"><i class="ri-checkbox-line" style="color:var(--primary)"></i> <b>งาน</b></div>
+      <div class="cmdk"><i class="ri-search-line"></i> ค้นหาลูกค้า / งาน <span class="kbd">⌘K</span></div>
+      <div class="topbar-right">
+        <i class="ri-notification-3-line" style="font-size:1.15rem;color:var(--text-muted)"></i>
+        <div class="avatar">สม</div>
+      </div>
+    </div>
+
+    <!-- Page -->
+    <div class="page">
+      <div class="page-inner">
+        <!-- Header -->
+        <div class="head">
+          <div>
+            <h1><i class="ri-task-line" style="color:var(--primary)"></i> งานของฉัน</h1>
+            <div class="sub">ทีมขาย A · ค้าง 12 งาน · เลยกำหนด 5</div>
+          </div>
+        </div>
+
+        <!-- Premium toolbar -->
+        <div class="toolbar">
+          <div class="seg">
+            <button class="seg-btn active"><i class="ri-heart-pulse-line"></i> ดูแลลูกค้า <span class="cnt">12</span></button>
+            <button class="seg-btn"><i class="ri-refresh-line"></i> รีออเดอร์ <span class="cnt">5</span></button>
+          </div>
+
+          <div class="tb-spacer"></div>
+
+          <div class="vswitch" id="vswitch">
+            <button class="vbtn active" data-view="list" title="รายการ"><i class="ri-list-check-2"></i></button>
+            <button class="vbtn" data-view="board" title="บอร์ด"><i class="ri-layout-column-line"></i></button>
+            <button class="vbtn" data-view="cal" title="ปฏิทิน"><i class="ri-calendar-2-line"></i></button>
+          </div>
+          <button class="tb-btn"><i class="ri-filter-3-line"></i> ตัวกรอง</button>
+          <button class="tb-btn"><i class="ri-stack-line"></i> จัดกลุ่ม</button>
+          <button class="tb-btn primary"><i class="ri-add-line"></i> งานใหม่ <span class="kbd">N</span></button>
+        </div>
+
+        <!-- Up next banner -->
+        <div class="upnext">
+          <span class="upnext-flag"><i class="ri-focus-3-line"></i> ทำต่อไป</span>
+          <div class="upnext-body">
+            <div class="upnext-title">ตามอาการ — นอนไม่หลับ ปรับโดสแล้วดีขึ้นไหม</div>
+            <div class="upnext-meta">คุณสมชาย ใจดี · <span class="od">เลยกำหนด 2 วัน</span></div>
+          </div>
+          <div class="upnext-actions">
+            <button class="un-btn call"><i class="ri-phone-line"></i> โทร</button>
+            <button class="un-btn done"><i class="ri-checkbox-circle-line"></i> เสร็จ</button>
+            <button class="un-btn skip"><i class="ri-skip-forward-line"></i> ข้าม</button>
+          </div>
+        </div>
+
+        <!-- Filter chips -->
+        <div class="chips">
+          <span class="chip active"><span class="n tnum">12</span> ค้างทั้งหมด</span>
+          <span class="chip"><span class="dot" style="background:var(--orange)"></span><span class="n tnum">3</span> วันนี้</span>
+          <span class="chip"><span class="dot" style="background:var(--danger)"></span><span class="n tnum">5</span> เลยกำหนด</span>
+          <span class="chip"><span class="dot" style="background:var(--success)"></span><span class="n tnum">8</span> ใน 7 วัน</span>
+          <span class="chips-right"><i class="ri-arrow-up-down-line"></i> เรียงตาม: ด่วนสุด</span>
+        </div>
+
+        <!-- Split master-detail -->
+        <div class="split" id="split">
+          <!-- Queue -->
+          <div class="queue">
+            <div class="queue-head">
+              <span class="t">คิวงาน · 12 รายการ</span>
+              <span class="progress-mini">วันนี้ 8/12 <span class="progress-track"><span class="progress-fill"></span></span></span>
+            </div>
+            <div class="queue-list" id="qlist">
+
+              <!-- section: overdue -->
+              <div class="qsection"><span class="qs-dot" style="background:var(--danger)"></span> เลยกำหนด <span class="qs-n">2</span></div>
+
+              <div class="task sel" style="--accent:#EF4444;--accent-bg:#FEF2F2" data-task="1">
+                <div class="task-ticon"><i class="ri-stethoscope-line"></i></div>
+                <div class="task-main">
+                  <div class="task-title">ตามอาการ — นอนไม่หลับ ปรับโดสแล้วดีขึ้นไหม</div>
+                  <div class="task-sub"><i class="ri-user-line"></i> คุณสมชาย ใจดี · 081-234-5678</div>
+                </div>
+                <div class="task-right"><span class="pri hi">ด่วน</span><span class="due od">เลย 2 วัน</span></div>
+                <div class="task-quick">
+                  <button class="qbtn call" title="โทร"><i class="ri-phone-line"></i></button>
+                  <button class="qbtn snooze" title="เลื่อน"><i class="ri-time-line"></i></button>
+                  <button class="qbtn done" title="เสร็จ"><i class="ri-check-line"></i></button>
+                </div>
+              </div>
+
+              <div class="task" style="--accent:#10b981;--accent-bg:#ECFDF5" data-task="2">
+                <div class="task-ticon" style="--accent:#10b981;--accent-bg:#ECFDF5"><i class="ri-phone-line"></i></div>
+                <div class="task-main">
+                  <div class="task-title">โทรหา — ทวงรูปสลิปโอนเงิน</div>
+                  <div class="task-sub"><i class="ri-user-line"></i> คุณปรีชา มั่งมี · 086-222-3333</div>
+                </div>
+                <div class="task-right"><span class="pri hi">ด่วน</span><span class="due od">เลย 1 วัน</span></div>
+                <div class="task-quick">
+                  <button class="qbtn call" title="โทร"><i class="ri-phone-line"></i></button>
+                  <button class="qbtn snooze" title="เลื่อน"><i class="ri-time-line"></i></button>
+                  <button class="qbtn done" title="เสร็จ"><i class="ri-check-line"></i></button>
+                </div>
+              </div>
+
+              <!-- section: today -->
+              <div class="qsection"><span class="qs-dot" style="background:var(--orange)"></span> วันนี้ <span class="qs-n">1</span></div>
+
+              <div class="task" style="--accent:#10b981;--accent-bg:#ECFDF5" data-task="3">
+                <div class="task-ticon" style="--accent:#10b981;--accent-bg:#ECFDF5"><i class="ri-phone-line"></i></div>
+                <div class="task-main">
+                  <div class="task-title">โทรหา — ยืนยันที่อยู่จัดส่งรอบใหม่</div>
+                  <div class="task-sub"><i class="ri-user-line"></i> คุณมานี รักสุข · 089-876-5432</div>
+                </div>
+                <div class="task-right"><span class="pri nm">ปกติ</span><span class="due td">วันนี้</span></div>
+                <div class="task-quick">
+                  <button class="qbtn call" title="โทร"><i class="ri-phone-line"></i></button>
+                  <button class="qbtn snooze" title="เลื่อน"><i class="ri-time-line"></i></button>
+                  <button class="qbtn done" title="เสร็จ"><i class="ri-check-line"></i></button>
+                </div>
+              </div>
+
+              <!-- section: this week -->
+              <div class="qsection"><span class="qs-dot" style="background:var(--text-light)"></span> สัปดาห์นี้ <span class="qs-n">3</span></div>
+
+              <div class="task" style="--accent:#8b5cf6;--accent-bg:#F5F3FF" data-task="4">
+                <div class="task-ticon" style="--accent:#8b5cf6;--accent-bg:#F5F3FF"><i class="ri-truck-line"></i></div>
+                <div class="task-main">
+                  <div class="task-title">ตามของ — เช็คเลขพัสดุเซ็ตโปรตีน</div>
+                  <div class="task-sub"><i class="ri-user-line"></i> คุณวิภา สดใส · 062-111-2222</div>
+                </div>
+                <div class="task-right"><span class="pri nm">ปกติ</span><span class="due fu">พรุ่งนี้</span></div>
+                <div class="task-quick">
+                  <button class="qbtn call" title="โทร"><i class="ri-phone-line"></i></button>
+                  <button class="qbtn snooze" title="เลื่อน"><i class="ri-time-line"></i></button>
+                  <button class="qbtn done" title="เสร็จ"><i class="ri-check-line"></i></button>
+                </div>
+              </div>
+
+              <div class="task" style="--accent:#f59e0b;--accent-bg:#FFFBEB" data-task="5">
+                <div class="task-ticon" style="--accent:#f59e0b;--accent-bg:#FFFBEB"><i class="ri-repeat-line"></i></div>
+                <div class="task-main">
+                  <div class="task-title">เตือนซื้อซ้ำ — ใกล้ครบเซ็ทไฟเบอร์</div>
+                  <div class="task-sub"><i class="ri-user-line"></i> คุณนภา ทองดี · 094-333-4444</div>
+                </div>
+                <div class="task-right"><span class="pri lo">ไม่เร่ง</span><span class="due fu">อีก 3 วัน</span></div>
+                <div class="task-quick">
+                  <button class="qbtn call" title="โทร"><i class="ri-phone-line"></i></button>
+                  <button class="qbtn snooze" title="เลื่อน"><i class="ri-time-line"></i></button>
+                  <button class="qbtn done" title="เสร็จ"><i class="ri-check-line"></i></button>
+                </div>
+              </div>
+
+              <div class="task" style="--accent:#0ea5e9;--accent-bg:#EFF6FF" data-task="6">
+                <div class="task-ticon"><i class="ri-stethoscope-line"></i></div>
+                <div class="task-main">
+                  <div class="task-title">ตามอาการ — สอบถามผลหลังกินครบ 7 วัน</div>
+                  <div class="task-sub"><i class="ri-user-line"></i> คุณกานต์ ศรีสุข · 087-555-6666</div>
+                </div>
+                <div class="task-right"><span class="pri nm">ปกติ</span><span class="due fu">อีก 4 วัน</span></div>
+                <div class="task-quick">
+                  <button class="qbtn call" title="โทร"><i class="ri-phone-line"></i></button>
+                  <button class="qbtn snooze" title="เลื่อน"><i class="ri-time-line"></i></button>
+                  <button class="qbtn done" title="เสร็จ"><i class="ri-check-line"></i></button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detail pane -->
+          <div class="detail" id="detail">
+            <div class="detail-head">
+              <span class="tag" id="dType" style="background:#0ea5e9;color:#fff"><i class="ri-stethoscope-line"></i> ตามอาการ</span>
+              <span class="tag" id="dPri" style="background:var(--danger-bg);color:var(--danger)">ด่วน</span>
+              <span class="tag" style="background:var(--warning-bg);color:#b45309"><i class="ri-loader-4-line"></i> กำลังติดตาม</span>
+              <button class="detail-x"><i class="ri-close-line"></i></button>
+            </div>
+            <div class="detail-body">
+              <div class="detail-title" id="dTitle">ตามอาการ — นอนไม่หลับ ปรับโดสแล้วดีขึ้นไหม</div>
+              <div class="detail-meta">
+                <span class="od" id="dDue"><i class="ri-calendar-line"></i> เลย 2 วัน</span>
+                <span style="color:var(--text-light)">·</span>
+                <span style="color:var(--text-muted)" id="dDate">26 มิ.ย. 2569</span>
+                <span style="color:var(--text-light)">·</span>
+                <span style="color:var(--text-muted)"><i class="ri-user-3-line"></i> สมหญิง (เซลส์)</span>
+              </div>
+
+              <div class="box note">
+                <div class="box-label"><i class="ri-sticky-note-line" style="color:var(--primary)"></i> โน้ต</div>
+                <div id="dNote" style="font-size:13px;color:var(--text-dark);line-height:1.55;">ลูกค้าแจ้งว่าเริ่มหลับง่ายขึ้นแต่ยังตื่นกลางดึก แนะนำให้ทาน Sereniz ก่อนนอน 30 นาที — ติดตามอาการอีกครั้ง</div>
+              </div>
+
+              <div class="box">
+                <div class="box-label">ลูกค้า</div>
+                <div class="cust">
+                  <div class="cust-av" id="dAv">สม</div>
+                  <div>
+                    <div class="cust-name" id="dName">คุณสมชาย ใจดี</div>
+                    <div class="cust-phone"><i class="ri-phone-line"></i> <span id="dPhone">081-234-5678</span></div>
+                  </div>
+                  <a class="cust-open" href="#"><i class="ri-external-link-line"></i> เปิดเต็มหน้า</a>
+                </div>
+                <!-- ADDED: channel buttons -->
+                <div class="channels">
+                  <a class="ch-btn call" href="#"><i class="ri-phone-line"></i> โทร</a>
+                  <a class="ch-btn line" href="#"><i class="ri-line-fill"></i> เปิด LINE</a>
+                </div>
+                <!-- ADDED: customer context -->
+                <div class="ctx">
+                  <div class="ctx-cell"><div class="ctx-val" id="dCtx1">฿2,490</div><div class="ctx-lbl">ออเดอร์ล่าสุด</div></div>
+                  <div class="ctx-cell"><div class="ctx-val" id="dCtx2">Sereniz</div><div class="ctx-lbl">เซ็ทปัจจุบัน</div></div>
+                  <div class="ctx-cell"><div class="ctx-val" id="dCtx3">5 วันก่อน</div><div class="ctx-lbl">คุยล่าสุด</div></div>
+                </div>
+              </div>
+
+              <div style="margin-top:1rem;">
+                <div class="box-label" style="margin-bottom:.45rem;">สถานะ workflow</div>
+                <div class="wf">
+                  <span class="wf-pill" style="background:#f1f5f9;color:#64748b"><i class="ri-inbox-line"></i> รอทำ</span>
+                  <span class="wf-pill" style="background:#b45309;color:#fff;border-color:#b45309"><i class="ri-loader-4-line"></i> กำลังติดตาม</span>
+                  <span class="wf-pill" style="background:#ede9fe;color:#6d28d9"><i class="ri-chat-3-line"></i> รอลูกค้าตอบ</span>
+                </div>
+              </div>
+
+              <div style="margin-top:1rem;">
+                <div class="box-label">บันทึกผลลัพธ์ (ไม่บังคับ)</div>
+                <input class="input" placeholder="เช่น ลูกค้าโอเค กินต่อ">
+              </div>
+            </div>
+            <div class="detail-foot">
+              <button class="df-btn del"><i class="ri-delete-bin-line"></i></button>
+              <button class="df-btn skip"><i class="ri-skip-forward-line"></i> ข้าม</button>
+              <button class="df-btn done"><i class="ri-check-line"></i> ทำเสร็จ</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Board view (hidden by default) -->
+        <div class="board" id="board">
+          <div class="bcol" style="--bcolor:#ef4444;--bcolor-bg:#fee2e2">
+            <div class="bcol-head"><span class="bcol-ic"><i class="ri-alarm-warning-line"></i></span><span class="bcol-title">เลยกำหนด</span><span class="bcol-cnt">5</span></div>
+            <div class="bcol-body">
+              <div class="bcard" style="--accent:#0ea5e9"><div class="bcard-top"><span class="bcard-type"><i class="ri-stethoscope-line"></i> ตามอาการ</span><span class="pri hi">ด่วน</span></div><div class="bcard-title">นอนไม่หลับ ปรับโดสแล้วดีขึ้นไหม</div><div class="bcard-foot"><span><i class="ri-user-line"></i> สมชาย</span><span style="color:var(--danger)">เลย 2 วัน</span></div></div>
+              <div class="bcard" style="--accent:#10b981"><div class="bcard-top"><span class="bcard-type" style="--accent:#10b981"><i class="ri-phone-line"></i> โทรหา</span><span class="pri nm">ปกติ</span></div><div class="bcard-title">ทวงรูปสลิปโอนเงิน</div><div class="bcard-foot"><span><i class="ri-user-line"></i> ปรีชา</span><span style="color:var(--danger)">เลย 1 วัน</span></div></div>
+            </div>
+          </div>
+          <div class="bcol" style="--bcolor:#f97316;--bcolor-bg:#ffedd5">
+            <div class="bcol-head"><span class="bcol-ic"><i class="ri-flashlight-line"></i></span><span class="bcol-title">วันนี้</span><span class="bcol-cnt">3</span></div>
+            <div class="bcol-body">
+              <div class="bcard" style="--accent:#10b981"><div class="bcard-top"><span class="bcard-type" style="--accent:#10b981"><i class="ri-phone-line"></i> โทรหา</span><span class="pri nm">ปกติ</span></div><div class="bcard-title">ยืนยันที่อยู่จัดส่งรอบใหม่</div><div class="bcard-foot"><span><i class="ri-user-line"></i> มานี</span><span style="color:var(--orange)">วันนี้</span></div></div>
+            </div>
+          </div>
+          <div class="bcol" style="--bcolor:#0ea5e9;--bcolor-bg:#e0f2fe">
+            <div class="bcol-head"><span class="bcol-ic"><i class="ri-calendar-event-line"></i></span><span class="bcol-title">3 วันนี้</span><span class="bcol-cnt">2</span></div>
+            <div class="bcol-body">
+              <div class="bcard" style="--accent:#8b5cf6"><div class="bcard-top"><span class="bcard-type" style="--accent:#8b5cf6"><i class="ri-truck-line"></i> ตามของ</span><span class="pri nm">ปกติ</span></div><div class="bcard-title">เช็คเลขพัสดุเซ็ตโปรตีน</div><div class="bcard-foot"><span><i class="ri-user-line"></i> วิภา</span><span>พรุ่งนี้</span></div></div>
+            </div>
+          </div>
+          <div class="bcol" style="--bcolor:#2FA084;--bcolor-bg:#E6F4EE">
+            <div class="bcol-head"><span class="bcol-ic"><i class="ri-checkbox-circle-line"></i></span><span class="bcol-title">เสร็จแล้ว</span><span class="bcol-cnt">8</span></div>
+            <div class="bcol-body">
+              <div class="bcard" style="--accent:#cbd5e1;opacity:.7"><div class="bcard-top"><span class="bcard-type" style="--accent:#64748b"><i class="ri-phone-line"></i> โทรหา</span></div><div class="bcard-title"><i class="ri-checkbox-circle-fill" style="color:var(--success)"></i> ยืนยันออเดอร์</div><div class="bcard-foot"><span><i class="ri-user-line"></i> ชูใจ</span><span>25 มิ.ย.</span></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Suggestions (collapsible) -->
+        <div class="sugg">
+          <div class="sugg-head" id="suggHead">
+            <i class="ri-lightbulb-flash-line lead"></i>
+            <span class="t">ลูกค้าที่ควรติดตามวันนี้</span>
+            <span class="c">3</span>
+            <i class="ri-arrow-down-s-line chev" id="suggChev"></i>
+          </div>
+          <div class="sugg-body" id="suggBody">
+            <div class="sgg">
+              <span class="sgg-tag"><i class="ri-alarm-warning-line"></i> ต้องรีออเดอร์</span>
+              <div class="sgg-info"><div class="sgg-name">คุณดารา แสงทอง</div><div class="sgg-meta">081-999-8888 · ครบเซ็ทมา 32 วัน ยังไม่สั่งซ้ำ</div></div>
+              <button class="sgg-add"><i class="ri-add-line"></i> สร้างเป็นงาน</button>
+            </div>
+            <div class="sgg" style="border-left-color:#8b5cf6">
+              <span class="sgg-tag" style="background:#ede9fe;color:#6f42c1"><i class="ri-time-line"></i> ห่างหายไปนาน</span>
+              <div class="sgg-info"><div class="sgg-name">คุณเอก พลังดี</div><div class="sgg-meta">062-777-1234 · ไม่ได้สั่งมา 75 วัน</div></div>
+              <button class="sgg-add"><i class="ri-add-line"></i> สร้างเป็นงาน</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="hint">
+          <b>ดีไซน์ v2 — Linear/Vercel + Enhancement:</b>
+          <b>① Quick actions</b> — เลื่อนเมาส์ชี้ที่งานในคิว → ปุ่ม โทร/เลื่อน/เสร็จ โผล่ (ปกติซ่อน 100% = ไม่รก) ·
+          <b>② จัดกลุ่มตามเวลา</b> เลยกำหนด/วันนี้/สัปดาห์นี้ ·
+          <b>③ ปุ่ม LINE + โทร</b> และ <b>④ บริบทลูกค้า</b> (ออเดอร์ล่าสุด/เซ็ท/คุยล่าสุด) ใน detail ·
+          <b>⑤ แถบความคืบหน้า</b> วันนี้ 8/12 ·
+          ลอง: ชี้เมาส์ที่งาน · คลิกงานเปลี่ยน detail · กดไอคอนบอร์ดมุมขวา · ย่อจอ = มือถือ
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // View switcher: list <-> board
+  const vswitch = document.getElementById('vswitch');
+  const split = document.getElementById('split');
+  const board = document.getElementById('board');
+  vswitch.addEventListener('click', e => {
+    const btn = e.target.closest('.vbtn'); if(!btn) return;
+    vswitch.querySelectorAll('.vbtn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const v = btn.dataset.view;
+    if(v==='board'){ split.classList.add('hide'); board.classList.add('show'); }
+    else { board.classList.remove('show'); split.classList.remove('hide'); }
+  });
+
+  // ===== Full task data — detail pane swaps everything on click =====
+  const TASKS = {
+    1:{type:{t:'ตามอาการ',ic:'ri-stethoscope-line',bg:'#0ea5e9',fg:'#fff'},pri:{t:'ด่วน',bg:'var(--danger-bg)',fg:'var(--danger)'},
+       title:'ตามอาการ — นอนไม่หลับ ปรับโดสแล้วดีขึ้นไหม',due:'เลย 2 วัน',dueCls:'od',date:'26 มิ.ย. 2569',
+       note:'ลูกค้าแจ้งว่าเริ่มหลับง่ายขึ้นแต่ยังตื่นกลางดึก แนะนำให้ทาน Sereniz ก่อนนอน 30 นาที — ติดตามอาการอีกครั้ง',
+       av:'สม',name:'คุณสมชาย ใจดี',phone:'081-234-5678',ctx:['฿2,490','Sereniz','5 วันก่อน']},
+    2:{type:{t:'โทรหา',ic:'ri-phone-line',bg:'#10b981',fg:'#fff'},pri:{t:'ด่วน',bg:'var(--danger-bg)',fg:'var(--danger)'},
+       title:'โทรหา — ทวงรูปสลิปโอนเงิน',due:'เลย 1 วัน',dueCls:'od',date:'27 มิ.ย. 2569',
+       note:'ลูกค้าสั่งของแล้วแต่ยังไม่ส่งสลิป โอนผ่านพร้อมเพย์ บอกว่าจะส่งให้เย็นวาน — โทรตามอีกที',
+       av:'ปร',name:'คุณปรีชา มั่งมี',phone:'086-222-3333',ctx:['฿1,290','โปรตีน','2 วันก่อน']},
+    3:{type:{t:'โทรหา',ic:'ri-phone-line',bg:'#10b981',fg:'#fff'},pri:{t:'ปกติ',bg:'var(--info-bg)',fg:'var(--info)'},
+       title:'โทรหา — ยืนยันที่อยู่จัดส่งรอบใหม่',due:'วันนี้',dueCls:'td',date:'29 มิ.ย. 2569',
+       note:'ลูกค้าย้ายที่อยู่ใหม่ ขอคอนเฟิร์มก่อนแพ็คของรอบนี้ ปลายทางต่างจังหวัด',
+       av:'มน',name:'คุณมานี รักสุข',phone:'089-876-5432',ctx:['฿3,180','ไฟเบอร์','วันนี้']},
+    4:{type:{t:'ตามของ',ic:'ri-truck-line',bg:'#8b5cf6',fg:'#fff'},pri:{t:'ปกติ',bg:'var(--info-bg)',fg:'var(--info)'},
+       title:'ตามของ — เช็คเลขพัสดุเซ็ตโปรตีน',due:'พรุ่งนี้',dueCls:'fu',date:'30 มิ.ย. 2569',
+       note:'ลูกค้าถามเลขแทร็คกิ้ง ส่งไปเมื่อ 2 วันก่อน เช็คสถานะ Kerry แล้วแจ้งกลับ',
+       av:'วภ',name:'คุณวิภา สดใส',phone:'062-111-2222',ctx:['฿2,090','โปรตีน','3 วันก่อน']},
+    5:{type:{t:'เตือนซื้อซ้ำ',ic:'ri-repeat-line',bg:'#f59e0b',fg:'#fff'},pri:{t:'ไม่เร่ง',bg:'var(--bg-subtle)',fg:'var(--text-muted)'},
+       title:'เตือนซื้อซ้ำ — ใกล้ครบเซ็ทไฟเบอร์',due:'อีก 3 วัน',dueCls:'fu',date:'2 ก.ค. 2569',
+       note:'ลูกค้าซื้อไฟเบอร์ครบเซ็ทใกล้หมด คาดว่าเหลือ ~5 วัน เสนอโปรซื้อซ้ำ + เซ็ทคู่',
+       av:'นภ',name:'คุณนภา ทองดี',phone:'094-333-4444',ctx:['฿890','ไฟเบอร์','12 วันก่อน']},
+    6:{type:{t:'ตามอาการ',ic:'ri-stethoscope-line',bg:'#0ea5e9',fg:'#fff'},pri:{t:'ปกติ',bg:'var(--info-bg)',fg:'var(--info)'},
+       title:'ตามอาการ — สอบถามผลหลังกินครบ 7 วัน',due:'อีก 4 วัน',dueCls:'fu',date:'3 ก.ค. 2569',
+       note:'ลูกค้ากินเซ็ทครบ 7 วันพอดี สอบถามอาการ พลังงาน/การนอน เก็บ feedback ไว้ปรับเซ็ตถัดไป',
+       av:'กต',name:'คุณกานต์ ศรีสุข',phone:'087-555-6666',ctx:['฿2,690','Drive Energy','7 วันก่อน']},
+  };
+  function applyTag(el,o){el.style.background=o.bg;el.style.color=o.fg;el.innerHTML=(o.ic?`<i class="${o.ic}"></i> `:'')+o.t;}
+  function showDetail(id){
+    const d=TASKS[id]; if(!d) return;
+    applyTag(document.getElementById('dType'),d.type);
+    applyTag(document.getElementById('dPri'),d.pri);
+    document.getElementById('dTitle').textContent=d.title;
+    const due=document.getElementById('dDue');
+    due.className=d.dueCls; due.innerHTML=`<i class="ri-calendar-line"></i> ${d.due}`;
+    document.getElementById('dDate').textContent=d.date;
+    document.getElementById('dNote').textContent=d.note;
+    document.getElementById('dAv').textContent=d.av;
+    document.getElementById('dName').textContent=d.name;
+    document.getElementById('dPhone').textContent=d.phone;
+    document.getElementById('dCtx1').textContent=d.ctx[0];
+    document.getElementById('dCtx2').textContent=d.ctx[1];
+    document.getElementById('dCtx3').textContent=d.ctx[2];
+  }
+  // Queue selection -> highlight + swap full detail
+  document.getElementById('qlist').addEventListener('click', e => {
+    if(e.target.closest('.qbtn')) return;   // quick-action buttons don't change selection
+    const row = e.target.closest('.task'); if(!row) return;
+    document.querySelectorAll('.task').forEach(t=>t.classList.remove('sel'));
+    row.classList.add('sel');
+    showDetail(row.dataset.task);
+  });
+
+  // Suggestions collapse
+  const sh = document.getElementById('suggHead');
+  const sb = document.getElementById('suggBody');
+  const sc = document.getElementById('suggChev');
+  sh.addEventListener('click', ()=>{ sb.classList.toggle('open'); sc.style.transform = sb.classList.contains('open')?'rotate(180deg)':''; });
+</script>
+</body>
+</html>

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tasks Redesign — Shizen CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<style>
+  :root{
+    --primary:#6366F1; --primary-hover:#4F46E5; --primary-deep:#3730A3;
+    --primary-light:#EEF0FF; --primary-tint:#F5F4FF; --primary-soft:#A5B4FC;
+    --bg-card:#FFFFFF; --bg-subtle:#F1F2F8;
+    --text-dark:#1E1B30; --text-body:#2A2645; --text-muted:#6B6789; --text-light:#A8A4C0;
+    --border:#ECECF3; --border-light:#F1F1F7; --border-medium:#E5E5EF;
+    --success:#10B981; --success-light:#D1FAE5;
+    --warning:#F59E0B; --warning-light:#FEF3C7;
+    --danger:#EF4444; --danger-light:#FEE2E2;
+    --info:#3B82F6; --info-light:#DBEAFE; --orange:#F97316; --orange-light:#FFEDD5;
+    --surface-glass:rgba(255,255,255,0.72); --glass-border:rgba(255,255,255,0.7);
+    --shadow-glass:0 8px 30px rgba(80,90,160,0.12);
+    --shadow-sm:0 1px 3px rgba(30,27,48,0.06),0 1px 2px rgba(30,27,48,0.04);
+    --shadow-md:0 4px 12px rgba(30,27,48,0.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:'Anuphan','Inter',system-ui,sans-serif;
+    color:var(--text-body); font-size:14.5px; line-height:1.6;
+    background:
+      radial-gradient(110% 80% at 0% 0%, #E8ECFF 0%, transparent 50%),
+      radial-gradient(110% 85% at 100% 0%, #F1E6FF 0%, transparent 48%),
+      linear-gradient(180deg, #F4F4FB 0%, #EBEDF8 100%);
+    background-attachment:fixed; min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:'Plus Jakarta Sans','Anuphan',sans-serif;letter-spacing:-0.015em;color:var(--text-dark);}
+  .tnum{font-feature-settings:'tnum' on,'lnum' on;}
+
+  /* ===== Layout ===== */
+  .wrap{display:flex;min-height:100vh;}
+  .sidebar{
+    width:240px;flex-shrink:0;position:sticky;top:0;height:100vh;
+    background:rgba(255,255,255,0.55);backdrop-filter:blur(20px) saturate(160%);
+    border-right:1px solid var(--glass-border);box-shadow:4px 0 24px rgba(80,90,160,0.10);
+    display:flex;flex-direction:column;padding:0;
+  }
+  .brand{height:68px;display:flex;align-items:center;gap:.65rem;padding:0 1.25rem;border-bottom:1px solid rgba(30,27,48,0.08);}
+  .brand-logo{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#818CF8,#6366F1 60%,#7C3AED);color:#fff;font-size:1.15rem;box-shadow:0 4px 12px rgba(99,102,241,.35);}
+  .brand-text{font-family:'Plus Jakarta Sans';font-weight:600;font-size:1.05rem;color:var(--text-dark);}
+  .brand-sub{font-size:10px;color:var(--text-muted);margin-top:-2px;}
+  .nav{padding:1rem .65rem;flex:1;}
+  .nav-label{padding:0 .75rem;font-size:10px;text-transform:uppercase;color:rgba(30,27,48,.42);font-weight:700;letter-spacing:.08em;margin-bottom:.35rem;}
+  .nav-item{display:flex;align-items:center;gap:.85rem;height:44px;padding:0 .95rem;border-radius:10px;color:var(--text-muted);font-weight:500;font-size:14px;margin:2px 0;text-decoration:none;}
+  .nav-item i{font-size:1.15rem;width:20px;}
+  .nav-item:hover{background:rgba(99,102,241,.10);color:var(--text-dark);}
+  .nav-item.active{background:rgba(99,102,241,.12);color:var(--text-dark);font-weight:600;position:relative;}
+  .nav-item.active i{color:var(--primary);}
+  .nav-item.active::before{content:'';position:absolute;left:-.65rem;top:50%;transform:translateY(-50%);width:3px;height:20px;background:var(--primary);border-radius:0 2px 2px 0;}
+  .nav-badge{margin-left:auto;background:var(--primary);color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 5px;}
+
+  .main{flex:1;min-width:0;}
+  .topbar{height:68px;background:rgba(247,247,251,.78);backdrop-filter:saturate(180%) blur(16px);
+    border-bottom:1px solid var(--glass-border);display:flex;align-items:center;justify-content:space-between;padding:0 1.75rem;position:sticky;top:0;z-index:10;}
+  .search{display:flex;align-items:center;background:#fff;border:1px solid var(--border);height:38px;border-radius:10px;padding:0 .9rem;width:320px;color:var(--text-muted);}
+  .search input{border:none;outline:none;background:transparent;font-family:inherit;width:100%;margin-left:.5rem;font-size:14px;}
+  .avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#818CF8,#6366F1);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+  .content{padding:1.75rem;max-width:1100px;margin:0 auto;}
+
+  /* ===== Page header (compact) ===== */
+  .page-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.1rem;flex-wrap:wrap;}
+  .page-title{font-size:1.5rem;font-weight:700;letter-spacing:-0.02em;display:flex;align-items:center;gap:.5rem;}
+  .page-title i{color:var(--primary);}
+  .head-controls{display:flex;align-items:center;gap:.6rem;}
+
+  /* scope dropdown */
+  .scope-btn{display:inline-flex;align-items:center;gap:.4rem;height:38px;padding:0 .9rem;background:#fff;border:1px solid var(--border-medium);border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;color:var(--text-body);cursor:pointer;}
+  .scope-btn i.ri-arrow-down-s-line{color:var(--text-muted);}
+
+  /* view switcher icons */
+  .view-switch{display:inline-flex;background:var(--surface-glass);backdrop-filter:blur(10px);border:1px solid var(--glass-border);border-radius:999px;padding:3px;gap:2px;}
+  .view-btn{width:38px;height:32px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:999px;cursor:pointer;font-size:1.05rem;}
+  .view-btn.active{background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;box-shadow:0 2px 8px rgba(99,102,241,.30);}
+
+  /* ===== Kind toggle (compact, was big cards) ===== */
+  .kind-toggle{display:inline-flex;background:#fff;border:1px solid var(--border-medium);border-radius:12px;padding:4px;gap:3px;margin-bottom:1.1rem;}
+  .kind-opt{display:inline-flex;align-items:center;gap:.5rem;padding:.5rem .95rem;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--text-muted);cursor:pointer;border:none;background:transparent;font-family:inherit;}
+  .kind-opt .cnt{background:var(--bg-subtle);color:var(--text-muted);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700;}
+  .kind-opt.active{background:var(--primary-light);color:var(--primary-deep);}
+  .kind-opt.active .cnt{background:var(--primary);color:#fff;}
+
+  /* ===== Focus Hero (THE STAR — keep glass) ===== */
+  .hero{position:relative;border-radius:18px;padding:1.5rem 1.6rem;margin-bottom:1.1rem;overflow:hidden;
+    background:linear-gradient(135deg,rgba(255,241,230,.9),rgba(254,226,226,.75));
+    border:1px solid rgba(239,68,68,.22);box-shadow:0 12px 36px rgba(200,60,60,.14);}
+  .hero::before{content:'';position:absolute;inset:0 auto 0 0;width:5px;background:var(--danger);}
+  .hero-eyebrow{display:inline-flex;align-items:center;gap:.4rem;font-size:12px;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem;}
+  .hero-title{font-family:'Plus Jakarta Sans';font-size:1.4rem;font-weight:700;color:var(--text-dark);letter-spacing:-0.02em;line-height:1.2;text-decoration:none;display:block;}
+  .hero-sub{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;font-size:13.5px;color:var(--text-body);margin-top:.4rem;}
+  .hero-overdue{color:var(--danger);font-weight:700;}
+  .hero-actions{display:flex;gap:.6rem;margin-top:1.1rem;flex-wrap:wrap;}
+  .hbtn{display:inline-flex;align-items:center;gap:.4rem;height:44px;padding:0 1.2rem;border-radius:12px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;border:1px solid transparent;}
+  .hbtn.primary{background:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(99,102,241,.3);}
+  .hbtn.solid{background:#fff;color:var(--text-dark);border-color:var(--border-medium);}
+  .hbtn.ghost{background:transparent;color:var(--text-muted);}
+  .hero-foot{margin-top:.85rem;font-size:12.5px;color:var(--text-muted);}
+
+  /* ===== Summary pills (= filter) ===== */
+  .pills{display:flex;gap:.5rem;margin-bottom:1.1rem;flex-wrap:wrap;}
+  .pill{display:flex;align-items:center;gap:.5rem;padding:.45rem 1rem;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid transparent;text-decoration:none;}
+  .pill .dot{width:8px;height:8px;border-radius:50%;}
+  .pill .num{font-weight:700;}
+  .pill.all{background:var(--info-light);color:var(--info);}
+  .pill.all.active{border-color:var(--info);box-shadow:var(--shadow-sm);}
+  .pill.today{background:var(--orange-light);color:var(--orange);}
+  .pill.over{background:var(--danger-light);color:var(--danger);}
+  .pill.week{background:var(--success-light);color:var(--success);}
+
+  /* ===== Queue ===== */
+  .queue-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem;}
+  .queue-title{font-size:15px;font-weight:700;color:var(--text-dark);display:flex;align-items:center;gap:.45rem;}
+  .filter-btn{display:inline-flex;align-items:center;gap:.4rem;height:36px;padding:0 .85rem;background:#fff;border:1px solid var(--border-medium);border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;color:var(--text-body);cursor:pointer;}
+  .filter-btn .cnt{background:var(--primary);color:#fff;border-radius:999px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;padding:0 4px;}
+
+  .list{display:flex;flex-direction:column;gap:.6rem;}
+  /* solid white cards (no glass) for dense data */
+  .task{background:#fff;border:1px solid var(--border);border-left:3px solid var(--type-color,#0ea5e9);border-radius:14px;padding:.95rem 1.1rem;box-shadow:var(--shadow-sm);cursor:pointer;display:flex;align-items:flex-start;gap:.6rem;transition:box-shadow .15s,transform .15s;}
+  .task:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);}
+  .task-main{flex:1;min-width:0;}
+  .task-title{font-size:14px;font-weight:600;color:var(--text-dark);}
+  .task-cust{font-size:12px;color:var(--text-muted);margin-top:2px;}
+  .task-meta{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-top:7px;font-size:11px;}
+  .tag{display:inline-flex;align-items:center;gap:3px;font-weight:600;}
+  .badge{padding:.1rem .55rem;border-radius:999px;font-weight:700;font-size:11px;}
+  .badge.hi{background:var(--danger-light);color:var(--danger);}
+  .badge.nm{background:var(--info-light);color:var(--info);}
+  .due{font-weight:600;}
+  .chev{color:var(--text-muted);font-size:20px;align-self:center;}
+
+  .legend{margin-top:1.5rem;padding:1rem 1.2rem;background:rgba(255,255,255,.6);border:1px dashed var(--border-medium);border-radius:12px;font-size:12.5px;color:var(--text-muted);}
+  .legend b{color:var(--text-dark);}
+
+  @media(max-width:860px){
+    .sidebar{display:none;}
+    .search{display:none;}
+    .content{padding:1.1rem;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- Sidebar (glass — kept as accent) -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo"><i class="ri-leaf-line"></i></div>
+      <div><div class="brand-text">Shizen CRM</div><div class="brand-sub">ระบบจัดการลูกค้า</div></div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">เมนูหลัก</div>
+      <a class="nav-item"><i class="ri-dashboard-3-line"></i> แดชบอร์ด</a>
+      <a class="nav-item active"><i class="ri-checkbox-line"></i> งาน <span class="nav-badge">12</span></a>
+      <a class="nav-item"><i class="ri-group-2-line"></i> จัดการลูกค้า</a>
+      <a class="nav-item"><i class="ri-shopping-bag-3-line"></i> ออเดอร์</a>
+      <a class="nav-item"><i class="ri-archive-2-line"></i> คลังสินค้า</a>
+      <a class="nav-item"><i class="ri-bar-chart-2-line"></i> สถิติเชิงลึก</a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <!-- Top bar (glass — kept) -->
+    <div class="topbar">
+      <div class="search"><i class="ri-search-line"></i><input placeholder="ค้นหาลูกค้า / เบอร์..."></div>
+      <div style="display:flex;align-items:center;gap:.75rem;">
+        <i class="ri-notification-3-line" style="font-size:1.25rem;color:var(--text-muted)"></i>
+        <div class="avatar">สม</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- 1. Compact header + inline controls -->
+      <div class="page-head">
+        <h1 class="page-title"><i class="ri-task-line"></i> งานของฉัน</h1>
+        <div class="head-controls">
+          <button class="scope-btn"><i class="ri-user-line"></i> ของฉัน <i class="ri-arrow-down-s-line"></i></button>
+          <div class="view-switch">
+            <button class="view-btn active" title="รายการ"><i class="ri-list-unordered"></i></button>
+            <button class="view-btn" title="Kanban"><i class="ri-layout-column-line"></i></button>
+            <button class="view-btn" title="ปฏิทิน"><i class="ri-calendar-2-line"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Kind toggle (was 2 big cards → compact) -->
+      <div class="kind-toggle">
+        <button class="kind-opt active"><i class="ri-heart-pulse-line"></i> ดูแลลูกค้า <span class="cnt">12</span></button>
+        <button class="kind-opt"><i class="ri-refresh-line"></i> ตามรีออเดอร์ <span class="cnt">5</span></button>
+      </div>
+
+      <!-- 3. Focus Hero — THE STAR -->
+      <section class="hero">
+        <div class="hero-eyebrow"><i class="ri-focus-3-line"></i> ทำต่อไป</div>
+        <a class="hero-title">ตามอาการ — นอนไม่หลับ ปรับโดสแล้วดีขึ้นไหม</a>
+        <div class="hero-sub">
+          <span><i class="ri-user-line"></i> คุณสมชาย ใจดี</span>
+          <span style="color:var(--text-light)">·</span>
+          <span class="hero-overdue"><i class="ri-alarm-warning-line"></i> เลยกำหนด 2 วัน</span>
+        </div>
+        <div class="hero-actions">
+          <button class="hbtn primary"><i class="ri-phone-line"></i> โทร</button>
+          <button class="hbtn solid"><i class="ri-checkbox-circle-line"></i> เสร็จแล้ว</button>
+          <button class="hbtn ghost"><i class="ri-skip-forward-line"></i> ข้าม</button>
+        </div>
+        <div class="hero-foot">เหลืออีก <b>11</b> งานค้าง</div>
+      </section>
+
+      <!-- 4. Summary pills = filter -->
+      <div class="pills">
+        <a class="pill all active"><span class="num tnum">12</span> ค้างทั้งหมด</a>
+        <a class="pill today"><span class="dot" style="background:var(--orange)"></span><span class="num tnum">3</span> วันนี้</a>
+        <a class="pill over"><span class="dot" style="background:var(--danger)"></span><span class="num tnum">5</span> เลยกำหนด</a>
+        <a class="pill week"><span class="dot" style="background:var(--success)"></span><span class="num tnum">8</span> ใน 7 วัน</a>
+      </div>
+
+      <!-- 5. Queue + filter hidden behind button -->
+      <div class="queue-head">
+        <div class="queue-title"><i class="ri-stack-line" style="color:var(--text-muted)"></i> คิวงาน <span class="tnum">(12)</span></div>
+        <button class="filter-btn"><i class="ri-filter-3-line"></i> ตัวกรอง <span class="cnt">0</span></button>
+      </div>
+
+      <div class="list">
+        <div class="task" style="--type-color:#EF4444">
+          <div class="task-main">
+            <div class="task-title">ตามอาการ — นอนไม่หลับ ปรับโดสแล้วดีขึ้นไหม</div>
+            <div class="task-cust"><i class="ri-user-line"></i> คุณสมชาย ใจดี · 081-234-5678</div>
+            <div class="task-meta">
+              <span class="tag" style="color:#0ea5e9"><i class="ri-stethoscope-line"></i> ตามอาการ</span>
+              <span class="badge hi">ด่วน</span>
+              <span class="due" style="color:var(--danger)"><i class="ri-calendar-line"></i> เลย 2 วัน</span>
+            </div>
+          </div>
+          <i class="ri-arrow-right-s-line chev"></i>
+        </div>
+
+        <div class="task" style="--type-color:#10b981">
+          <div class="task-main">
+            <div class="task-title">โทรหา — ยืนยันที่อยู่จัดส่งรอบใหม่</div>
+            <div class="task-cust"><i class="ri-user-line"></i> คุณมานี รักสุข · 089-876-5432</div>
+            <div class="task-meta">
+              <span class="tag" style="color:#10b981"><i class="ri-phone-line"></i> โทรหา</span>
+              <span class="badge nm">ปกติ</span>
+              <span class="due" style="color:var(--orange)"><i class="ri-calendar-line"></i> วันนี้</span>
+            </div>
+          </div>
+          <i class="ri-arrow-right-s-line chev"></i>
+        </div>
+
+        <div class="task" style="--type-color:#8b5cf6">
+          <div class="task-main">
+            <div class="task-title">ตามของ — เช็คเลขพัสดุเซ็ตโปรตีน</div>
+            <div class="task-cust"><i class="ri-user-line"></i> คุณวิภา สดใส · 062-111-2222</div>
+            <div class="task-meta">
+              <span class="tag" style="color:#8b5cf6"><i class="ri-truck-line"></i> ตามของ</span>
+              <span class="badge nm">ปกติ</span>
+              <span class="due" style="color:var(--text-dark)"><i class="ri-calendar-line"></i> พรุ่งนี้</span>
+            </div>
+          </div>
+          <i class="ri-arrow-right-s-line chev"></i>
+        </div>
+
+        <div class="task" style="--type-color:#f59e0b">
+          <div class="task-main">
+            <div class="task-title">เตือนซื้อซ้ำ — ใกล้ครบเซ็ทไฟเบอร์</div>
+            <div class="task-cust"><i class="ri-user-line"></i> คุณนภา ทองดี · 094-333-4444</div>
+            <div class="task-meta">
+              <span class="tag" style="color:#f59e0b"><i class="ri-repeat-line"></i> เตือนซื้อซ้ำ</span>
+              <span class="due" style="color:var(--text-dark)"><i class="ri-calendar-line"></i> อีก 3 วัน · 1 ก.ค.</span>
+            </div>
+          </div>
+          <i class="ri-arrow-right-s-line chev"></i>
+        </div>
+      </div>
+
+      <div class="legend">
+        <b>หมายเหตุดีไซน์:</b> กระจกฝ้า (glass) คงไว้เฉพาะ <b>Sidebar · Top bar · Focus Hero</b> = ส่วนที่ควร "ลอยเด่น" ·
+        การ์ดคิวงานเป็น <b>ขาวทึบ</b> เพื่อให้ตัวอักษรคมและ scan ข้อมูลเร็ว · ตัวกรองละเอียดซ่อนหลังปุ่ม "ตัวกรอง" ·
+        มุมมอง 3 แบบย่อเป็นไอคอนมุมขวาบน
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

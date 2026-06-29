@@ -18,6 +18,7 @@ export default function TaskSuggestionsSection({ suggestions }: { suggestions: T
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [open, setOpen] = useState(false);
   const [, startTransition] = useTransition();
 
   const visible = suggestions.filter(s => !dismissed.has(s.phone));
@@ -46,22 +47,15 @@ export default function TaskSuggestionsSection({ suggestions }: { suggestions: T
   };
 
   return (
-    <div style={{ marginBottom: '1.25rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
-        <i className="ri-lightbulb-flash-line" style={{ fontSize: 18, color: 'var(--primary)' }}></i>
-        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-dark)', margin: 0 }}>
-          ลูกค้าที่ควรติดตามวันนี้
-        </h2>
-        <span style={{
-          background: 'var(--primary)', color: '#fff', borderRadius: 999,
-          fontSize: 11, padding: '0 8px', height: 20, display: 'inline-flex', alignItems: 'center', fontWeight: 700,
-        }}>{visible.length}</span>
+    <div className="t2-sugg">
+      <div className="t2-sugg-head" onClick={() => setOpen(o => !o)} role="button" aria-expanded={open}>
+        <i className="ri-lightbulb-flash-line lead"></i>
+        <span className="t">ลูกค้าที่ควรติดตามวันนี้</span>
+        <span className="c">{visible.length}</span>
+        <i className={`ri-arrow-down-s-line chev${open ? ' open' : ''}`}></i>
       </div>
-      <p className="text-sm text-muted" style={{ marginBottom: '0.75rem', marginLeft: 26 }}>
-        ระบบเสนอจาก stage ลูกค้า — กด "สร้างเป็นงาน" เพื่อเพิ่มเข้าคิวงาน
-      </p>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      {!open ? null : (
+      <div className="t2-sugg-body">
         {shown.map(s => {
           const st = STAGE_STYLE[s.stage as 'AT_RISK' | 'LAPSED'];
           const isPending = pendingPhone === s.phone;
@@ -139,6 +133,7 @@ export default function TaskSuggestionsSection({ suggestions }: { suggestions: T
           </button>
         )}
       </div>
+      )}
     </div>
   );
 }

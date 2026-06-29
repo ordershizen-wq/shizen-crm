@@ -22,56 +22,34 @@ export default function TaskFocusHero({ task, remaining }: { task: FocusTask; re
   const run = (fn: () => Promise<void>) => start(() => { void fn(); });
 
   return (
-    <section className={`task-hero${task.overdue ? ' is-overdue' : ''}`} aria-busy={pending}>
-      <div className="task-hero-eyebrow">
-        <i className="ri-focus-3-line"></i> ทำต่อไป
+    <section className={`t2-upnext${task.overdue ? ' is-overdue' : ''}`} aria-busy={pending}>
+      <span className="t2-upnext-flag"><i className="ri-focus-3-line"></i> ทำต่อไป</span>
+
+      <div className="t2-upnext-body">
+        <Link href={`/customers/${task.customerPhone}`} className="t2-upnext-title">{task.title}</Link>
+        <div className="t2-upnext-meta">
+          {task.customerName}
+          <span style={{ margin: '0 4px', color: 'var(--text-light)' }}>·</span>
+          {task.overdue
+            ? <span className="od"><i className="ri-alarm-warning-line"></i> เลยกำหนด {task.daysOverdue} วัน</span>
+            : <span>{task.dueText}</span>}
+          {remaining > 0 && <span style={{ marginLeft: 8, color: 'var(--text-light)' }}>· เหลืออีก {remaining} งาน</span>}
+        </div>
       </div>
 
-      <Link href={`/customers/${task.customerPhone}`} className="task-hero-title">
-        {task.title}
-      </Link>
-
-      <div className="task-hero-sub">
-        <i className="ri-user-line"></i> {task.customerName}
-        <span className="task-hero-dot">·</span>
-        {task.overdue ? (
-          <span className="task-hero-overdue">
-            <i className="ri-alarm-warning-line"></i> เลยกำหนด {task.daysOverdue} วัน
-          </span>
-        ) : (
-          <span>{task.dueText}</span>
-        )}
-      </div>
-
-      <div className="task-hero-actions">
+      <div className="t2-upnext-actions">
         {callable && (
-          <a href={`tel:${task.customerPhone}`} className="btn task-hero-btn primary">
-            <i className="ri-phone-line"></i> โทร
-          </a>
+          <a href={`tel:${task.customerPhone}`} className="t2-un-btn call"><i className="ri-phone-line"></i> โทร</a>
         )}
-        <button
-          type="button"
-          className="btn task-hero-btn"
-          disabled={pending}
-          onClick={() => run(() => completeTask({ taskId: task.id }))}
-        >
-          <i className="ri-checkbox-circle-line"></i> เสร็จแล้ว
+        <button type="button" className="t2-un-btn done" disabled={pending}
+          onClick={() => run(() => completeTask({ taskId: task.id }))}>
+          <i className="ri-checkbox-circle-line"></i> เสร็จ
         </button>
-        <button
-          type="button"
-          className="btn task-hero-btn ghost"
-          disabled={pending}
-          onClick={() => run(() => skipTask({ taskId: task.id }))}
-        >
+        <button type="button" className="t2-un-btn skip" disabled={pending}
+          onClick={() => run(() => skipTask({ taskId: task.id }))}>
           <i className="ri-skip-forward-line"></i> ข้าม
         </button>
       </div>
-
-      {remaining > 0 && (
-        <div className="task-hero-foot">
-          เหลืออีก <b>{remaining}</b> งานค้าง
-        </div>
-      )}
     </section>
   );
 }
