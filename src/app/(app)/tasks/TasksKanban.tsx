@@ -116,10 +116,9 @@ function buildAssigneeColumns(tasks: DrawerTask[]): Column[] {
 function columnIdOf(t: DrawerTask, groupBy: GroupBy): string | null {
   if (groupBy === 'time') return timeBucket(t);
   if (groupBy === 'workflow') {
-    if (t.status === 'SKIPPED') return null; // SKIPPED ไม่อยู่ใน workflow kanban
+    if (t.status === 'SKIPPED') return null;
     return t.status;
   }
-  // type / assignee modes: hide non-active tasks
   const isActive = t.status === 'PENDING' || t.status === 'IN_PROGRESS' || t.status === 'WAITING_REPLY';
   if (!isActive) return null;
   if (groupBy === 'type') return t.type;
@@ -133,9 +132,9 @@ export default function TasksKanban({ tasks, groupBy }: { tasks: DrawerTask[]; g
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
   const [optimistic, setOptimistic] = useState<Map<string, string>>(new Map());
+  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
   const [, startTransition] = useTransition();
 
-  // reset optimistic when groupBy changes — buckets change meaning
   const columns = useMemo<Column[]>(() => {
     if (groupBy === 'time')     return TIME_COLUMNS;
     if (groupBy === 'type')     return TYPE_COLUMNS;
@@ -147,6 +146,7 @@ export default function TasksKanban({ tasks, groupBy }: { tasks: DrawerTask[]; g
     const map: Record<string, DrawerTask[]> = {};
     for (const c of columns) map[c.id] = [];
     for (const t of tasks) {
+      if (completedIds.has(t.id)) continue; // hide optimistically completed
       const override = optimistic.get(t.id);
       const bucket = override ?? columnIdOf(t, groupBy);
       if (bucket && map[bucket]) map[bucket].push(t);
@@ -163,7 +163,7 @@ export default function TasksKanban({ tasks, groupBy }: { tasks: DrawerTask[]; g
       if (isDoneCol(k)) map[k] = map[k].slice(0, 30);
     }
     return map;
-  }, [tasks, optimistic, columns, groupBy]);
+  }, [tasks, optimistic, completedIds, columns, groupBy]);
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     setDraggedId(taskId);
@@ -226,7 +226,25 @@ export default function TasksKanban({ tasks, groupBy }: { tasks: DrawerTask[]; g
     });
   };
 
-  // Mobile column indicator (active dot ตาม scroll position)
+  // K2: Quick complete handler — optimistic hide + server action
+  const handleQuickComplete = (taskId: string) => {
+    setCompletedIds(prev => new Set(prev).add(taskId));
+    startTransition(async () => {
+      try {
+        await completeTask({ taskId });
+        router.refresh();
+        setTimeout(() => setCompletedIds(prev => {
+          const n = new Set(prev); n.delete(taskId); return n;
+        }), 800);
+      } catch {
+        setCompletedIds(prev => {
+          const n = new Set(prev); n.delete(taskId); return n;
+        });
+      }
+    });
+  };
+
+  // K4: Mobile column indicator (active dot + label)
   const boardRef = useRef<HTMLDivElement>(null);
   const dotsRef = useRef<HTMLDivElement>(null);
   const [activeColIdx, setActiveColIdx] = useState(0);
@@ -245,7 +263,6 @@ export default function TasksKanban({ tasks, groupBy }: { tasks: DrawerTask[]; g
     return () => el.removeEventListener('scroll', onScroll);
   }, [columns.length]);
 
-  // Keep active dot in view (mobile dots strip)
   useEffect(() => {
     const dots = dotsRef.current;
     if (!dots) return;
@@ -261,8 +278,22 @@ export default function TasksKanban({ tasks, groupBy }: { tasks: DrawerTask[]; g
     );
   }
 
+  const activeCol = columns[activeColIdx];
+  const activeCount = activeCol ? (grouped[activeCol.id]?.length ?? 0) : 0;
+
   return (
     <>
+      {/* K4: Mobile sticky column label */}
+      {activeCol && (
+        <div className="t2-kanban-cur-label" style={{ '--col-color': activeCol.color } as React.CSSProperties}>
+          <span className="t2-kanban-cur-icon" style={{ background: activeCol.bg, color: activeCol.color }}>
+            <i className={activeCol.icon}></i>
+          </span>
+          <span className="t2-kanban-cur-title">{activeCol.title}</span>
+          <span className="t2-kanban-cur-count">{activeCount}</span>
+        </div>
+      )}
+
       <div
         ref={boardRef}
         className="kanban-board"
@@ -290,9 +321,20 @@ export default function TasksKanban({ tasks, groupBy }: { tasks: DrawerTask[]; g
               </div>
 
               <div className="kanban-col-body">
+                {/* K1: Empty state */}
                 {items.length === 0 ? (
-                  <div className="kanban-col-empty">
-                    {isOver ? 'วางที่นี่' : 'ว่าง'}
+                  <div className="t2-kanban-empty">
+                    {isOver ? (
+                      <>
+                        <i className="ri-drag-drop-line"></i>
+                        <span>วางที่นี่</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="ri-inbox-2-line"></i>
+                        <span>ไม่มีงานในกลุ่มนี้</span>
+                      </>
+                    )}
                   </div>
                 ) : (
                   items.map(t => (
@@ -304,6 +346,7 @@ export default function TasksKanban({ tasks, groupBy }: { tasks: DrawerTask[]; g
                       onClick={() => setSelected(t)}
                       onDragStart={e => handleDragStart(e, t.id)}
                       onDragEnd={handleDragEnd}
+                      onComplete={handleQuickComplete}
                     />
                   ))
                 )}
@@ -313,7 +356,7 @@ export default function TasksKanban({ tasks, groupBy }: { tasks: DrawerTask[]; g
         })}
       </div>
 
-      {/* Mobile-only column indicator */}
+      {/* Mobile-only column indicator dots */}
       <div ref={dotsRef} className="kanban-dots" role="tablist" aria-label="คอลัมน์ kanban">
         {columns.map((col, i) => (
           <button
@@ -342,7 +385,7 @@ export default function TasksKanban({ tasks, groupBy }: { tasks: DrawerTask[]; g
 }
 
 function KanbanCard({
-  task, groupBy, dragging, onClick, onDragStart, onDragEnd,
+  task, groupBy, dragging, onClick, onDragStart, onDragEnd, onComplete,
 }: {
   task: DrawerTask;
   groupBy: GroupBy;
@@ -350,11 +393,11 @@ function KanbanCard({
   onClick: () => void;
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: () => void;
+  onComplete: (taskId: string) => void;
 }) {
   const ti = TYPE_LABEL[task.type] ?? TYPE_LABEL.CUSTOM;
   const pi = PRIORITY_LABEL[task.priority];
   const isClosed = task.status === 'DONE' || task.status === 'SKIPPED';
-  const isDone = isClosed; // visual styling (faded) reused
 
   const due = new Date(task.dueDate);
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -367,20 +410,23 @@ function KanbanCard({
     : diff === 1 ? 'พรุ่งนี้'
     : `อีก ${diff} วัน`;
 
+  // K3: priority overrides type color on left border
+  const borderColor = task.priority === 'HIGH' ? '#ef4444' : ti.color;
+
   return (
     <div
       draggable={!isClosed}
       onClick={onClick}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      className={`kanban-card${dragging ? ' dragging' : ''}${isClosed ? ' done' : ''}${task.priority === 'HIGH' ? ' high-priority' : ''}`}
-      style={{ borderLeftColor: ti.color }}
+      className={`kanban-card t2-bcard${dragging ? ' dragging' : ''}${isClosed ? ' done' : ''}${task.priority === 'HIGH' ? ' high-priority' : ''}`}
+      style={{ borderLeftColor: borderColor }}
+      data-priority={task.priority}
       role="button"
       tabIndex={0}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
     >
       <div className="kanban-card-head">
-        {/* hide redundant type chip when grouping by type — column header already shows it */}
         {groupBy !== 'type' ? (
           <span className="kanban-card-type" style={{ color: ti.color }}>
             <i className={ti.icon}></i> {ti.label}
@@ -411,13 +457,26 @@ function KanbanCard({
         <span className="kanban-card-due">
           <i className="ri-calendar-line"></i> {dueText}
         </span>
-        {/* hide assignee badge when grouping by assignee — column header already shows it */}
         {groupBy !== 'assignee' && task.assignedToName && (
           <span className="kanban-card-assignee" title={task.assignedToName}>
             {task.assignedToName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
           </span>
         )}
       </div>
+
+      {/* K2: Quick complete button (hidden on closed tasks) */}
+      {!isClosed && (
+        <div className="t2-kcard-quick" onClick={e => { e.stopPropagation(); onComplete(task.id); }}>
+          <button
+            type="button"
+            title="ทำเสร็จแล้ว"
+            aria-label="ทำเสร็จแล้ว"
+            tabIndex={-1}
+          >
+            <i className="ri-check-line"></i>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

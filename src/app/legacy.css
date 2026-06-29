@@ -4546,3 +4546,157 @@ button, [role="button"], a.btn, .btn {
   .t2-ch-btn { height: 44px; }            /* touch target */
 }
 
+/* ── K1: Kanban empty state ────────────────────────────── */
+.t2-kanban-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 2rem 1rem;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.t2-kanban-empty i {
+  font-size: 1.75rem;
+  opacity: 0.45;
+}
+.kanban-col.drag-over .t2-kanban-empty {
+  color: var(--primary);
+  background: var(--primary-light);
+  border-radius: 8px;
+}
+.kanban-col.drag-over .t2-kanban-empty i { opacity: 1; }
+
+/* ── K2: Kanban quick-complete button ──────────────────── */
+.t2-bcard { position: relative; }
+.t2-kcard-quick {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+.t2-bcard:hover .t2-kcard-quick { opacity: 1; }
+.t2-kcard-quick button {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--success);
+  background: #fff;
+  color: var(--success);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+.t2-kcard-quick button:hover {
+  background: var(--success);
+  color: #fff;
+}
+@media (max-width: 768px) {
+  .t2-kcard-quick { opacity: 1; }
+}
+
+/* ── K3: Priority border color override ─────────────────── */
+.t2-bcard[data-priority="HIGH"] { border-left-color: #ef4444 !important; }
+
+/* ── K4: Mobile current-column label ───────────────────── */
+.t2-kanban-cur-label {
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-xs);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dark);
+  position: sticky;
+  top: 60px;
+  z-index: 10;
+}
+.t2-kanban-cur-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.t2-kanban-cur-count {
+  margin-left: auto;
+  background: var(--bg-subtle);
+  border-radius: 999px;
+  font-size: 11px;
+  padding: 1px 8px;
+  color: var(--text-muted);
+}
+@media (max-width: 768px) {
+  .t2-kanban-cur-label { display: flex; }
+}
+
+/* ── C1: Calendar event status badge ───────────────────── */
+.cal-ev-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+}
+.cal-ev-status.pending {
+  background: #fff7ed;
+  color: #f97316;
+}
+.cal-ev-status.overdue {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+/* ── C4: Calendar day count badge ──────────────────────── */
+.cal-day-badge {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+/* ── C4: Calendar empty day ─────────────────────────────── */
+.cal-empty-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+.cal-empty-day i {
+  font-size: 2rem;
+  color: var(--success);
+  opacity: 0.7;
+}
+.cal-empty-day p {
+  font-size: 13px;
+  margin: 0;
+}
+

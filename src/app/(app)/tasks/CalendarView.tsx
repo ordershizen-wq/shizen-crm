@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useTransition, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { CalendarEvent } from '@/lib/calendarEvents';
+import { completeTask } from './actions';
 
 const DAYS_TH = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
 const MONTHS_TH = [
@@ -59,28 +61,33 @@ type Props = {
 };
 
 export default function CalendarView({ events, initialYear, initialMonth, userName }: Props) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<CalendarEvent['type'] | 'all'>('all');
+  // C2: optimistic set of completed task IDs
+  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  // Index events by date
+  // Index events by date (excluding optimistically completed)
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
     for (const ev of events) {
+      if (ev.type === 'task' && ev.taskId && completedIds.has(ev.taskId)) continue;
       const list = map.get(ev.date) ?? [];
       list.push(ev);
       map.set(ev.date, list);
     }
     return map;
-  }, [events]);
+  }, [events, completedIds]);
 
   // Calendar grid data
-  const { cells, daysInMonth } = useMemo(() => {
-    const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
-    const offset = (firstDay + 6) % 7; // Mon-first: Mon=0 … Sun=6
+  const { cells } = useMemo(() => {
+    const firstDay = new Date(year, month, 1).getDay();
+    const offset = (firstDay + 6) % 7;
     const dim = new Date(year, month + 1, 0).getDate();
     const totalCells = Math.ceil((offset + dim) / 7) * 7;
     const cells: Array<number | null> = [];
@@ -111,6 +118,24 @@ export default function CalendarView({ events, initialYear, initialMonth, userNa
     setYear(t.getFullYear());
     setMonth(t.getMonth());
     setSelectedDate(todayStr);
+  }
+
+  // C2: quick-complete handler
+  function handleComplete(taskId: string) {
+    setCompletedIds(prev => new Set(prev).add(taskId));
+    startTransition(async () => {
+      try {
+        await completeTask({ taskId });
+        router.refresh();
+        setTimeout(() => setCompletedIds(prev => {
+          const n = new Set(prev); n.delete(taskId); return n;
+        }), 800);
+      } catch {
+        setCompletedIds(prev => {
+          const n = new Set(prev); n.delete(taskId); return n;
+        });
+      }
+    });
   }
 
   // Summary counts for this month
@@ -232,7 +257,9 @@ export default function CalendarView({ events, initialYear, initialMonth, userNa
               const filtered = filterType === 'all' ? dayEvents : dayEvents.filter(e => e.type === filterType);
               const isToday = dateStr === todayStr;
               const isSelected = dateStr === selectedDate;
-              const isWeekend = idx % 7 === 6; // Sunday
+              const isWeekend = idx % 7 === 6;
+              // C3: check if any task event is overdue
+              const hasOverdue = filtered.some(e => e.type === 'task' && e.isOverdue);
 
               return (
                 <div
@@ -248,9 +275,11 @@ export default function CalendarView({ events, initialYear, initialMonth, userNa
                       ? 'var(--primary-light)'
                       : isToday
                         ? '#fffbeb'
-                        : isWeekend
-                          ? '#fafafa'
-                          : '#fff',
+                        : hasOverdue
+                          ? '#FEF2F2'  // C3: soft red for overdue days
+                          : isWeekend
+                            ? '#fafafa'
+                            : '#fff',
                     transition: 'background 150ms',
                     position: 'relative',
                     outline: isSelected ? '2px solid var(--primary)' : isToday ? '2px solid #f59e0b' : 'none',
@@ -270,7 +299,16 @@ export default function CalendarView({ events, initialYear, initialMonth, userNa
                     {day}
                   </div>
 
-                  {/* Event dots */}
+                  {/* C4: Event count badge (top-right corner) */}
+                  {filtered.length > 0 && (
+                    <div className="cal-day-badge" style={{
+                      background: hasOverdue ? '#ef4444' : 'var(--primary)',
+                    }}>
+                      {filtered.length}
+                    </div>
+                  )}
+
+                  {/* Event dots / labels */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     {filtered.slice(0, 3).map((ev, i) => {
                       const cfg = EVENT_CONFIG[ev.type];
@@ -319,7 +357,7 @@ export default function CalendarView({ events, initialYear, initialMonth, userNa
                   {formatDateTH(selectedDate)}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                  {selectedEvents.length} งาน
+                  {selectedEvents.length} รายการ
                 </div>
               </div>
               <button
@@ -331,22 +369,27 @@ export default function CalendarView({ events, initialYear, initialMonth, userNa
             </div>
 
             <div style={{ maxHeight: 'calc(100vh - 250px)', overflowY: 'auto' }}>
+              {/* C4: Empty day state with link */}
               {selectedEvents.length === 0 ? (
-                <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  <i className="ri-checkbox-circle-line" style={{ fontSize: 36, color: 'var(--success)' }}></i>
-                  <p style={{ marginTop: 8, fontSize: 13 }}>ไม่มีงานในวันนี้</p>
+                <div className="cal-empty-day">
+                  <i className="ri-calendar-check-line"></i>
+                  <p>ไม่มีงานในวันนี้</p>
+                  <Link href="/tasks" className="btn btn-secondary" style={{ fontSize: 12, height: 32 }}>
+                    <i className="ri-list-check"></i> ดูงานทั้งหมด
+                  </Link>
                 </div>
               ) : (
                 <div style={{ padding: '0.5rem 0' }}>
                   {selectedEvents.map((ev, i) => {
                     const cfg = EVENT_CONFIG[ev.type];
+                    const isCompletable = ev.type === 'task' && !!ev.taskId;
                     return (
                       <div key={`${ev.phone}-${i}`} style={{
                         padding: '0.875rem 1.25rem',
                         borderBottom: i < selectedEvents.length - 1 ? '1px solid var(--border-light)' : 'none',
                       }}>
-                        {/* Type badge */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        {/* C1: Type badge + status badge row */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
                           <span style={{
                             background: cfg.bg, color: cfg.color,
                             fontSize: 11, fontWeight: 700,
@@ -355,6 +398,18 @@ export default function CalendarView({ events, initialYear, initialMonth, userNa
                           }}>
                             <i className={cfg.icon}></i> {cfg.label}
                           </span>
+                          {/* C1: status / overdue badge */}
+                          {ev.type === 'task' && (
+                            ev.isOverdue ? (
+                              <span className="cal-ev-status overdue">
+                                <i className="ri-alarm-warning-line"></i> เลยกำหนด
+                              </span>
+                            ) : (
+                              <span className="cal-ev-status pending">
+                                <i className="ri-time-line"></i> รอทำ
+                              </span>
+                            )
+                          )}
                         </div>
 
                         {/* Customer info */}
@@ -384,11 +439,6 @@ export default function CalendarView({ events, initialYear, initialMonth, userNa
                                     fontWeight: 700,
                                   }}>
                                     · {PRIORITY_LABEL[ev.priority].label}
-                                  </span>
-                                )}
-                                {ev.isOverdue && (
-                                  <span style={{ color: '#ef4444', fontWeight: 700 }}>
-                                    · เลยกำหนด
                                   </span>
                                 )}
                               </div>
@@ -422,15 +472,26 @@ export default function CalendarView({ events, initialYear, initialMonth, userNa
                           )}
                         </div>
 
-                        {/* Action */}
-                        <div style={{ marginTop: '0.75rem' }}>
+                        {/* Actions row */}
+                        <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <Link
                             href={`/customers/${ev.phone}`}
-                            className="btn btn-primary"
+                            className="btn btn-secondary"
                             style={{ fontSize: 12, height: 34, padding: '0 0.85rem' }}
                           >
                             <i className="ri-user-line"></i> เปิดโปรไฟล์
                           </Link>
+                          {/* C2: Quick-complete button (tasks only) */}
+                          {isCompletable && (
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              style={{ fontSize: 12, height: 34, padding: '0 0.85rem' }}
+                              onClick={() => handleComplete(ev.taskId!)}
+                            >
+                              <i className="ri-check-line"></i> เสร็จแล้ว
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
