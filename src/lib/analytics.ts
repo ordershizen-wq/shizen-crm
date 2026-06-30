@@ -276,9 +276,11 @@ export async function getBestProducts(user: CurrentUser, limit = 5, range?: Date
     }
   }
 
+  // หมายเหตุ: productsJson เก็บแค่ name+quantity ไม่มีราคาต่อชิ้น และราคาเป็นแบบเซ็ท
+  // (bundle) ที่ระดับออเดอร์ → revenue ต่อสินค้าคำนวณไม่ได้ จึงจัดอันดับด้วยจำนวนชิ้นจริง
   return Array.from(tally.entries())
     .map(([name, s]) => ({ name, ...s }))
-    .sort((a, b) => b.revenue - a.revenue)
+    .sort((a, b) => b.units - a.units || b.orders - a.orders)
     .slice(0, limit);
 }
 
@@ -465,17 +467,21 @@ export type ProductPerf = {
 };
 
 export async function getProductPerformance(limit = 10, range?: DateRange): Promise<ProductPerf[]> {
-  // ถ้าไม่มี range → ดูทั้งหมด แต่ลูกค้าเก่าก็คือ "ก่อนเริ่ม range"
-  const start = range?.start ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  const end = range?.end ?? new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
+  // มี range (เดือน/ปี/กำหนดเอง) → window ตามนั้น, reorder = ลูกค้าที่เคยซื้อ "ก่อนเริ่ม range"
+  // ไม่มี range (ทั้งหมด) → window ทั้งหมด, reorder = ลูกค้าที่ซื้อสินค้านั้น ≥2 ออเดอร์ (lifetime)
+  const hasRange = !!(range?.start && range?.end);
+  const start = range?.start ?? new Date(0);
+  const end = range?.end ?? new Date(Date.now() + 86400000);
 
   const orders = await prisma.sheetOrder.findMany({
     where: { createdAt: { gte: start, lt: end }, phone: { not: null } },
     select: { phone: true, productsJson: true },
   });
 
-  // product → set of phones who bought it (this month + lifetime)
+  // product → set of phones who bought it (within window)
   const productPhones = new Map<string, Set<string>>();
+  // product → (phone → จำนวนออเดอร์ที่ซื้อสินค้านั้น) — ใช้คำนวณ reorder แบบ lifetime
+  const productPhoneOrders = new Map<string, Map<string, number>>();
   const productStats = new Map<string, { units: number; revenue: number; orders: number }>();
 
   for (const o of orders) {
@@ -499,22 +505,25 @@ export async function getProductPerformance(limit = 10, range?: DateRange): Prom
         const set = productPhones.get(name) ?? new Set<string>();
         set.add(o.phone);
         productPhones.set(name, set);
+
+        const cnt = productPhoneOrders.get(name) ?? new Map<string, number>();
+        cnt.set(o.phone, (cnt.get(o.phone) ?? 0) + 1);
+        productPhoneOrders.set(name, cnt);
       }
     }
   }
 
-  // ดูว่าลูกค้าที่ซื้อสินค้านี้ใน "เคย" ซื้อสินค้าเดียวกันก่อนหน้าไหม
   const productNames = Array.from(productStats.keys());
   const reorderRateMap = new Map<string, number>();
 
-  if (productNames.length > 0) {
+  if (productNames.length > 0 && hasRange) {
+    // ดูว่าลูกค้าที่ซื้อสินค้านี้ใน window "เคย" ซื้อสินค้าเดียวกันก่อนหน้าไหม
     const allPhones = Array.from(new Set(Array.from(productPhones.values()).flatMap(s => Array.from(s))));
     if (allPhones.length > 0) {
       const historicalOrders = await prisma.sheetOrder.findMany({
         where: { phone: { in: allPhones }, createdAt: { lt: start } },
         select: { phone: true, productsJson: true },
       });
-      // map: product → set of phones who bought it BEFORE this month
       const beforeMap = new Map<string, Set<string>>();
       for (const o of historicalOrders) {
         const items: ProductRow[] = Array.isArray(o.productsJson) ? (o.productsJson as ProductRow[]) : [];
@@ -527,12 +536,21 @@ export async function getProductPerformance(limit = 10, range?: DateRange): Prom
         }
       }
       for (const name of productNames) {
-        const thisMonth = productPhones.get(name) ?? new Set();
+        const inWindow = productPhones.get(name) ?? new Set();
         const before = beforeMap.get(name) ?? new Set();
         let repeat = 0;
-        for (const p of thisMonth) if (before.has(p)) repeat++;
-        reorderRateMap.set(name, thisMonth.size > 0 ? (repeat / thisMonth.size) * 100 : 0);
+        for (const p of inWindow) if (before.has(p)) repeat++;
+        reorderRateMap.set(name, inWindow.size > 0 ? (repeat / inWindow.size) * 100 : 0);
       }
+    }
+  } else if (productNames.length > 0) {
+    // ทั้งหมด: reorder = สัดส่วนลูกค้าที่ซื้อสินค้านั้นซ้ำ (≥2 ออเดอร์) ตลอดกาล
+    for (const name of productNames) {
+      const phoneCounts = productPhoneOrders.get(name);
+      if (!phoneCounts || phoneCounts.size === 0) { reorderRateMap.set(name, 0); continue; }
+      let repeat = 0;
+      for (const cnt of phoneCounts.values()) if (cnt >= 2) repeat++;
+      reorderRateMap.set(name, (repeat / phoneCounts.size) * 100);
     }
   }
 
@@ -546,7 +564,7 @@ export async function getProductPerformance(limit = 10, range?: DateRange): Prom
       uniqueCustomers: productPhones.get(name)?.size ?? 0,
       reorderRate: reorderRateMap.get(name) ?? 0,
     };
-  }).sort((a, b) => b.revenue - a.revenue).slice(0, limit);
+  }).sort((a, b) => b.units - a.units || b.orders - a.orders).slice(0, limit);
 
   return results;
 }

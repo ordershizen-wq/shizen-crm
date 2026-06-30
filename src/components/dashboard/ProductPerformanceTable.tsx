@@ -1,13 +1,13 @@
 import type { ProductPerf } from '@/lib/analytics';
 
-export default function ProductPerformanceTable({ products }: { products: ProductPerf[] }) {
+export default function ProductPerformanceTable({ products, rangeLabel }: { products: ProductPerf[]; rangeLabel?: string }) {
   if (products.length === 0) return null;
 
   return (
     <div className="card" style={{ padding: 0, marginBottom: '1.5rem' }}>
       <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-light)' }}>
         <div className="fw-600" style={{ fontSize: 15, fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '-0.01em' }}>
-          ผลงานของสินค้า — เดือนนี้
+          ผลงานของสินค้า — {rangeLabel ?? 'เดือนนี้'}
         </div>
         <div className="text-sm text-muted" style={{ fontSize: 12, marginTop: 2 }}>
           สินค้าที่ลูกค้าซื้อซ้ำสูง = สินค้าที่ควรผลักดันต่อ
@@ -18,7 +18,6 @@ export default function ProductPerformanceTable({ products }: { products: Produc
           <thead>
             <tr>
               <th>สินค้า</th>
-              <th style={{ textAlign: 'right' }}>ยอดขาย</th>
               <th style={{ textAlign: 'right' }}>ชิ้น</th>
               <th style={{ textAlign: 'right' }}>ออเดอร์</th>
               <th style={{ textAlign: 'right' }}>ลูกค้า</th>
@@ -31,10 +30,7 @@ export default function ProductPerformanceTable({ products }: { products: Produc
               return (
                 <tr key={p.name}>
                   <td className="fw-600" data-label="สินค้า">{p.name}</td>
-                  <td data-label="ยอดขาย" className="fw-700" style={{ textAlign: 'right', color: 'var(--primary)' }}>
-                    ฿{p.revenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
-                  </td>
-                  <td data-label="ชิ้น" className="text-sm" style={{ textAlign: 'right' }}>{p.units.toLocaleString()}</td>
+                  <td data-label="ชิ้น" className="fw-700" style={{ textAlign: 'right', color: 'var(--primary)' }}>{p.units.toLocaleString()}</td>
                   <td data-label="ออเดอร์" className="text-sm" style={{ textAlign: 'right' }}>{p.orders}</td>
                   <td data-label="ลูกค้า" className="text-sm" style={{ textAlign: 'right' }}>{p.uniqueCustomers}</td>
                   <td data-label="Reorder rate" style={{ textAlign: 'right' }}>

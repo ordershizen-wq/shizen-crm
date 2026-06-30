@@ -5,7 +5,7 @@ export default function BestProductsWidget({ products }: { products: ProductStat
     return null;
   }
 
-  const maxRevenue = Math.max(...products.map(p => p.revenue));
+  const maxUnits = Math.max(...products.map(p => p.units));
 
   return (
     <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
@@ -13,13 +13,13 @@ export default function BestProductsWidget({ products }: { products: ProductStat
         สินค้าที่ขายดีของคุณ
       </div>
       <div className="text-sm text-muted" style={{ fontSize: 11, marginBottom: 12 }}>
-        เตรียมสคริปต์ขายสินค้าเด็ดๆ
+        จัดอันดับตามจำนวนที่ขายได้ — เตรียมสคริปต์ขายสินค้าเด็ดๆ
       </div>
       <div>
         {products.map((p, i) => {
-          const widthPct = maxRevenue > 0 ? (p.revenue / maxRevenue) * 100 : 0;
+          const widthPct = maxUnits > 0 ? (p.units / maxUnits) * 100 : 0;
           return (
-            <div key={p.name} style={{ marginBottom: '0.7rem', last: { marginBottom: 0 } } as React.CSSProperties}>
+            <div key={p.name} style={{ marginBottom: '0.7rem' }}>
               <div className="flex-between" style={{ fontSize: 12, marginBottom: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
                   <span style={{
@@ -34,7 +34,7 @@ export default function BestProductsWidget({ products }: { products: ProductStat
                   </span>
                 </div>
                 <span className="fw-700" style={{ color: 'var(--primary)', fontSize: 13 }}>
-                  ฿{p.revenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
+                  {p.units.toLocaleString()} ชิ้น
                 </span>
               </div>
               <div style={{ height: 5, background: 'var(--border-light)', borderRadius: 3, overflow: 'hidden' }}>
@@ -47,7 +47,7 @@ export default function BestProductsWidget({ products }: { products: ProductStat
                 }} />
               </div>
               <div className="text-sm text-muted" style={{ fontSize: 10, marginTop: 2 }}>
-                {p.units} ชิ้น · {p.orders} ออเดอร์
+                {p.orders} ออเดอร์
               </div>
             </div>
           );

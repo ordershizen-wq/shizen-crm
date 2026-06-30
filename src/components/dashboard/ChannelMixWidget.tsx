@@ -4,17 +4,36 @@ const CHANNEL_COLORS: Record<string, string> = {
   LINE: '#22C55E',
   FB: '#3B82F6',
   FACEBOOK: '#3B82F6',
+  FB_PROFILE: '#3B82F6',
+  FB_PAGE: '#1D4ED8',
   TIKTOK: '#1E1B30',
+  TIKTOK_SHOP: '#FE2C55',
   TEL: '#8B5CF6',
   OTHER: '#94A3B8',
 };
 
+// แปลงโค้ดช่องทางดิบ → ชื่อที่อ่านง่าย
+const CHANNEL_LABELS: Record<string, string> = {
+  LINE: 'LINE',
+  FB: 'Facebook',
+  FACEBOOK: 'Facebook',
+  FB_PROFILE: 'Facebook (โปรไฟล์)',
+  FB_PAGE: 'Facebook (เพจ)',
+  TIKTOK: 'TikTok',
+  TIKTOK_SHOP: 'TikTok Shop',
+  TEL: 'โทรศัพท์',
+  OTHER: 'อื่นๆ',
+};
+
 function colorFor(ch: string): string {
-  const key = ch.toUpperCase();
-  return CHANNEL_COLORS[key] ?? '#94a3b8';
+  return CHANNEL_COLORS[ch.toUpperCase()] ?? '#94a3b8';
 }
 
-export default function ChannelMixWidget({ slices }: { slices: ChannelSlice[] }) {
+function labelFor(ch: string): string {
+  return CHANNEL_LABELS[ch.toUpperCase()] ?? ch;
+}
+
+export default function ChannelMixWidget({ slices, rangeLabel }: { slices: ChannelSlice[]; rangeLabel?: string }) {
   if (slices.length === 0) {
     return null;
   }
@@ -41,10 +60,10 @@ export default function ChannelMixWidget({ slices }: { slices: ChannelSlice[] })
   return (
     <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
       <div className="fw-600" style={{ fontSize: 15, marginBottom: 4, fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '-0.01em' }}>
-        ช่องทางที่ใช้ขายเดือนนี้
+        ช่องทางที่ใช้ขาย{rangeLabel ? ` · ${rangeLabel}` : ''}
       </div>
       <div className="text-sm text-muted" style={{ fontSize: 11, marginBottom: 12 }}>
-        {topChannel ? `เก่งสุดที่ ${topChannel.channel} — ${topChannel.share.toFixed(0)}% ของรายได้` : ''}
+        {topChannel ? `เก่งสุดที่ ${labelFor(topChannel.channel)} — ${topChannel.share.toFixed(0)}% ของรายได้` : ''}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
         <svg viewBox="0 0 150 150" style={{ width: 130, height: 130, flexShrink: 0 }}>
@@ -61,7 +80,7 @@ export default function ChannelMixWidget({ slices }: { slices: ChannelSlice[] })
           {arcs.map(a => (
             <div key={a.channel} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <span style={{ width: 10, height: 10, borderRadius: 2, background: a.color, flexShrink: 0 }} />
-              <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{a.channel}</span>
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{labelFor(a.channel)}</span>
               <span className="text-sm text-muted" style={{ fontSize: 11 }}>{a.orders} ออเดอร์</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: a.color, minWidth: 42, textAlign: 'right' }}>
                 {a.share.toFixed(0)}%

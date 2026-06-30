@@ -169,7 +169,7 @@ async function OverviewTab({
 
       {!isAdmin && (channelMix.length > 0 || bestProducts.length > 0) && (
         <div className="dash-2col">
-          {channelMix.length > 0 && <ChannelMixWidget slices={channelMix} />}
+          {channelMix.length > 0 && <ChannelMixWidget slices={channelMix} rangeLabel={dateRange.label} />}
           {bestProducts.length > 0 && <BestProductsWidget products={bestProducts} />}
         </div>
       )}
@@ -179,7 +179,7 @@ async function OverviewTab({
       {isAdmin && revenueForecast && <RevenueForecastCard data={revenueForecast} />}
       {isAdmin && teamBattle.length > 0 && <TeamBattleWidget rows={teamBattle} />}
       {isAdmin && funnel && <FunnelWidget data={funnel} />}
-      {isAdmin && productPerf.length > 0 && <ProductPerformanceTable products={productPerf} />}
+      {isAdmin && productPerf.length > 0 && <ProductPerformanceTable products={productPerf} rangeLabel={dateRange.label} />}
 
       {stageCounts.length > 0 && (
         <div className="card p-4 mb-4">
