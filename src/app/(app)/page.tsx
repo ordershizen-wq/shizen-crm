@@ -155,6 +155,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
     : isLeader ? `ภาพรวม ${user.team?.name ?? ''}`
     : `ผลงานของ ${user.fullName}`;
 
+  // ชื่อกราฟรายได้ให้ตรงกับสิ่งที่พล็อตจริง (อย่า hardcode "30 วัน")
+  const revenueTitle = !dateRange.start
+    ? 'รายได้ 30 วันล่าสุด'
+    : useMonthBuckets
+      ? `รายได้รายเดือน · ${dateRange.label}`
+      : `รายได้ · ${dateRange.label}`;
+
   const topFive = leaderboard.rows.slice(0, 5);
 
   return (
@@ -181,8 +188,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
         initialTo={to ?? (dateRange.end ? toYmd(new Date(dateRange.end.getTime() - 86400000)) : undefined)}
       />
 
-      {/* ════ KPI Bento (ฮีโร่ยอดขาย + 3 ใบเล็ก) — glass ════ */}
-      <div className="kpi-bento kpi-bento-glass mb-4">
+      {/* ════ KPI Bento (ฮีโร่ยอดขาย + 3 ใบเล็ก) — clean card ════ */}
+      <div className="kpi-bento kpi-bento-clean mb-4">
         <KpiHero
           label="ยอดขาย"
           value={`฿${totalRevenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`}
@@ -201,7 +208,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
           tint="mint"
           label="ลูกค้า"
           value={customerCount.toLocaleString()}
-          subLabel="ไม่ซ้ำ (ตามเบอร์)"
+          subLabel="ทั้งหมด · ตามเบอร์"
         />
         <KpiPastel
           tint="butter"
@@ -251,7 +258,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
       </div>
 
       {/* Main charts: trend + stage */}
-      <DashboardCharts dailyRevenue={dailyRevenue} stageCounts={stageCounts} />
+      <DashboardCharts dailyRevenue={dailyRevenue} stageCounts={stageCounts} revenueTitle={revenueTitle} />
 
       {/* Bottom row: Recent orders | Top 5 */}
       <div className="dash-2col mt-4">

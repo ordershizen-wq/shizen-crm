@@ -1215,6 +1215,31 @@ input[type="radio"] {
   .kpi-bento > .kpi-pastel:last-child { grid-column: span 1; }
 }
 
+/* ── KPI Bento — Clean Card (เลิก glass: การ์ดสะอาด คมชัด เข้าชุดทั้งเว็บ) ──
+   ไม่มีพาเนลกระจกหลัง การ์ดวางตรงบนพื้นแอป → ตัวเลขคอนทราสต์ชัดขึ้น */
+.kpi-bento-clean {
+  padding: 0;
+  background: none;
+}
+.kpi-bento-clean > .kpi-hero {
+  background: var(--bg-card);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+.kpi-bento-clean > .kpi-hero:hover {
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
+}
+.kpi-bento-clean > .kpi-pastel {
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
+}
+.kpi-bento-clean > .kpi-pastel:hover {
+  box-shadow: var(--shadow-md);
+}
+
 .kpi-hero {
   position: relative;
   display: flex;
@@ -2890,6 +2915,43 @@ a.card:active,
 }
 
 .search-input::placeholder { color: var(--text-light); }
+
+/* ปุ่มล้าง + spinner ในช่องค้นหา (override .search-wrap i ที่จัด absolute-left) */
+.search-wrap .search-clear,
+.search-wrap .search-spin {
+  position: absolute;
+  right: 0.6rem;
+  left: auto;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.search-wrap .search-spin {
+  color: var(--primary);
+  font-size: 1rem;
+  pointer-events: none;
+  animation: spin 0.7s linear infinite;
+}
+.search-wrap .search-clear {
+  width: 26px; height: 26px;
+  border: none; border-radius: 50%;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.search-wrap .search-clear:hover { background: var(--border); color: var(--text-dark); }
+.search-wrap .search-clear i {
+  position: static;
+  left: auto;
+  transform: none;
+  font-size: 15px;
+  color: inherit;
+  pointer-events: auto;
+}
+/* กันข้อความทับปุ่มขวา */
+.search-wrap .search-input { padding-right: 2.5rem; }
 
 /* ═══════════════════════════════════════════
    CUSTOMER GRID & CARDS
@@ -4717,3 +4779,223 @@ button, [role="button"], a.btn, .btn {
   margin: 0;
 }
 
+/* ═══════════════════════════════════════════
+   DARK MODE OVERRIDES
+   html.dark — swap legacy tokens ทั้งเว็บ
+   (เดิมเป็น "html.dark :root" ซึ่ง match อะไรไม่ได้เลย
+    เพราะ :root = <html> เป็น descendant ของตัวเองไม่ได้)
+═══════════════════════════════════════════ */
+html.dark {
+  /* Surfaces — true dark (#0E0E16 จาก mockup .style-dark) */
+  --bg-app:    #0E0E16;
+  --bg-white:  #161622;
+  --bg-card:   #161622;
+  --bg-subtle: #111119;
+
+  /* Text */
+  --text-dark:  #EEEDF8;
+  --text-body:  #C4C2DA;
+  --text-muted: #7A789A;
+  --text-light: #4E4C6A;
+
+  /* Borders */
+  --border-light:  #1E1D30;
+  --border-medium: #252440;
+  --border:        #2C2A45;
+  --border-strong: #38364E;
+
+  /* Shadows */
+  --shadow-xs:   0 1px 2px rgba(0,0,0,0.20);
+  --shadow-sm:   0 1px 3px rgba(0,0,0,0.25);
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.20), 0 1px 2px rgba(0,0,0,0.15);
+  --shadow-md:   0 8px 24px rgba(0,0,0,0.30), 0 2px 6px rgba(0,0,0,0.20);
+  --shadow-lg:   0 20px 40px rgba(0,0,0,0.40), 0 6px 12px rgba(0,0,0,0.20);
+  --shadow-glow: 0 0 0 3px rgba(124,127,255,0.25);
+
+  /* KPI tints — darkened */
+  --tint-peach:        #2A1A0F;  --tint-peach-ink:    #FB923C;
+  --tint-lavender:     #1A1A3A;  --tint-lavender-ink: #818CF8;
+  --tint-mint:         #0D2420;  --tint-mint-ink:     #34D399;
+  --tint-butter:       #261A04;  --tint-butter-ink:   #FCD34D;
+  --tint-pink:         #280C1E;  --tint-pink-ink:     #F472B6;
+  --tint-sky:          #0B1F30;  --tint-sky-ink:      #38BDF8;
+
+  /* Neon accent (dark mode) */
+  --primary:       #22E5A0;
+  --primary-hover: #1DCFA0;
+  --primary-light: rgba(34,229,160,0.12);
+  --primary-tint:  rgba(34,229,160,0.07);
+  --primary-soft:  #22E5A0;
+
+  /* Semantic lights */
+  --success-light: #064E3B;
+  --warning-light: #451A03;
+  --danger-light:  #450A0A;
+  --info-light:    #1E3A5F;
+  --orange-light:  #3D1402;
+  --purple-light:  #2E1065;
+  --sage-light:    #1A2E1C;
+  --clay-light:    #2A1510;
+  --sand-light:    #2A2010;
+  --blue-light:    #1A2E4A;
+
+  /* Chart */
+  --chart-grid:       rgba(255,255,255,0.06);
+  --chart-tick:       #5E5C7A;
+  --chart-tooltip-bg: #1A1928;
+  --chart-tooltip-fg: #F0F0F8;
+
+  /* Glass */
+  --surface-glass: rgba(22,21,42,0.85);
+  --glass-border:  rgba(255,255,255,0.08);
+  --shadow-glass:  0 8px 30px rgba(0,0,0,0.30);
+}
+
+/* Body background gradient ใน dark mode — near-black จาก mockup .style-dark */
+html.dark .legacy-body {
+  background:
+    radial-gradient(110% 80% at 0% 0%, rgba(34,229,160,0.04) 0%, transparent 50%),
+    radial-gradient(110% 85% at 100% 0%, rgba(55,224,255,0.03) 0%, transparent 48%),
+    linear-gradient(180deg, #0E0E16 0%, #0B0B12 100%);
+  background-attachment: fixed;
+  color: var(--text-body);
+}
+
+/* ── Accessibility: เคารพการตั้งค่า "ลดการเคลื่อนไหว" ทั้งเว็บ ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Toast (feedback หลังทำงาน)
+═══════════════════════════════════════════ */
+.toast-stack {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem);
+  transform: translateX(-50%);
+  z-index: 4000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  pointer-events: none;
+}
+.toast-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 1.1rem;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-dark);
+  max-width: 100%;
+  animation: toastIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.toast-item i { font-size: 17px; flex-shrink: 0; }
+.toast-item.is-success i { color: var(--success); }
+.toast-item.is-error   i { color: var(--danger); }
+.toast-item.is-info    i { color: var(--primary); }
+.toast-item.is-success { border-color: color-mix(in srgb, var(--success) 35%, var(--border)); }
+.toast-item.is-error   { border-color: color-mix(in srgb, var(--danger) 35%, var(--border)); }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ═══════════════════════════════════════════
+   Confirm dialog (แทน native confirm)
+═══════════════════════════════════════════ */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4100;
+  background: rgba(8, 8, 14, 0.55);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  animation: fadeIn 0.15s ease;
+}
+.confirm-box {
+  width: 100%;
+  max-width: 360px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1.75rem 1.5rem 1.4rem;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  animation: confirmIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes confirmIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.confirm-icon {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--primary-tint);
+  color: var(--primary);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 26px;
+  margin: 0 auto 0.9rem;
+}
+.confirm-icon.danger { background: var(--danger-light); color: var(--danger); }
+.confirm-title { font-size: 16.5px; font-weight: 700; color: var(--text-dark); margin: 0 0 0.4rem; }
+.confirm-msg { font-size: 13.5px; color: var(--text-muted); line-height: 1.55; margin: 0 0 1.3rem; }
+.confirm-actions { display: flex; gap: 0.6rem; }
+.confirm-actions .btn { flex: 1; justify-content: center; min-height: 44px; font-size: 14px; }
+
+/* ═══════════════════════════════════════════
+   Pagination
+═══════════════════════════════════════════ */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 40px;
+  padding: 0 0.95rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-dark);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+.pagination-btn:hover { border-color: var(--primary); color: var(--primary); }
+.pagination-btn.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.pagination-info {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-feature-settings: 'tnum' on, 'lnum' on;
+}
+.pagination-total { color: var(--text-light); font-weight: 500; }

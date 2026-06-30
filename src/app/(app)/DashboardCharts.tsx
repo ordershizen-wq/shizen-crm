@@ -61,18 +61,19 @@ export type StageCount = { stage: string; label: string; count: number; color: s
 type Props = {
   dailyRevenue: DailyRevenue[];
   stageCounts: StageCount[];
+  revenueTitle?: string;
 };
 
-export default function DashboardCharts({ dailyRevenue, stageCounts }: Props) {
+export default function DashboardCharts({ dailyRevenue, stageCounts, revenueTitle }: Props) {
   return (
     <div className="dashboard-charts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', marginBottom: '1.5rem' }}>
-      <RevenueChart data={dailyRevenue} />
+      <RevenueChart data={dailyRevenue} title={revenueTitle} />
       <StageChart data={stageCounts} />
     </div>
   );
 }
 
-function RevenueChart({ data }: { data: DailyRevenue[] }) {
+function RevenueChart({ data, title }: { data: DailyRevenue[]; title?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
 
@@ -182,7 +183,7 @@ function RevenueChart({ data }: { data: DailyRevenue[] }) {
   return (
     <div className="card p-4">
       <h3 className="fw-600 mb-3" style={{ fontSize: 15 }}>
-        <i className="ri-line-chart-line text-blue"></i> รายได้ย้อนหลัง 30 วัน
+        <i className="ri-line-chart-line text-blue"></i> {title ?? 'รายได้ย้อนหลัง 30 วัน'}
       </h3>
       <div style={{ height: 240, position: 'relative' }}>
         <canvas ref={canvasRef} />

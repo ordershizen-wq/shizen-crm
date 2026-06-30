@@ -1,0 +1,622 @@
+/* ═══════════════════════════════════════════════════════
+   DARK MODE — Selector Overrides
+   Fixes hardcoded colors that css-variable swap can't reach.
+   All rules scoped under html.dark to stay isolated.
+   ═══════════════════════════════════════════════════════ */
+
+/* ── TASK 1: Sidebar ─────────────────────────────────── */
+
+html.dark .sidebar {
+  background: rgba(14, 13, 26, 0.92);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border-right-color: #2C2A45;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+}
+
+/* sidebar brand section */
+html.dark .sidebar-brand {
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+}
+html.dark .sidebar-brand-text { color: #EEEDF8; }
+html.dark .sidebar-brand-sub  { color: #5E5C7A; }
+
+/* menu labels (ส่วนหัวกลุ่ม) */
+html.dark .menu-label { color: rgba(238, 237, 248, 0.35); }
+
+/* menu items */
+html.dark .menu-item { color: #9C9AB8; }
+html.dark .menu-item:hover {
+  color: #EEEDF8;
+  background: rgba(34, 229, 160, 0.12);
+}
+html.dark .menu-item.active {
+  color: #22E5A0;
+  background: rgba(34, 229, 160, 0.10);
+}
+html.dark .menu-item.active i {
+  color: #22E5A0;
+  text-shadow: 0 0 10px rgba(34, 229, 160, 0.6);
+}
+
+/* close btn + rail expand (light rgba → dark) */
+html.dark .sidebar-close-btn {
+  background: rgba(255, 255, 255, 0.06);
+  color: #9C9AB8;
+}
+html.dark .sidebar-close-btn:hover { background: rgba(255, 255, 255, 0.12); color: #EEEDF8; }
+html.dark .sidebar-rail-expand {
+  background: rgba(255, 255, 255, 0.06);
+  color: #9C9AB8;
+}
+html.dark .sidebar-rail-expand:hover {
+  background: rgba(34, 229, 160, 0.15);
+  color: #22E5A0;
+}
+
+/* user profile mini card ใน sidebar */
+html.dark .user-profile-sm {
+  border-top-color: rgba(255, 255, 255, 0.07);
+  color: #9C9AB8;
+}
+
+/* ── TASK 1: Top Header ──────────────────────────────── */
+
+html.dark .top-header {
+  background: rgba(14, 13, 26, 0.88);
+  backdrop-filter: saturate(140%) blur(16px);
+  -webkit-backdrop-filter: saturate(140%) blur(16px);
+  border-bottom-color: #2C2A45;
+}
+
+/* search bar ใน header */
+html.dark .header-search {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: #2C2A45;
+}
+html.dark .header-search:focus-within {
+  border-color: #22E5A0;
+  box-shadow: 0 0 0 3px rgba(34, 229, 160, 0.15);
+}
+html.dark .header-search i { color: #5E5C7A; }
+html.dark .header-search input { color: #EEEDF8; }
+html.dark .header-search input::placeholder { color: #5E5C7A; }
+
+/* header icon buttons */
+html.dark .header-icon-btn { color: #9C9AB8; }
+html.dark .header-icon-btn:hover {
+  background: rgba(34, 229, 160, 0.12);
+  color: #22E5A0;
+}
+
+/* navbar alert pill (ต้องติดตาม) */
+html.dark .navbar-alert-pill {
+  background: rgba(239, 68, 68, 0.1);
+  color: #F87171;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+html.dark .navbar-alert-pill:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+html.dark .navbar-alert-pill-count {
+  background: #EF4444;
+}
+
+/* collapse btn ใน header */
+html.dark .collapse-btn {
+  background: rgba(34, 229, 160, 0.12);
+  color: #22E5A0;
+}
+html.dark .collapse-btn:hover {
+  background: rgba(34, 229, 160, 0.2);
+  color: #7FFFD4;
+}
+
+/* ── TASK 2: KPI & Cards ─────────────────────────────── */
+
+/* KPI Bento Glass container — light gradient → dark */
+html.dark .kpi-bento-glass {
+  background: #111119;
+}
+
+/* KPI Bento Clean — ไม่มีพาเนลหลังในโหมดมืดเช่นกัน */
+html.dark .kpi-bento-clean {
+  background: none;
+}
+
+/* KPI cards inside bento (glass + clean ใช้ลุคดำเดียวกัน) */
+html.dark .kpi-bento-glass > .kpi-hero,
+html.dark .kpi-bento-glass > .kpi-pastel,
+html.dark .kpi-bento-clean > .kpi-hero,
+html.dark .kpi-bento-clean > .kpi-pastel {
+  background: #161622;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-color: #2C2A45;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+html.dark .kpi-bento-glass > .kpi-hero:hover,
+html.dark .kpi-bento-glass > .kpi-pastel:hover,
+html.dark .kpi-bento-clean > .kpi-hero:hover,
+html.dark .kpi-bento-clean > .kpi-pastel:hover {
+  background: #1C1C2A;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  border-color: #3A3852;
+}
+
+/* Standalone .kpi-hero (ไม่ได้อยู่ใน bento) */
+html.dark .kpi-hero {
+  background: #161622;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-color: #2C2A45;
+}
+
+/* Neon hero stripe — override the indigo gradient on ::before */
+html.dark .kpi-hero::before {
+  background: linear-gradient(90deg, #22E5A0, #37E0FF);
+  box-shadow: 0 0 16px rgba(34, 229, 160, 0.4);
+}
+
+/* KPI hero value glow on dark */
+html.dark .kpi-hero-value { color: #EAEAF6; }
+html.dark .kpi-hero-label .en { color: #22E5A0; text-shadow: 0 0 8px rgba(34,229,160,0.5); }
+
+/* Delta badges — neon style */
+html.dark .kpi-hero-delta {
+  background: rgba(34, 229, 160, 0.12);
+  color: #22E5A0;
+  text-shadow: 0 0 8px rgba(34,229,160,0.4);
+}
+
+/* stat / info cards ทั่วไป */
+html.dark .stat-card,
+html.dark .info-card,
+html.dark .summary-card {
+  background: #161622;
+  border-color: #2C2A45;
+}
+
+/* ── TASK 3: Buttons & Form Controls ────────────────── */
+
+html.dark .btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: #2C2A45;
+  color: #EEEDF8;
+}
+html.dark .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #3A3852;
+  color: #EEEDF8;
+}
+
+html.dark .btn-ghost {
+  color: #9C9AB8;
+}
+html.dark .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #EEEDF8;
+}
+
+/* icon-btn (ปุ่มกลมๆ มีกรอบ) */
+html.dark .icon-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: #2C2A45;
+  color: #9C9AB8;
+}
+html.dark .icon-btn:hover {
+  background: rgba(34, 229, 160, 0.12);
+  border-color: #22E5A0;
+  color: #22E5A0;
+  box-shadow: none;
+}
+
+/* form controls */
+html.dark .form-control,
+html.dark .form-select {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: #2C2A45;
+  color: #EEEDF8;
+}
+html.dark .form-control:focus,
+html.dark .form-select:focus {
+  border-color: #22E5A0;
+  box-shadow: 0 0 0 3px rgba(34, 229, 160, 0.18);
+  background: rgba(255, 255, 255, 0.07);
+}
+html.dark .form-control::placeholder { color: #5E5C7A; }
+html.dark .form-control:hover:not(:focus):not(:disabled),
+html.dark .form-select:hover:not(:focus):not(:disabled) {
+  border-color: #3A3852;
+}
+
+/* native inputs & selects (ที่ใช้ type= โดยตรง) */
+html.dark input[type="text"],
+html.dark input[type="search"],
+html.dark input[type="email"],
+html.dark input[type="number"],
+html.dark input[type="date"],
+html.dark input[type="tel"],
+html.dark textarea {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: #2C2A45;
+  color: #EEEDF8;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder { color: #5E5C7A; }
+html.dark select option {
+  background: #161622;
+  color: #EEEDF8;
+}
+
+/* Tasks filter pills */
+html.dark .tasks-filter-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: #2C2A45;
+  color: #9C9AB8;
+}
+html.dark .tasks-filter-pill:hover {
+  border-color: #22E5A0;
+  color: #22E5A0;
+}
+html.dark .tasks-filter-pill.is-active {
+  background: rgba(34, 229, 160, 0.12);
+  border-color: #22E5A0;
+  color: #22E5A0;
+  text-shadow: 0 0 8px rgba(34, 229, 160, 0.4);
+}
+
+/* View toggle (list/kanban/calendar switcher) */
+html.dark .view-toggle {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-color: #2C2A45;
+}
+html.dark .view-toggle-btn { color: #9C9AB8; }
+html.dark .view-toggle-btn:hover { color: #22E5A0; }
+html.dark .view-toggle-btn.active {
+  background: linear-gradient(90deg, #22E5A0, #37E0FF);
+  color: #0E0E16;
+  box-shadow: 0 2px 12px rgba(34, 229, 160, 0.4);
+}
+
+/* ── TASK 4: Modals & Drawers ────────────────────────── */
+
+/* product modal */
+html.dark .product-modal-overlay {
+  background: rgba(0, 0, 0, 0.65);
+}
+html.dark .product-modal {
+  background: #161622;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-color: #2C2A45;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.5);
+}
+html.dark .product-modal-handle {
+  background: rgba(34, 229, 160, 0.25);
+}
+
+/* task drawer */
+html.dark .task-drawer-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+html.dark .task-drawer {
+  background: #161622;
+  box-shadow: -16px 0 40px rgba(0, 0, 0, 0.5);
+}
+html.dark .task-drawer-header {
+  background: #1C1C2A;
+  border-bottom-color: #2C2A45;
+}
+html.dark .task-drawer-footer {
+  background: #161622;
+  border-top-color: #2C2A45;
+  box-shadow: 0 -8px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* sidebar backdrop */
+html.dark .sidebar-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+/* ── TASK 5: Kanban & Calendar ───────────────────────── */
+
+html.dark .kanban-col {
+  background: #161622;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-color: #2C2A45;
+}
+html.dark .kanban-col.drag-over {
+  background: rgba(34, 229, 160, 0.08);
+  border-color: #22E5A0;
+}
+html.dark .kanban-col-header {
+  background: #1C1C2A;
+  border-bottom-color: #2C2A45;
+}
+html.dark .kanban-col-count {
+  background: rgba(34, 229, 160, 0.15);
+  color: #7FFFD4;
+}
+html.dark .kanban-col-empty {
+  border-color: #2C2A45;
+  color: #5E5C7A;
+}
+
+/* kanban cards */
+html.dark .kanban-card {
+  background: #1C1C2A;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-color: #2C2A45;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+html.dark .kanban-card:hover {
+  border-color: #3A3852;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+html.dark .kanban-card-title { color: #EEEDF8; }
+
+/* calendar cells */
+html.dark .cal-day {
+  background: #161622;
+  border-color: #2C2A45;
+}
+html.dark .cal-day:hover { background: #1C1C2A; }
+html.dark .cal-day.today  {
+  background: rgba(34, 229, 160, 0.1);
+  border-color: rgba(34, 229, 160, 0.4);
+}
+html.dark .cal-day-num { color: #9C9AB8; }
+html.dark .cal-day.today .cal-day-num { color: #22E5A0; }
+
+/* calendar event status badges — explicit colors */
+html.dark [class*="cal-ev-status"] { filter: none; }
+html.dark .cal-ev-status.pending   { background: rgba(249,115,22,0.12); color: #FB923C; }
+html.dark .cal-ev-status.overdue   { background: rgba(239,68,68,0.12);  color: #F87171; }
+
+/* ── TASK 6: Tables ──────────────────────────────────── */
+
+html.dark .r-table thead th {
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom-color: #2C2A45;
+  color: #9C9AB8;
+}
+html.dark .r-table tbody td {
+  border-bottom-color: #2C2A45;
+  color: #C4C2DA;
+}
+html.dark .r-table tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
+
+/* r-table wrapper */
+html.dark .r-table-wrap {
+  background: #161622;
+  border-color: #2C2A45;
+}
+
+/* generic table (ที่ไม่ได้ใช้ .r-table) */
+html.dark table thead { background: rgba(255, 255, 255, 0.03); }
+html.dark table th {
+  border-color: #2C2A45;
+  color: #9C9AB8;
+}
+html.dark table td {
+  border-color: #2C2A45;
+  color: #C4C2DA;
+}
+html.dark table tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
+
+/* ── TASK 7: Customer Profile ────────────────────────── */
+
+/* profile hero uses var(--bg-card) — already handled by token swap */
+/* but tab sections and list items might have hardcoded bg */
+
+html.dark .profile-tab-body {
+  background: #161622;
+  border-color: #2C2A45;
+}
+
+/* grade card */
+html.dark .grade-card,
+html.dark .health-card,
+html.dark .grade-section {
+  background: #161622;
+  border-color: #2C2A45;
+}
+
+/* order history rows */
+html.dark .order-row,
+html.dark .order-history-row {
+  border-bottom-color: #2C2A45;
+}
+html.dark .order-row:hover,
+html.dark .order-history-row:hover { background: rgba(255, 255, 255, 0.025); }
+
+/* ── Misc Global Fixes ───────────────────────────────── */
+
+/* task hero section */
+html.dark .task-hero {
+  background: #161622;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-color: #2C2A45;
+}
+
+/* suggestion cards */
+html.dark .suggestion-card {
+  background: rgba(34, 229, 160, 0.06);
+  border-color: rgba(34, 229, 160, 0.25);
+}
+
+/* page-content wrapper (ถ้ามี bg) */
+html.dark .section-card,
+html.dark .panel,
+html.dark .card {
+  background: #161622;
+  border-color: #2C2A45;
+}
+
+/* focus chips (customer page) — explicit colors, no filter hack */
+html.dark [class*="focus-chip"],
+html.dark [class*="focus-tag"],
+html.dark [class*="focus-action"] { filter: none; }
+
+html.dark .focus-chip-red,
+html.dark .focus-tag-red,
+html.dark .focus-action-red   { background: rgba(239,68,68,0.12); color: #F87171; }
+
+html.dark .focus-chip-amber,
+html.dark .focus-tag-amber,
+html.dark .focus-action-amber { background: rgba(245,158,11,0.12); color: #FCD34D; }
+
+html.dark .focus-chip-blue,
+html.dark .focus-tag-blue,
+html.dark .focus-action-blue  { background: rgba(59,130,246,0.12); color: #60A5FA; }
+
+/* focus status dots */
+html.dark .focus-dot-red   { background: #EF4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.18); }
+html.dark .focus-dot-amber { background: #F59E0B; box-shadow: 0 0 0 3px rgba(245,158,11,0.18); }
+html.dark .focus-dot-blue  { background: #3B82F6; box-shadow: 0 0 0 3px rgba(59,130,246,0.18); }
+
+/* pagination */
+html.dark .pagination-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: #2C2A45;
+  color: #9C9AB8;
+}
+html.dark .pagination-btn:hover { background: rgba(255, 255, 255, 0.1); color: #EEEDF8; }
+html.dark .pagination-btn.active,
+html.dark .pagination-btn[aria-current="page"] {
+  background: rgba(34, 229, 160, 0.12);
+  border-color: #22E5A0;
+  color: #22E5A0;
+  box-shadow: 0 0 8px rgba(34, 229, 160, 0.25);
+}
+
+/* badge dot (sidebar) */
+html.dark .menu-badge-dot {
+  box-shadow: 0 0 0 2px rgba(14, 13, 26, 0.9);
+}
+
+/* text overrides where hardcoded hex is used inline */
+html.dark h1, html.dark h2, html.dark h3 { color: #EEEDF8; }
+html.dark .page-title { color: #EEEDF8; }
+
+/* tasks-filter-count-badge */
+html.dark .tasks-filter-count-badge {
+  background: #22E5A0;
+}
+
+/* ── Mobile sidebar override (legacy.css มี background:#fff ใน @media max-width:768px) */
+@media (max-width: 768px) {
+  html.dark .sidebar {
+    background: #161622;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* ── ScrollBars (dark-mode polish) ──────────────────── */
+html.dark ::-webkit-scrollbar-track { background: #111119; }
+html.dark ::-webkit-scrollbar-thumb { background: #2C2A45; border-radius: 4px; }
+html.dark ::-webkit-scrollbar-thumb:hover { background: #3A3852; }
+
+/* ═══════════════════════════════════════════════════════
+   TEXT COLORS — สี text ที่ hardcode ใน legacy.css
+   ═══════════════════════════════════════════════════════ */
+
+/* ── KPI Delta states ──────────────────────────────────── */
+html.dark .kpi-hero-delta.is-up   { color: #34D399; background: rgba(34,229,160,0.12); text-shadow: none; }
+html.dark .kpi-hero-delta.is-down { color: #F87171; background: rgba(239,68,68,0.12);  text-shadow: none; }
+
+html.dark .kpi-pastel-delta        { background: rgba(255,255,255,0.06); }
+html.dark .kpi-pastel-delta.is-up  { color: #34D399; }
+html.dark .kpi-pastel-delta.is-down { color: #F87171; }
+
+/* ── Stage badges ─────────────────────────────────────── */
+html.dark .stage-NEW     { background: rgba(91,126,146,0.12);  color: #7FB3CA; border-color: rgba(91,126,146,0.2); }
+html.dark .stage-ACTIVE  { background: rgba(34,197,94,0.10);   color: #4ADE80; border-color: rgba(34,197,94,0.2); }
+html.dark .stage-AT_RISK { background: rgba(192,145,85,0.12);  color: #C9A961; border-color: rgba(192,145,85,0.2); }
+html.dark .stage-LAPSED  { background: rgba(139,92,246,0.10);  color: #C084FC; border-color: rgba(139,92,246,0.2); }
+html.dark .stage-LOST    { background: rgba(184,84,80,0.12);   color: #F87171; border-color: rgba(184,84,80,0.2); }
+html.dark .stage-VIP     { background: rgba(201,169,97,0.12);  color: #C9A961; border-color: rgba(201,169,97,0.25); }
+
+/* ── Customer recency warning ─────────────────────────── */
+html.dark .cust-recency.warn { color: #FB923C; }
+
+/* ── Product contraindication ─────────────────────────── */
+html.dark .product-card-contra     { color: #F87171; }
+html.dark .product-card-contra-tag { background: rgba(239,68,68,0.12); }
+
+/* ── Overdue upnext card ──────────────────────────────── */
+html.dark .t2-upnext.is-overdue {
+  background: linear-gradient(100deg, rgba(239,68,68,0.08), rgba(239,68,68,0.04));
+  border-color: rgba(239,68,68,0.25);
+}
+
+/* ── Task status tags (class added in TSX, !important beats inline style) ── */
+html.dark .t2-tag--in-progress { background: rgba(245,158,11,0.12) !important; color: #FCD34D !important; }
+html.dark .t2-tag--waiting     { background: rgba(139,92,246,0.12) !important; color: #A78BFA !important; }
+html.dark .t2-tag--skipped     { background: rgba(100,116,139,0.08) !important; color: #94A3B8 !important; }
+
+/* ── Task status icons in kanban (class added in TSX) ──── */
+html.dark .kanban-icon--skipped     { color: #94A3B8 !important; }
+html.dark .kanban-icon--in-progress { color: #FCD34D !important; }
+html.dark .kanban-icon--waiting     { color: #A78BFA !important; }
+
+/* ── Admin info card ──────────────────────────────────── */
+html.dark .admin-info-card       { background: rgba(59,130,246,0.08) !important; border-color: rgba(59,130,246,0.2) !important; }
+html.dark .admin-info-card-title { color: #60A5FA !important; }
+
+/* ── Task filter chips (t2-chip) ──────────────────────── */
+html.dark .t2-chip {
+  background: rgba(255,255,255,0.06);
+  border-color: #2C2A45;
+  color: #9C9AB8;
+}
+html.dark .t2-chip .n { color: #EEEDF8; }
+html.dark .t2-chip.active {
+  background: rgba(34,229,160,0.12);
+  border-color: #22E5A0;
+  color: #22E5A0;
+}
+html.dark .t2-chip.active .n { color: #22E5A0; }
+
+/* ═══════════════════════════════════════════════════════
+   GAP FIXES — hardcoded #fff/light ที่ token swap ไม่ครอบคลุม
+   ═══════════════════════════════════════════════════════ */
+
+/* mobile kanban dots */
+html.dark .kanban-dot { background: rgba(255,255,255,0.06); }
+html.dark .kanban-dot.active { background: rgba(34,229,160,0.12); border-color: #22E5A0; color: #22E5A0; }
+
+/* profile tabs container */
+html.dark .profile-tabs { background: #161622; }
+
+/* customer stat strip */
+html.dark .cust-strip { background: rgba(255,255,255,0.03); }
+
+/* VIP customer card — gold gradient → dark tint */
+html.dark .customer-card.vip {
+  background: linear-gradient(135deg, rgba(201,169,97,0.08), rgba(22,22,34,0.4));
+  border-color: rgba(201,169,97,0.25);
+}
+
+/* reset password modal (admin) */
+html.dark .reset-modal { background: #161622; }
+html.dark .reset-modal-overlay { background: rgba(0,0,0,0.6); }
+html.dark .reset-modal-quick:hover { background: rgba(34,229,160,0.12); }
+
+/* order kind tab (เลือกประเภท) */
+html.dark .kind-tab { background: #161622; }
+html.dark .kind-tab:hover { border-color: #22E5A0; }
+
+/* kanban quick-complete button */
+html.dark .t2-kcard-quick button { background: rgba(255,255,255,0.04); }
+
+/* mobile kanban current-column sticky label */
+html.dark .t2-kanban-cur-label { background: #161622; border-color: #2C2A45; }
