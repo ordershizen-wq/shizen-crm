@@ -45,11 +45,15 @@ export async function POST(request: NextRequest) {
     teamId: typeof body.teamId === 'string' && body.teamId ? body.teamId : null,
   };
 
-  const user = await prisma.sheetUser.upsert({
-    where: { id },
-    create: { id, ...data },
-    update: data,
-  });
-
-  return Response.json({ success: true, userId: user.id });
+  try {
+    const user = await prisma.sheetUser.upsert({
+      where: { id },
+      create: { id, ...data },
+      update: data,
+    });
+    return Response.json({ success: true, userId: user.id });
+  } catch (err) {
+    console.error(`[webhook/user] upsert failed for id=${id}:`, err);
+    return Response.json({ error: 'Failed to save user' }, { status: 500 });
+  }
 }
