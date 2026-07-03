@@ -7,6 +7,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { syncOrderToSheet } from '@/lib/orderSync';
 import { GENDER_VALUES, AGE_RANGE_VALUES, PROVINCE_VALUES, COUNTRY_VALUES, THAILAND } from '@/lib/demographics';
 import { parseOrderDateInput, isOrderDateAllowed, MAX_BACKDATE_DAYS } from '@/lib/orderDate';
+import { toPhoneDigits } from '@/lib/customer';
 
 // ราคาเป็นยอดรวมต่อออเดอร์ — สินค้าเก็บแค่ชื่อ+จำนวน
 export type NewOrderProduct = { name: string; quantity: number };
@@ -15,7 +16,7 @@ export type CreateOrderInput = {
   customerPhone: string;
   customerName: string;
   address: string;
-  channel: string;            // LINE / FB / TIKTOK / TEL / OTHER
+  channel: string;            // ค่า legacy: TIKTOK / FB_PROFILE / FB_PAGE / LINE / TEL / OTHER (ดู lib/channels.ts)
   products: NewOrderProduct[];
   totalPrice: number;
   orderDate: string;          // "YYYY-MM-DD" วันที่ปิดการขายจริง (ลงย้อนหลังได้ ดู orderDate.ts)
@@ -50,7 +51,8 @@ export type CustomerLookup = {
 
 /** ค้นเบอร์ในระบบ → คืนข้อมูลล่าสุดไว้ autofill (null = ลูกค้าใหม่) */
 export async function lookupCustomer(phone: string): Promise<CustomerLookup | null> {
-  const clean = phone.trim();
+  // ค้นด้วยตัวเลขล้วน — DB เก็บเบอร์เป็นตัวเลขล้วนเสมอ (ดู toPhoneDigits)
+  const clean = toPhoneDigits(phone) ?? '';
   if (clean.length < 4) return null;
 
   const [last, count] = await Promise.all([
@@ -78,7 +80,8 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     return { ok: false, error: 'ADMIN ไม่สามารถลงออเดอร์ได้ — กรุณาให้เซลส์ลงเอง' };
   }
 
-  const phone = input.customerPhone.trim();
+  // เก็บเบอร์เป็นตัวเลขล้วนเสมอ (โหมดต่างประเทศ '+' จะถูกตัด — รหัสประเทศยังอยู่ครบ)
+  const phone = toPhoneDigits(input.customerPhone) ?? '';
   if (!phone) return { ok: false, error: 'กรุณากรอกเบอร์ลูกค้า' };
   if (input.products.length === 0) return { ok: false, error: 'ยังไม่ได้เลือกสินค้า' };
   for (const p of input.products) {

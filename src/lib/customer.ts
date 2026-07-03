@@ -59,6 +59,18 @@ export function normalizePhone(phone: string | null | undefined): string | null 
   return cleaned.length >= 9 ? cleaned : null;
 }
 
+/**
+ * กฎการจัดเก็บเบอร์ใน DB — **ตัวเลขล้วนเสมอ** (หรือ null ถ้าไม่มีตัวเลขเลย)
+ * ใช้ทุกจุดที่เขียน/ค้นเบอร์ (createOrder, createReorder, lookup, webhook)
+ * ต่างจาก normalizePhone ตรงที่ไม่ทิ้งเบอร์สั้น — เก็บตามจริงเพื่อไม่ให้ข้อมูลหาย
+ * (เบอร์ format เพี้ยน เช่น "081-234-5678", "โทร.08x" เคยทำให้ลูกค้าคนเดียวแตกเป็น 2 โปรไฟล์)
+ */
+export function toPhoneDigits(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/[^0-9]/g, '');
+  return digits.length > 0 ? digits : null;
+}
+
 import { prisma } from './prisma';
 import type { Prisma } from '@prisma/client';
 

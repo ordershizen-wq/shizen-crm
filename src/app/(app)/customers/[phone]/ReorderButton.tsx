@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { createReorder, type ReorderProduct } from './actions';
 import { toYmd, MAX_BACKDATE_DAYS } from '@/lib/orderDate';
+import { CHANNELS, matchChannel } from '@/lib/channels';
 
 // คำนวณครั้งเดียวตอนโหลดโมดูล (ไม่เรียกใน render เพื่อเลี่ยง react-hooks/purity)
 const TODAY_STR = toYmd(new Date());
@@ -18,14 +19,6 @@ type Props = {
   productSuggestions: string[];   // ชื่อสินค้าทั้งหมดที่ active ใน Product master (เป็นแค่ hint)
   lastOrderProducts: LatestProduct[];
 };
-
-const CHANNELS = [
-  { value: 'LINE',   label: 'LINE',    icon: 'ri-line-fill',      color: '#06C755' },
-  { value: 'FB',     label: 'Facebook', icon: 'ri-facebook-fill',  color: '#1877F2' },
-  { value: 'TIKTOK', label: 'TikTok',  icon: 'ri-tiktok-fill',    color: '#000' },
-  { value: 'TEL',    label: 'โทร',     icon: 'ri-phone-fill',     color: '#0ea5e9' },
-  { value: 'OTHER',  label: 'อื่นๆ',   icon: 'ri-more-line',      color: '#64748b' },
-];
 
 type LineItem = { id: string; name: string; quantity: number };
 
@@ -46,9 +39,8 @@ export default function ReorderButton({
   const [successInfo, setSuccessInfo] = useState<{ orderId: string; synced: boolean } | null>(null);
 
   const [address, setAddress] = useState(defaultAddress);
-  const [channel, setChannel] = useState(
-    CHANNELS.find(c => c.value.toLowerCase() === (defaultChannel ?? '').toLowerCase())?.value ?? 'LINE',
-  );
+  // ช่องทางเดิมของลูกค้า (จับคู่ค่า legacy + alias) — ไม่เจอ fallback TIKTOK (ช่องทางหลัก)
+  const [channel, setChannel] = useState<string>(matchChannel(defaultChannel) ?? 'TIKTOK');
   const [note, setNote] = useState('');
   const [totalPrice, setTotalPrice] = useState(0);
   const [items, setItems] = useState<LineItem[]>(() =>

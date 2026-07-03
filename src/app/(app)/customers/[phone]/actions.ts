@@ -9,6 +9,7 @@ import { syncOrderToSheet } from '@/lib/orderSync';
 import { suggestGradeFromAnswers, type ChecklistAnswers } from '@/lib/grade';
 import { GENDER_VALUES, AGE_RANGE_VALUES, PROVINCE_VALUES, COUNTRY_VALUES, THAILAND } from '@/lib/demographics';
 import { parseOrderDateInput, isOrderDateAllowed, MAX_BACKDATE_DAYS } from '@/lib/orderDate';
+import { toPhoneDigits } from '@/lib/customer';
 
 export async function saveCustomerGrade({
   phone,
@@ -119,7 +120,7 @@ export type CreateReorderInput = {
   customerPhone: string;
   customerName: string;
   address: string;
-  channel: string;          // LINE / FB / TikTok / Tel / OTHER
+  channel: string;          // ค่า legacy: TIKTOK / FB_PROFILE / FB_PAGE / LINE / TEL / OTHER (ดู lib/channels.ts)
   products: ReorderProduct[];
   totalPrice: number;
   orderDate: string;          // "YYYY-MM-DD" วันที่ปิดการขายจริง (ลงย้อนหลังได้ ดู orderDate.ts)
@@ -146,11 +147,12 @@ export async function createReorder(input: CreateReorderInput): Promise<CreateRe
     return { ok: false, error: 'ADMIN ไม่สามารถลงออเดอร์ได้ — กรุณาให้เซลส์ลงเอง' };
   }
 
-  // Validation พื้นฐาน
-  if (!input.customerPhone) return { ok: false, error: 'ไม่มีเบอร์ลูกค้า' };
+  // Validation พื้นฐาน — เบอร์เก็บ/ค้นเป็นตัวเลขล้วนเสมอ (ดู toPhoneDigits)
+  const customerPhone = toPhoneDigits(input.customerPhone) ?? '';
+  if (!customerPhone) return { ok: false, error: 'ไม่มีเบอร์ลูกค้า' };
 
   // ลูกค้าต้องเป็นของ user (MEMBER) หรือทีมตัวเอง (LEADER)
-  const access = await canModifyCustomer(user, input.customerPhone);
+  const access = await canModifyCustomer(user, customerPhone);
   if (!access.ok) return { ok: false, error: access.reason };
   if (input.products.length === 0) return { ok: false, error: 'ยังไม่ได้เลือกสินค้า' };
   for (const p of input.products) {
@@ -178,7 +180,7 @@ export async function createReorder(input: CreateReorderInput): Promise<CreateRe
   // (ปุ่มรีออเดอร์ไม่มีฟอร์มกรอกเอง ต่างจาก /orders/new) — ต้อง validate ค่าก่อนใช้ซ้ำ
   // เผื่อเป็นข้อมูล legacy ที่ format ไม่ตรงมาตรฐาน (gender/ageRange/province)
   const lastDemo = await prisma.sheetOrder.findFirst({
-    where: { phone: input.customerPhone, gender: { not: null }, ageRange: { not: null } },
+    where: { phone: customerPhone, gender: { not: null }, ageRange: { not: null } },
     orderBy: { createdAt: 'desc' },
     select: { gender: true, ageRange: true, country: true, province: true },
   });
@@ -198,7 +200,7 @@ export async function createReorder(input: CreateReorderInput): Promise<CreateRe
       date: orderDate,
       customerName: input.customerName || null,
       address: addressWithNote,
-      phone: input.customerPhone,
+      phone: customerPhone,
       productsJson: input.products as object,
       totalPrice,
       status: OrderStatus.PENDING,
@@ -221,7 +223,7 @@ export async function createReorder(input: CreateReorderInput): Promise<CreateRe
     return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
   });
 
-  revalidatePath(`/customers/${encodeURIComponent(input.customerPhone)}`);
+  revalidatePath(`/customers/${encodeURIComponent(customerPhone)}`);
   revalidatePath('/orders');
   revalidatePath('/');
 

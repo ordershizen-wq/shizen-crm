@@ -10,9 +10,12 @@ export default async function SyncFailedPage() {
   if (!user) redirect('/login');
   if (user.role !== 'ADMIN') redirect('/');
 
+  // ออเดอร์ที่สร้างใน CRM มี 2 source: CRM_NEW (ลูกค้าใหม่) + CRM_REORDER — ต้อง sync ทั้งคู่
+  const crmSources = [OrderSource.CRM_NEW, OrderSource.CRM_REORDER];
+
   const orders = await prisma.sheetOrder.findMany({
     where: {
-      source: OrderSource.CRM_REORDER,
+      source: { in: crmSources },
       syncStatus: { in: [SyncStatus.FAILED, SyncStatus.PENDING] },
     },
     orderBy: { createdAt: 'desc' },
@@ -32,13 +35,13 @@ export default async function SyncFailedPage() {
 
   const [pendingCount, failedCount, syncedCount] = await Promise.all([
     prisma.sheetOrder.count({
-      where: { source: OrderSource.CRM_REORDER, syncStatus: SyncStatus.PENDING },
+      where: { source: { in: crmSources }, syncStatus: SyncStatus.PENDING },
     }),
     prisma.sheetOrder.count({
-      where: { source: OrderSource.CRM_REORDER, syncStatus: SyncStatus.FAILED },
+      where: { source: { in: crmSources }, syncStatus: SyncStatus.FAILED },
     }),
     prisma.sheetOrder.count({
-      where: { source: OrderSource.CRM_REORDER, syncStatus: SyncStatus.SYNCED },
+      where: { source: { in: crmSources }, syncStatus: SyncStatus.SYNCED },
     }),
   ]);
 
@@ -50,7 +53,7 @@ export default async function SyncFailedPage() {
             <i className="ri-refresh-line text-orange"></i> ออเดอร์ที่ sync ไป Sheet ล้มเหลว
           </h1>
           <p className="text-sm text-muted mt-1">
-            ออเดอร์รีออเดอร์ที่สร้างใน CRM แต่ยังไม่ไปถึง Sheet — กด retry เพื่อส่งใหม่
+            ออเดอร์ที่สร้างใน CRM (ลูกค้าใหม่ + รีออเดอร์) แต่ยังไม่ไปถึง Sheet — กด retry เพื่อส่งใหม่
           </p>
         </div>
       </div>

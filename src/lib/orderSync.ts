@@ -5,7 +5,7 @@ import { SyncStatus } from '@prisma/client';
 type ProductRow = { name: string; quantity: number };
 
 /**
- * ส่งออเดอร์ที่สร้างใน CRM (source=CRM_REORDER) → Google Sheet ผ่าน Apps Script Web App
+ * ส่งออเดอร์ที่สร้างใน CRM (source=CRM_NEW / CRM_REORDER) → Google Sheet ผ่าน Apps Script Web App
  *
  * Key behaviors:
  *  - POST ด้วย redirect: 'follow' — Node fetch จะแปลง POST → GET ตอน follow 302
@@ -55,7 +55,9 @@ export async function syncOrderToSheet(orderId: string): Promise<{ ok: true } | 
     salesRepName: order.salesRepName,
     paymentProofUrl: order.paymentProofUrl,
     isReturned: order.isReturned,
-    source: 'CRM_REORDER',
+    // ส่ง source จริงของออเดอร์ (CRM_NEW = ลูกค้าใหม่ / CRM_REORDER = รีออเดอร์)
+    // ก่อนหน้านี้ hardcode 'CRM_REORDER' ทำให้ลูกค้าใหม่ที่ลงผ่าน CRM ติดป้ายผิดใน Sheet
+    source: order.source,
   };
 
   try {

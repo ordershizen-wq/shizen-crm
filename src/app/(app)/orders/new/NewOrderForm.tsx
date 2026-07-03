@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createOrder, lookupCustomer, type NewOrderProduct } from '../actions';
 import { GENDER_OPTIONS, AGE_RANGES, PROVINCES, COUNTRIES, THAILAND } from '@/lib/demographics';
 import { toYmd, MAX_BACKDATE_DAYS } from '@/lib/orderDate';
+import { CHANNELS, matchChannel } from '@/lib/channels';
 
 type Props = {
   productSuggestions: string[];   // ชื่อสินค้าที่ active ใน Product master
@@ -13,14 +14,6 @@ type Props = {
 // คำนวณครั้งเดียวตอนโหลดโมดูล (ไม่เรียกใน render เพื่อเลี่ยง react-hooks/purity)
 const TODAY_STR = toYmd(new Date());
 const MIN_ORDER_DATE_STR = toYmd(new Date(Date.now() - MAX_BACKDATE_DAYS * 86400000));
-
-const CHANNELS = [
-  { value: 'LINE',   label: 'LINE',     icon: 'ri-line-fill',     color: '#06C755' },
-  { value: 'FB',     label: 'Facebook', icon: 'ri-facebook-fill', color: '#1877F2' },
-  { value: 'TIKTOK', label: 'TikTok',   icon: 'ri-tiktok-fill',   color: '#000' },
-  { value: 'TEL',    label: 'โทร',      icon: 'ri-phone-fill',    color: '#0ea5e9' },
-  { value: 'OTHER',  label: 'อื่นๆ',    icon: 'ri-more-line',     color: '#64748b' },
-];
 
 type LineItem = { id: string; name: string; quantity: number };
 let __id = 0;
@@ -40,7 +33,8 @@ export default function NewOrderForm({ productSuggestions }: Props) {
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
-  const [channel, setChannel] = useState('LINE');
+  // default = TIKTOK (ช่องทางหลักของธุรกิจ ~80% ของออเดอร์จริง)
+  const [channel, setChannel] = useState<string>('TIKTOK');
   const [note, setNote] = useState('');
   const [totalPrice, setTotalPrice] = useState(0);
   const [items, setItems] = useState<LineItem[]>([{ id: nextId(), name: '', quantity: 1 }]);
@@ -89,9 +83,10 @@ export default function NewOrderForm({ productSuggestions }: Props) {
         // autofill เฉพาะช่องที่ยังว่าง (ไม่ทับที่ผู้ใช้พิมพ์)
         setName(prev => prev || found.customerName || '');
         setAddress(prev => prev || found.address || '');
-        if (found.channel) {
-          const c = CHANNELS.find(x => x.value.toLowerCase() === found.channel!.toLowerCase());
-          if (c) setChannel(c.value);
+        {
+          // จับคู่ค่า legacy (รวม alias เช่น FB → FB_PROFILE, TIKTOK_SHOP → TIKTOK)
+          const matched = matchChannel(found.channel);
+          if (matched) setChannel(matched);
         }
         setGender(prev => prev || found.gender || '');
         setAgeRange(prev => prev || found.ageRange || '');
@@ -145,7 +140,7 @@ export default function NewOrderForm({ productSuggestions }: Props) {
   };
 
   const resetForm = () => {
-    setPhone(''); setName(''); setAddress(''); setChannel('LINE'); setNote('');
+    setPhone(''); setName(''); setAddress(''); setChannel('TIKTOK'); setNote('');
     setTotalPrice(0); setItems([{ id: nextId(), name: '', quantity: 1 }]);
     setCustomer({ status: 'idle' });
     setGender(''); setAgeRange(''); setProvince(''); setCountry(''); setGeoMode('TH');

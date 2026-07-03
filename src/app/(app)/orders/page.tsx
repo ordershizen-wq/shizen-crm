@@ -57,7 +57,8 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
   const [orders, allCount, countPerStatus, countPerSource] = await Promise.all([
     prisma.sheetOrder.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      // เรียง + แสดงตาม "วันที่ปิดการขาย" (date) — ออเดอร์ที่ลงย้อนหลังจะไปอยู่วันที่ถูกต้อง
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       take: 200,
       select: {
         id: true,
@@ -67,6 +68,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
         status: true,
         channel: true,
         salesRepName: true,
+        date: true,
         createdAt: true,
         productsJson: true,
         source: true,
@@ -264,7 +266,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
                         ฿{Number(o.totalPrice ?? 0).toLocaleString('th-TH', { maximumFractionDigits: 0 })}
                       </td>
                       <td className="text-sm text-muted" data-label="วันที่">
-                        {o.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+                        {(o.date ?? o.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
                       </td>
                     </tr>
                   );
@@ -306,6 +308,7 @@ type OrderRow = {
   status: string;
   channel: string | null;
   salesRepName: string | null;
+  date: Date | null;
   createdAt: Date;
   productsJson: unknown;
   source: OrderSource;
@@ -320,7 +323,7 @@ function OrderCard({ order: o }: { order: OrderRow }) {
     ? products.map(p => `${p.name ?? '-'} x${p.quantity ?? 1}`).join(' · ')
     : '-';
   const meta = [o.salesRepName || null, o.channel || null,
-    o.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })]
+    (o.date ?? o.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })]
     .filter(Boolean).join(' · ');
 
   return (

@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import type { TrendPoint } from '@/lib/analytics';
 
 export default function TrendChart({ points }: { points: TrendPoint[] }) {
-  const { width, paths, maxVal, todayDay, thisSum, lastSum } = useMemo(() => {
+  const { width, paths, todayDay, thisSum, lastSum } = useMemo(() => {
     const width = 600;
     const height = 160;
     const padding = { top: 12, right: 12, bottom: 22, left: 12 };
@@ -70,8 +70,8 @@ export default function TrendChart({ points }: { points: TrendPoint[] }) {
         <path d={paths.lastMonth} fill="none" stroke="rgba(99,102,241,0.35)" strokeWidth={1.5} strokeDasharray="4,3" />
         {/* this month solid */}
         <path d={paths.thisMonth} fill="none" stroke="#6366F1" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
-        {/* x-axis labels */}
-        {[1, 7, 14, 21, points.length].filter(d => d <= points.length).map(day => {
+        {/* x-axis labels — dedupe กันกรณี points.length ตรงกับ 1/7/14/21 (React key ซ้ำ) */}
+        {[...new Set([1, 7, 14, 21, points.length])].filter(d => d <= points.length).map(day => {
           const x = 12 + ((day - 1) / Math.max(1, points.length - 1)) * (width - 24);
           return <text key={day} x={x} y={154} textAnchor="middle" fontSize={10} fill="#8E8AA8">{day}</text>;
         })}

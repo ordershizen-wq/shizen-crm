@@ -44,7 +44,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
       take: 6,
       select: {
         id: true, customerName: true, phone: true, totalPrice: true,
-        status: true, salesRepName: true, createdAt: true, source: true,
+        status: true, salesRepName: true, date: true, createdAt: true, source: true,
       },
     }),
     prevWhere
@@ -396,7 +396,7 @@ function Sparkline({ series }: { series: number[] }) {
    ──────────────────────────────────────────── */
 function RecentOrdersCard({ orders }: { orders: Array<{
   id: string; customerName: string | null; phone: string | null; totalPrice: unknown;
-  status: string; salesRepName: string | null; createdAt: Date; source: OrderSource;
+  status: string; salesRepName: string | null; date: Date | null; createdAt: Date; source: OrderSource;
 }> }) {
   return (
     <div className="card" style={{ padding: 0 }}>
@@ -427,7 +427,7 @@ function RecentOrdersCard({ orders }: { orders: Array<{
                   <SourceBadge source={o.source} compact />
                 </div>
                 <div className="recent-order-meta">
-                  {o.salesRepName || '—'} · {o.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+                  {o.salesRepName || '—'} · {(o.date ?? o.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
                 </div>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>

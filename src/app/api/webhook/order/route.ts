@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { OrderStatus, OrderSource, SyncStatus, Prisma } from '@prisma/client'
 import { verifyWebhookSecret } from '@/lib/webhookAuth'
+import { toPhoneDigits } from '@/lib/customer'
 const VALID_STATUSES = new Set<string>(Object.values(OrderStatus))
 
 function parseStatus(raw: unknown): OrderStatus {
@@ -39,17 +40,21 @@ export async function POST(request: NextRequest) {
   const rawSalesRepId = typeof body.salesRepId === 'string' && body.salesRepId ? body.salesRepId : null
   const rawTeamId = typeof body.teamId === 'string' && body.teamId ? body.teamId : null
   const [repExists, teamExists] = await Promise.all([
-    rawSalesRepId ? prisma.sheetUser.findUnique({ where: { id: rawSalesRepId }, select: { id: true } }) : null,
+    rawSalesRepId ? prisma.sheetUser.findUnique({ where: { id: rawSalesRepId }, select: { id: true, teamId: true } }) : null,
     rawTeamId ? prisma.sheetTeam.findUnique({ where: { id: rawTeamId }, select: { id: true } }) : null,
   ])
   const salesRepId = repExists ? rawSalesRepId : null
-  const teamId = teamExists ? rawTeamId : null
+  // teamId: ใช้ค่าที่ส่งมา (ถ้า valid) → ไม่มีก็ fallback เป็นทีมปัจจุบันของเซลส์
+  // (Sheet legacy ไม่ส่ง teamId → เคยเกิดออเดอร์ไร้ทีม 357 แถว Team Battle นับยอดขาด)
+  const teamId = teamExists ? rawTeamId : (repExists?.teamId ?? null)
 
   const data = {
     date,
     customerName: typeof body.customerName === 'string' ? body.customerName : null,
     address: typeof body.address === 'string' ? body.address : null,
-    phone: typeof body.phone === 'string' ? body.phone : null,
+    // เก็บเบอร์เป็นตัวเลขล้วนเสมอ — เบอร์จาก Sheet เคยมีขีด/เว้นวรรค/"โทร." ปน
+    // ทำให้ลูกค้าคนเดียวแตกเป็นหลายโปรไฟล์ (identity split)
+    phone: typeof body.phone === 'string' ? toPhoneDigits(body.phone) : null,
     productsJson: body.products !== undefined ? (body.products as Prisma.InputJsonValue) : Prisma.JsonNull,
     totalPrice: body.totalPrice != null ? Number(body.totalPrice) : 0,
     status: parseStatus(body.status),
