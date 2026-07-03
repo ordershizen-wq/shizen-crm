@@ -7,6 +7,12 @@ const STYLE: Record<OrderSource, { label: string; icon: string; bg: string; colo
     bg: 'rgba(14,165,233,0.12)',
     color: '#0284c7',
   },
+  CRM_NEW: {
+    label: 'ลูกค้าใหม่',
+    icon: 'ri-user-add-line',
+    bg: 'rgba(14,165,233,0.12)',
+    color: '#0284c7',
+  },
   CRM_REORDER: {
     label: 'รีออเดอร์',
     icon: 'ri-repeat-line',
@@ -41,5 +47,6 @@ export default function SourceBadge({ source, compact = false }: { source: Order
 
 export const SOURCE_LABEL: Record<OrderSource, string> = {
   SHEET: 'ลูกค้าใหม่',
+  CRM_NEW: 'ลูกค้าใหม่',
   CRM_REORDER: 'รีออเดอร์',
 };

@@ -1,8 +1,8 @@
 import { prisma } from './prisma';
-import { OrderSource } from '@prisma/client';
 import type { CurrentUser } from './auth';
 import { getOrderFilter, getQueueFilter } from './auth';
 import type { DateRange, ViewKey } from './dashboardFilters';
+import { getFirstOrderMap, isAcquisitionOrder } from './acquisitionSplit';
 
 // ─────────────────────────────────────────────────────────────
 // Date helpers — legacy (สำหรับ Velocity/Forecast ที่ยึดเดือน)
@@ -370,35 +370,43 @@ export type TeamBattleRow = {
 export async function getTeamBattle(): Promise<TeamBattleRow[]> {
   const { start, end } = monthRange();
 
-  const [teams, ordersBySource, members] = await Promise.all([
+  const [teams, monthOrders, members, firstOrderMap] = await Promise.all([
     prisma.sheetTeam.findMany({ select: { id: true, name: true } }),
-    prisma.sheetOrder.groupBy({
-      by: ['teamId', 'source'],
-      where: { createdAt: { gte: start, lt: end } },
-      _sum: { totalPrice: true },
+    prisma.sheetOrder.findMany({
+      where: { date: { gte: start, lt: end } },
+      select: { teamId: true, phone: true, date: true, createdAt: true, totalPrice: true },
     }),
     prisma.sheetUser.groupBy({
       by: ['teamId'],
       where: { isActive: 'ACTIVE', role: { not: 'PACKER' }, teamId: { not: null } },
       _count: { _all: true },
     }),
+    getFirstOrderMap(),
   ]);
 
   const memberMap = new Map(members.map(m => [m.teamId, m._count._all]));
 
+  // แยกยอดใหม่/รีออเดอร์ต่อทีม ด้วยนิยาม "ออเดอร์แรกของเบอร์" (ไม่พึ่ง source)
+  const acc = new Map<string, { newR: number; reR: number }>();
+  for (const o of monthOrders) {
+    if (!o.teamId) continue;
+    const bucket = acc.get(o.teamId) ?? { newR: 0, reR: 0 };
+    const amt = Number(o.totalPrice ?? 0);
+    if (isAcquisitionOrder(o, firstOrderMap)) bucket.newR += amt;
+    else bucket.reR += amt;
+    acc.set(o.teamId, bucket);
+  }
+
   const rows: TeamBattleRow[] = teams.map(t => {
-    const sheetR = ordersBySource.find(r => r.teamId === t.id && r.source === OrderSource.SHEET);
-    const crmR = ordersBySource.find(r => r.teamId === t.id && r.source === OrderSource.CRM_REORDER);
-    const newR = Number(sheetR?._sum.totalPrice ?? 0);
-    const reR = Number(crmR?._sum.totalPrice ?? 0);
-    const total = newR + reR;
+    const b = acc.get(t.id) ?? { newR: 0, reR: 0 };
+    const total = b.newR + b.reR;
     return {
       teamId: t.id,
       teamName: t.name,
       totalRevenue: total,
-      newCustRevenue: newR,
-      reorderRevenue: reR,
-      reorderShare: total > 0 ? (reR / total) * 100 : 0,
+      newCustRevenue: b.newR,
+      reorderRevenue: b.reR,
+      reorderShare: total > 0 ? (b.reR / total) * 100 : 0,
       memberCount: memberMap.get(t.id) ?? 0,
     };
   }).sort((a, b) => b.totalRevenue - a.totalRevenue);
@@ -419,15 +427,12 @@ export type FunnelData = {
 export async function getAcquisitionFunnel(): Promise<FunnelData> {
   const { start, end } = monthRange();
 
-  // newCustomers — first order ของเบอร์อยู่ในเดือนนี้
-  const newCustsRows = await prisma.sheetOrder.groupBy({
-    by: ['phone'],
-    where: { phone: { not: null } },
-    _min: { createdAt: true },
-  });
+  // newCustomers — first order ของเบอร์อยู่ในเดือนนี้ (นิยามเดียวกับ getTeamBattle)
+  const firstOrderMap = await getFirstOrderMap();
   let newCount = 0;
-  for (const r of newCustsRows) {
-    if (r._min.createdAt && r._min.createdAt >= start && r._min.createdAt < end) newCount++;
+  const startMs = start.getTime(), endMs = end.getTime();
+  for (const ms of firstOrderMap.values()) {
+    if (ms >= startMs && ms < endMs) newCount++;
   }
 
   // total + repeat + vip

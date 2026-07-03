@@ -2,6 +2,11 @@
 
 import { useState, useTransition } from 'react';
 import { createReorder, type ReorderProduct } from './actions';
+import { toYmd, MAX_BACKDATE_DAYS } from '@/lib/orderDate';
+
+// คำนวณครั้งเดียวตอนโหลดโมดูล (ไม่เรียกใน render เพื่อเลี่ยง react-hooks/purity)
+const TODAY_STR = toYmd(new Date());
+const MIN_ORDER_DATE_STR = toYmd(new Date(Date.now() - MAX_BACKDATE_DAYS * 86400000));
 
 type LatestProduct = { name: string; quantity: number };
 
@@ -22,7 +27,7 @@ const CHANNELS = [
   { value: 'OTHER',  label: 'อื่นๆ',   icon: 'ri-more-line',      color: '#64748b' },
 ];
 
-type LineItem = { id: string; name: string; quantity: number; unitPrice: number };
+type LineItem = { id: string; name: string; quantity: number };
 
 let __lineId = 0;
 const nextId = () => `r${++__lineId}`;
@@ -45,18 +50,27 @@ export default function ReorderButton({
     CHANNELS.find(c => c.value.toLowerCase() === (defaultChannel ?? '').toLowerCase())?.value ?? 'LINE',
   );
   const [note, setNote] = useState('');
+  const [totalPrice, setTotalPrice] = useState(0);
   const [items, setItems] = useState<LineItem[]>(() =>
     lastOrderProducts.length > 0
-      ? lastOrderProducts.map(p => ({ id: nextId(), name: p.name, quantity: p.quantity, unitPrice: 0 }))
-      : [{ id: nextId(), name: '', quantity: 1, unitPrice: 0 }],
+      ? lastOrderProducts.map(p => ({ id: nextId(), name: p.name, quantity: p.quantity }))
+      : [{ id: nextId(), name: '', quantity: 1 }],
   );
+  const [backdate, setBackdate] = useState(false);
+  const [orderDate, setOrderDate] = useState(TODAY_STR);
 
-  const total = items.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
-  const canSubmit = items.length > 0 && items.every(it => it.name.trim() && it.quantity > 0 && it.unitPrice >= 0);
+  const total = totalPrice;
+  const canSubmit =
+    items.length > 0 &&
+    items.every(it => it.name.trim() && it.quantity > 0) &&
+    totalPrice > 0 &&
+    orderDate !== '';
 
   const openModal = () => {
     setError(null);
     setSuccessInfo(null);
+    setBackdate(false);
+    setOrderDate(TODAY_STR);
     setOpen(true);
   };
 
@@ -65,7 +79,7 @@ export default function ReorderButton({
     setOpen(false);
   };
 
-  const addItem = () => setItems(prev => [...prev, { id: nextId(), name: '', quantity: 1, unitPrice: 0 }]);
+  const addItem = () => setItems(prev => [...prev, { id: nextId(), name: '', quantity: 1 }]);
   const removeItem = (id: string) => setItems(prev => prev.filter(i => i.id !== id));
   const updateItem = (id: string, patch: Partial<LineItem>) =>
     setItems(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i));
@@ -75,7 +89,7 @@ export default function ReorderButton({
     startTransition(async () => {
       const products: ReorderProduct[] = items
         .filter(it => it.name.trim())
-        .map(it => ({ name: it.name.trim(), quantity: it.quantity, unitPrice: it.unitPrice }));
+        .map(it => ({ name: it.name.trim(), quantity: it.quantity }));
 
       const res = await createReorder({
         customerPhone,
@@ -83,6 +97,8 @@ export default function ReorderButton({
         address: address.trim(),
         channel,
         products,
+        totalPrice,
+        orderDate,
         note: note.trim() || undefined,
       });
 
@@ -151,7 +167,7 @@ export default function ReorderButton({
                 synced={successInfo.synced}
                 snippet={buildSheetSnippet({
                   customerName, customerPhone, address, items,
-                  channel,
+                  channel, totalPrice,
                 })}
                 onClose={() => { setOpen(false); }}
               />
@@ -183,6 +199,23 @@ export default function ReorderButton({
                   </button>
                 </div>
 
+                {/* ยอดรวมทั้งออเดอร์ */}
+                <Label icon="ri-money-dollar-circle-line">ยอดรวมทั้งออเดอร์ (฿)</Label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  step={1}
+                  value={totalPrice || ''}
+                  onChange={e => setTotalPrice(Math.max(0, Math.round(parseFloat(e.target.value) || 0)))}
+                  placeholder="0"
+                  style={{
+                    width: '100%', padding: '0.7rem', borderRadius: 8,
+                    border: '1px solid var(--border)', fontSize: 18, fontWeight: 700,
+                    marginBottom: '1rem', color: 'var(--text-dark)',
+                  }}
+                />
+
                 {/* Address */}
                 <Label icon="ri-map-pin-line">ที่อยู่จัดส่ง</Label>
                 <textarea
@@ -196,6 +229,44 @@ export default function ReorderButton({
                     fontFamily: 'inherit', resize: 'vertical', marginBottom: '1rem',
                   }}
                 />
+
+                {/* วันที่ปิดการขาย — ปกติ = วันนี้ ไม่ต้องแตะ, กดเปิดได้ถ้าลงย้อนหลัง */}
+                {!backdate ? (
+                  <button
+                    type="button"
+                    onClick={() => setBackdate(true)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                      fontSize: 13, fontWeight: 600, color: 'var(--text-dark)',
+                      background: '#fff', border: '1.5px solid var(--border)', borderRadius: 8,
+                      cursor: 'pointer', padding: '0.55rem 0.8rem', marginBottom: '1rem', width: '100%',
+                    }}
+                  >
+                    <i className="ri-history-line" style={{ color: 'var(--primary)' }}></i> ลงย้อนหลัง (ไม่ใช่วันนี้)
+                  </button>
+                ) : (
+                  <>
+                    <Label icon="ri-calendar-event-line" required>วันที่ปิดการขาย</Label>
+                    <input
+                      type="date"
+                      value={orderDate}
+                      min={MIN_ORDER_DATE_STR}
+                      max={TODAY_STR}
+                      onChange={e => setOrderDate(e.target.value)}
+                      style={{
+                        width: '100%', padding: '0.6rem', borderRadius: 8,
+                        border: '1px solid var(--border)', fontSize: 14, marginBottom: '0.25rem',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setBackdate(false); setOrderDate(TODAY_STR); }}
+                      style={{ fontSize: 12, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: '1rem' }}
+                    >
+                      ใช้วันนี้แทน
+                    </button>
+                  </>
+                )}
 
                 {/* Channel */}
                 <Label icon="ri-chat-3-line">ช่องทาง</Label>
@@ -286,10 +357,11 @@ export default function ReorderButton({
   );
 }
 
-function Label({ icon, children }: { icon: string; children: React.ReactNode }) {
+function Label({ icon, children, required }: { icon: string; children: React.ReactNode; required?: boolean }) {
   return (
     <div className="fw-600 text-sm" style={{ color: 'var(--text-dark)', marginBottom: 6 }}>
       <i className={icon}></i> {children}
+      {required && <span style={{ color: 'var(--danger)', marginLeft: 2 }}>*</span>}
     </div>
   );
 }
@@ -339,35 +411,15 @@ function ProductRow({
           </button>
         )}
       </div>
-      <div className="reorder-product-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr 1fr', gap: '0.4rem', alignItems: 'center' }}>
-        <div>
-          <div className="text-sm text-muted" style={{ fontSize: 11, marginBottom: 2 }}>จำนวน</div>
-          <input
-            type="number"
-            min={1}
-            value={item.quantity}
-            onChange={e => onChange({ quantity: Math.max(1, parseInt(e.target.value) || 1) })}
-            style={{ width: '100%', padding: '0.45rem', borderRadius: 6, border: '1px solid var(--border)', fontSize: 14, background: '#fff' }}
-          />
-        </div>
-        <div>
-          <div className="text-sm text-muted" style={{ fontSize: 11, marginBottom: 2 }}>ราคา/ชิ้น (฿)</div>
-          <input
-            type="number"
-            min={0}
-            step={1}
-            value={item.unitPrice || ''}
-            onChange={e => onChange({ unitPrice: Math.max(0, parseFloat(e.target.value) || 0) })}
-            placeholder="0"
-            style={{ width: '100%', padding: '0.45rem', borderRadius: 6, border: '1px solid var(--border)', fontSize: 14, background: '#fff' }}
-          />
-        </div>
-        <div>
-          <div className="text-sm text-muted" style={{ fontSize: 11, marginBottom: 2 }}>รวม</div>
-          <div className="fw-700 text-sm" style={{ padding: '0.45rem 0', color: 'var(--text-dark)' }}>
-            ฿{(item.quantity * item.unitPrice).toLocaleString('th-TH', { maximumFractionDigits: 0 })}
-          </div>
-        </div>
+      <div className="reorder-product-row" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div className="text-sm text-muted" style={{ fontSize: 12 }}>จำนวน</div>
+        <input
+          type="number"
+          min={1}
+          value={item.quantity}
+          onChange={e => onChange({ quantity: Math.max(1, parseInt(e.target.value) || 1) })}
+          style={{ width: 90, padding: '0.45rem', borderRadius: 6, border: '1px solid var(--border)', fontSize: 14, background: '#fff' }}
+        />
       </div>
     </div>
   );
@@ -445,17 +497,17 @@ function SuccessPanel({
 }
 
 function buildSheetSnippet({
-  customerName, customerPhone, address, items, channel,
+  customerName, customerPhone, address, items, channel, totalPrice,
 }: {
   customerName: string; customerPhone: string; address: string;
-  items: LineItem[]; channel: string;
+  items: LineItem[]; channel: string; totalPrice: number;
 }): string {
   const date = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: '2-digit', day: '2-digit' });
   const products = items
     .filter(i => i.name.trim())
-    .map(i => `${i.name} x${i.quantity} @${i.unitPrice}`)
+    .map(i => `${i.name} x${i.quantity}`)
     .join(', ');
-  const total = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const total = totalPrice;
   return [
     `วันที่: ${date}`,
     `ชื่อ: ${customerName}`,

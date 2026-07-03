@@ -7,6 +7,8 @@ import { getCurrentUser } from '@/lib/auth';
 import { canModifyCustomer } from '@/lib/authz';
 import { syncOrderToSheet } from '@/lib/orderSync';
 import { suggestGradeFromAnswers, type ChecklistAnswers } from '@/lib/grade';
+import { GENDER_VALUES, AGE_RANGE_VALUES, PROVINCE_VALUES, COUNTRY_VALUES, THAILAND } from '@/lib/demographics';
+import { parseOrderDateInput, isOrderDateAllowed, MAX_BACKDATE_DAYS } from '@/lib/orderDate';
 
 export async function saveCustomerGrade({
   phone,
@@ -107,10 +109,10 @@ export async function saveFollowUp({
 }
 
 // ─── Reorder: สร้างออเดอร์ใหม่จาก CRM (ลูกค้าเก่า) ────────────────────────────
+// ราคาเป็นยอดรวมต่อออเดอร์ (totalPrice) — สินค้าเก็บแค่ชื่อ+จำนวน
 export type ReorderProduct = {
   name: string;
   quantity: number;
-  unitPrice: number;
 };
 
 export type CreateReorderInput = {
@@ -119,6 +121,8 @@ export type CreateReorderInput = {
   address: string;
   channel: string;          // LINE / FB / TikTok / Tel / OTHER
   products: ReorderProduct[];
+  totalPrice: number;
+  orderDate: string;          // "YYYY-MM-DD" วันที่ปิดการขายจริง (ลงย้อนหลังได้ ดู orderDate.ts)
   note?: string;
 };
 
@@ -152,23 +156,46 @@ export async function createReorder(input: CreateReorderInput): Promise<CreateRe
   for (const p of input.products) {
     if (!p.name) return { ok: false, error: 'ชื่อสินค้าไม่ครบ' };
     if (p.quantity <= 0) return { ok: false, error: `จำนวน "${p.name}" ต้องมากกว่า 0` };
-    if (p.unitPrice < 0) return { ok: false, error: `ราคา "${p.name}" ไม่ถูกต้อง` };
   }
 
-  const totalPrice = input.products.reduce((s, p) => s + p.quantity * p.unitPrice, 0);
+  const totalPrice = Math.round(Number(input.totalPrice) || 0);
+  if (totalPrice <= 0) return { ok: false, error: 'กรุณาระบุยอดรวมให้ถูกต้อง' };
+
+  const orderDate = parseOrderDateInput(input.orderDate);
+  if (!orderDate) return { ok: false, error: 'วันที่ปิดการขายไม่ถูกต้อง' };
+  if (!isOrderDateAllowed(orderDate)) {
+    return { ok: false, error: `เลือกวันที่ย้อนหลังได้ไม่เกิน ${MAX_BACKDATE_DAYS} วัน และห้ามเป็นวันในอนาคต` };
+  }
 
   const id = genOrderId();
-  const now = new Date();
 
   // รวมหมายเหตุต่อท้าย address (Sheet ไม่มี column สำหรับ note → เก็บใน address)
   const addressWithNote = input.note?.trim()
     ? `${(input.address || '').trim()}\n📝 ${input.note.trim()}`.trim()
     : (input.address?.trim() || null);
 
+  // Backfill demographic จากออเดอร์ล่าสุดของเบอร์นี้ที่มีข้อมูลครบ
+  // (ปุ่มรีออเดอร์ไม่มีฟอร์มกรอกเอง ต่างจาก /orders/new) — ต้อง validate ค่าก่อนใช้ซ้ำ
+  // เผื่อเป็นข้อมูล legacy ที่ format ไม่ตรงมาตรฐาน (gender/ageRange/province)
+  const lastDemo = await prisma.sheetOrder.findFirst({
+    where: { phone: input.customerPhone, gender: { not: null }, ageRange: { not: null } },
+    orderBy: { createdAt: 'desc' },
+    select: { gender: true, ageRange: true, country: true, province: true },
+  });
+  const demoGender = lastDemo?.gender && GENDER_VALUES.has(lastDemo.gender) ? lastDemo.gender : null;
+  const demoAgeRange = lastDemo?.ageRange && AGE_RANGE_VALUES.has(lastDemo.ageRange) ? lastDemo.ageRange : null;
+  const demoIsThai = !lastDemo?.country || lastDemo.country === THAILAND;
+  const demoCountry = lastDemo?.country && (demoIsThai || COUNTRY_VALUES.has(lastDemo.country))
+    ? lastDemo.country
+    : null;
+  const demoProvince = demoIsThai && lastDemo?.province && PROVINCE_VALUES.has(lastDemo.province)
+    ? lastDemo.province
+    : null;
+
   const order = await prisma.sheetOrder.create({
     data: {
       id,
-      date: now,
+      date: orderDate,
       customerName: input.customerName || null,
       address: addressWithNote,
       phone: input.customerPhone,
@@ -176,6 +203,10 @@ export async function createReorder(input: CreateReorderInput): Promise<CreateRe
       totalPrice,
       status: OrderStatus.PENDING,
       channel: input.channel || null,
+      gender: demoGender,
+      ageRange: demoAgeRange,
+      country: demoCountry,
+      province: demoProvince,
       salesRepId: user.id,
       salesRepName: user.fullName,
       teamId: user.teamId,

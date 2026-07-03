@@ -35,7 +35,7 @@ export default function EmptyState({
       style={{
         padding: small ? '2rem 1rem' : '3rem 1.5rem',
         textAlign: 'center',
-        background: '#fff',
+        background: 'var(--bg-card)',
       }}
     >
       <div

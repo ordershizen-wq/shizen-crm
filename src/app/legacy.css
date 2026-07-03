@@ -3774,21 +3774,104 @@ button, [role="button"], a.btn, .btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  background: linear-gradient(135deg, #f5f7fb 0%, #eef2ff 100%);
+  padding: 1.25rem;
+  background:
+    radial-gradient(60% 80% at 12% 8%, #E8ECFF 0%, transparent 60%),
+    radial-gradient(50% 70% at 92% 100%, #F1E9FF 0%, transparent 55%),
+    linear-gradient(135deg, #f5f7fb 0%, #eef2ff 100%);
 }
 
-.login-card {
+/* Shell — การ์ดสองคอลัมน์ (brand | form) */
+.login-shell {
   width: 100%;
-  max-width: 420px;
+  max-width: 940px;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
   background: #fff;
-  border-radius: 18px;
-  padding: 2rem 1.75rem;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 30px 70px rgba(30, 27, 48, 0.16), 0 8px 20px rgba(30, 27, 48, 0.06);
+  animation: login-rise 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes login-rise {
+  from { opacity: 0; transform: translateY(18px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Brand panel (ซ้าย) ── */
+.login-brand-panel {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 2.5rem 2.25rem;
+  color: #fff;
+  background:
+    radial-gradient(120% 120% at 0% 0%, #6D5BF5 0%, transparent 55%),
+    radial-gradient(120% 120% at 100% 100%, #4338CA 0%, transparent 50%),
+    linear-gradient(150deg, #4F46E5 0%, #6366F1 55%, #7C3AED 100%);
+}
+.login-brand-orbs::before,
+.login-brand-orbs::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.5;
+  pointer-events: none;
+}
+.login-brand-orbs::before {
+  width: 200px; height: 200px; top: -55px; right: -40px;
+  background: radial-gradient(circle, rgba(255,255,255,0.35), transparent 70%);
+}
+.login-brand-orbs::after {
+  width: 260px; height: 260px; bottom: -95px; left: -65px;
+  background: radial-gradient(circle, rgba(167,139,250,0.5), transparent 70%);
+}
+
+.login-brand-panel-top { position: relative; display: flex; align-items: center; gap: 0.7rem; }
+.login-brand-name {
+  font-family: 'Plus Jakarta Sans', 'Anuphan', sans-serif;
+  font-size: 17px; font-weight: 700; letter-spacing: -0.01em; color: #fff;
+}
+.login-brand-panel .login-brand-logo {
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.login-brand-panel-mid { position: relative; }
+.login-brand-headline {
+  font-family: 'Plus Jakarta Sans', 'Anuphan', sans-serif;
+  font-size: clamp(1.55rem, 1.15rem + 1.6vw, 2.1rem);
+  font-weight: 800; line-height: 1.16; letter-spacing: -0.02em;
+  margin: 0 0 0.75rem;
+}
+.login-brand-lead {
+  font-size: 14px; line-height: 1.6; margin: 0 0 1.4rem;
+  color: rgba(255, 255, 255, 0.82); max-width: 32ch;
+}
+.login-brand-feats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.7rem; }
+.login-brand-feats li {
+  display: flex; align-items: center; gap: 0.6rem;
+  font-size: 13.5px; color: rgba(255, 255, 255, 0.92);
+}
+.login-brand-feats i {
+  font-size: 17px; width: 28px; height: 28px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; background: rgba(255, 255, 255, 0.14);
+}
+.login-brand-panel-foot { position: relative; font-size: 11.5px; color: rgba(255, 255, 255, 0.6); }
+
+/* ── Form panel (ขวา) ── */
+.login-form-panel {
+  padding: 2.5rem 2.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   gap: 1rem;
 }
+.login-brand-mobile { display: none; }
 
 .login-brand {
   display: flex;
@@ -3837,8 +3920,17 @@ button, [role="button"], a.btn, .btn {
 }
 .login-field input:disabled { background: var(--bg-app); opacity: 0.7; }
 
-.login-password-wrap { position: relative; }
-.login-password-wrap input { padding-right: 2.75rem; width: 100%; }
+/* ช่องกรอกพร้อมไอคอนนำหน้า */
+.login-input-icon { position: relative; }
+.login-input-icon input { width: 100%; padding-left: 2.6rem; }
+.login-input-lead {
+  position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%);
+  font-size: 18px; color: var(--text-light); pointer-events: none;
+  transition: color 150ms;
+}
+.login-input-icon:focus-within .login-input-lead { color: var(--primary); }
+/* เผื่อที่ปุ่มตา (เฉพาะช่องที่มี toggle) */
+.login-input-icon:has(.login-password-toggle) input { padding-right: 2.75rem; }
 .login-password-toggle {
   position: absolute;
   right: 0.4rem;
@@ -3902,8 +3994,22 @@ button, [role="button"], a.btn, .btn {
   color: var(--text-muted);
 }
 
+/* มือถือ/แท็บเล็ตเล็ก → ซ่อนพาเนลแบรนด์ เหลือฟอร์มสะอาดใบเดียว */
+@media (max-width: 760px) {
+  .login-brand-panel { display: none; }
+  .login-shell {
+    grid-template-columns: 1fr;
+    max-width: 440px;
+    border-radius: 18px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+  }
+  .login-form-panel { padding: 1.85rem 1.5rem; gap: 0.9rem; }
+  .login-brand-mobile {
+    display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem;
+  }
+}
 @media (max-width: 480px) {
-  .login-card { padding: 1.5rem 1.25rem; border-radius: 14px; }
+  .login-form-panel { padding: 1.5rem 1.25rem; border-radius: 14px; }
   .login-title { font-size: 20px; }
 }
 

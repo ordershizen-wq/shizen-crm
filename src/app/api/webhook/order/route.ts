@@ -25,11 +25,12 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'Missing order id' }, { status: 400 })
   }
 
-  // date: กัน invalid date (parse ไม่ได้ → null แทนที่จะโยน error ตอน upsert)
-  let date: Date | null = null
+  // date: วันที่ออเดอร์จริง — ใช้คำนวณ Dashboard/ยอดขายทั้งหมด ต้องไม่เป็น null
+  // (กัน invalid/missing date จาก Apps Script → fallback เป็นเวลาปัจจุบัน แทนที่จะปล่อย null)
+  let date: Date = new Date()
   if (body.date) {
     const d = new Date(body.date as string)
-    date = isNaN(d.getTime()) ? null : d
+    if (!isNaN(d.getTime())) date = d
   }
 
   // salesRepId / teamId เป็น FK → ถ้า user/team ยังไม่ถูก sync มาก่อน

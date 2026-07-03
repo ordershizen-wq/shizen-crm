@@ -44,6 +44,10 @@ const TASK_TYPE_LABEL: Record<string, string> = {
   CALL: 'โทรหา',
   REPEAT_BUY: 'เตือนซื้อซ้ำ',
   DELIVERY: 'ตามของ',
+  PAYMENT: 'ทวงชำระ',
+  REVIEW: 'ขอรีวิว',
+  UPSELL: 'เสนอโปร',
+  ADVICE: 'แนะนำวิธีกิน',
   CUSTOM: 'อื่นๆ',
 };
 

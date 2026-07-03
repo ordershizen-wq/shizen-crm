@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { createTask, completeTask, reopenTask, skipTask, deleteTask } from '@/app/(app)/tasks/actions';
+import { useToast, useConfirm } from '@/components/ui/Feedback';
 
 type TaskItem = {
   id: string;
@@ -136,6 +137,7 @@ function NewTaskForm({ phone, currentUserId, members, onDone }: {
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
+  const toast = useToast();
 
   const handleSubmit = () => {
     setError('');
@@ -152,10 +154,15 @@ function NewTaskForm({ phone, currentUserId, members, onDone }: {
 
     startTransition(async () => {
       try {
-        await createTask({
+        const result = await createTask({
           customerPhone: phone, title, note, dueDate, type, priority, assignedToId,
         });
-        onDone();
+        if (result && 'error' in result) {
+          setError(result.error);
+        } else {
+          toast.success('สร้างงานแล้ว');
+          onDone();
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'เกิดข้อผิดพลาด');
       }
@@ -258,6 +265,8 @@ function TaskRow({ task }: { task: TaskItem }) {
   const [expanded, setExpanded] = useState(false);
   const [resultNote, setResultNote] = useState('');
   const [isPending, startTransition] = useTransition();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const typeInfo = TYPE_LABEL[task.type] ?? TYPE_LABEL.CUSTOM;
   const priInfo = PRIORITY_LABEL[task.priority];
@@ -266,24 +275,40 @@ function TaskRow({ task }: { task: TaskItem }) {
 
   const handleComplete = () => {
     startTransition(async () => {
-      await completeTask({ taskId: task.id, resultNote });
-      setExpanded(false);
-      setResultNote('');
+      try {
+        await completeTask({ taskId: task.id, resultNote });
+        setExpanded(false);
+        setResultNote('');
+        toast.success('ทำงานเสร็จแล้ว');
+      } catch {
+        toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
+      }
     });
   };
 
   const handleSkip = () => {
     startTransition(async () => {
-      await skipTask({ taskId: task.id, resultNote });
-      setExpanded(false);
-      setResultNote('');
+      try {
+        await skipTask({ taskId: task.id, resultNote });
+        setExpanded(false);
+        setResultNote('');
+        toast.success('ข้ามงานแล้ว');
+      } catch {
+        toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
+      }
     });
   };
 
-  const handleReopen = () => startTransition(async () => { await reopenTask({ taskId: task.id }); });
-  const handleDelete = () => {
-    if (!confirm('ลบงานนี้?')) return;
-    startTransition(async () => { await deleteTask({ taskId: task.id }); });
+  const handleReopen = () => startTransition(async () => {
+    try { await reopenTask({ taskId: task.id }); toast.success('เปิดงานใหม่แล้ว'); }
+    catch { toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง'); }
+  });
+  const handleDelete = async () => {
+    if (!(await confirm({ title: 'ลบงานนี้?', message: 'การลบไม่สามารถย้อนกลับได้', danger: true, confirmLabel: 'ลบ' }))) return;
+    startTransition(async () => {
+      try { await deleteTask({ taskId: task.id }); toast.success('ลบงานแล้ว'); }
+      catch { toast.error('ลบไม่สำเร็จ ลองใหม่อีกครั้ง'); }
+    });
   };
 
   return (
@@ -297,7 +322,7 @@ function TaskRow({ task }: { task: TaskItem }) {
             <div style={{ flex: 1 }}>
               <div className="fw-600" style={{ fontSize: 14, color: 'var(--text-dark)' }}>
                 {task.status === 'DONE' && <i className="ri-checkbox-circle-fill" style={{ color: 'var(--success)' }}></i>}
-                {task.status === 'SKIPPED' && <i className="ri-skip-forward-line" style={{ color: '#64748b' }}></i>}
+                {task.status === 'SKIPPED' && <i className="ri-skip-forward-line kanban-icon--skipped" style={{ color: '#64748b' }}></i>}
                 {' '}{task.title}
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: 4, fontSize: 11 }}>

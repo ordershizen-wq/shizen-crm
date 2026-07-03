@@ -15,7 +15,7 @@ export type SearchResult = {
     customerName: string | null;
     totalPrice: number;
     status: string;
-    source: 'SHEET' | 'CRM_REORDER';
+    source: 'SHEET' | 'CRM_NEW' | 'CRM_REORDER';
     createdAt: string;
   }>;
 };

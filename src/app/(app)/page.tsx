@@ -11,6 +11,7 @@ import { getTodaysFocus, getAdminFocus } from '@/lib/todaysFocus';
 import { getLeaderboard } from '@/lib/teamStats';
 import { parseView, resolveRange, toYmd } from '@/lib/dashboardFilters';
 import DashboardFilters from '@/components/dashboard/DashboardFilters';
+import { getFirstOrderMap, isAcquisitionOrder } from '@/lib/acquisitionSplit';
 
 type SearchParams = Promise<{ range?: string; view?: string; from?: string; to?: string }>;
 
@@ -26,15 +27,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
   const orderFilter = (await getOrderFilter(user, view)) ?? {};
 
   const rangeWhere = dateRange.start && dateRange.end
-    ? { createdAt: { gte: dateRange.start, lt: dateRange.end } }
+    ? { date: { gte: dateRange.start, lt: dateRange.end } }
     : {};
   const prevWhere = dateRange.prevStart && dateRange.prevEnd
-    ? { createdAt: { gte: dateRange.prevStart, lt: dateRange.prevEnd } }
+    ? { date: { gte: dateRange.prevStart, lt: dateRange.prevEnd } }
     : null;
 
   const filteredWhere = { ...orderFilter, ...rangeWhere };
 
-  const [totalOrders, revenue, recentOrders, prevAgg, phoneAggs, sourceBreakdown] = await Promise.all([
+  const [totalOrders, revenue, recentOrders, prevAgg, phoneAggs, splitOrders, firstOrderMap] = await Promise.all([
     prisma.sheetOrder.count({ where: filteredWhere }),
     prisma.sheetOrder.aggregate({ where: filteredWhere, _sum: { totalPrice: true } }),
     prisma.sheetOrder.findMany({
@@ -50,30 +51,32 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
       ? prisma.sheetOrder.aggregate({ where: { ...orderFilter, ...prevWhere }, _sum: { totalPrice: true }, _count: true })
       : Promise.resolve(null),
     aggregateOrdersByPhone(orderFilter),
-    prisma.sheetOrder.groupBy({
-      by: ['source'],
+    prisma.sheetOrder.findMany({
       where: filteredWhere,
-      _sum: { totalPrice: true },
-      _count: true,
+      select: { phone: true, date: true, createdAt: true, totalPrice: true },
     }),
+    getFirstOrderMap(),
   ]);
 
-  const sourceMap = new Map(sourceBreakdown.map(r => [r.source, r]));
-  const newCustRev = Number(sourceMap.get(OrderSource.SHEET)?._sum.totalPrice ?? 0);
-  const newCustCount = sourceMap.get(OrderSource.SHEET)?._count ?? 0;
-  const reorderRev = Number(sourceMap.get(OrderSource.CRM_REORDER)?._sum.totalPrice ?? 0);
-  const reorderCount = sourceMap.get(OrderSource.CRM_REORDER)?._count ?? 0;
+  // แยกลูกค้าใหม่ (ออเดอร์แรกของเบอร์) vs รีออเดอร์ — นิยามเดียวทั้ง Dashboard
+  // (ผลรวม 2 ก้อน = ยอดทั้งช่วงพอดี ไม่มี source ตกหล่นเหมือนเดิม)
+  let newCustRev = 0, newCustCount = 0, reorderRev = 0, reorderCount = 0;
+  for (const o of splitOrders) {
+    const amt = Number(o.totalPrice ?? 0);
+    if (isAcquisitionOrder(o, firstOrderMap)) { newCustRev += amt; newCustCount++; }
+    else { reorderRev += amt; reorderCount++; }
+  }
   const periodTotal = newCustRev + reorderRev;
   const reorderShare = periodTotal > 0 ? (reorderRev / periodTotal) * 100 : 0;
 
   const chartOrders = dateRange.start && dateRange.end
     ? await prisma.sheetOrder.findMany({
         where: filteredWhere,
-        select: { totalPrice: true, createdAt: true },
+        select: { totalPrice: true, date: true, createdAt: true },
       })
     : await prisma.sheetOrder.findMany({
-        where: { ...orderFilter, createdAt: { gte: new Date(Date.now() - 30 * 86400000) } },
-        select: { totalPrice: true, createdAt: true },
+        where: { ...orderFilter, date: { gte: new Date(Date.now() - 30 * 86400000) } },
+        select: { totalPrice: true, date: true, createdAt: true },
       });
 
   const [focus, adminFocus, leaderboard] = await Promise.all([
@@ -125,9 +128,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
     }
   }
   for (const o of chartOrders) {
+    const d = o.date ?? o.createdAt;
     const key = useMonthBuckets
-      ? monthKey(o.createdAt)
-      : o.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+      ? monthKey(d)
+      : d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
     const entry = dailyMap.get(key);
     if (entry) {
       entry.revenue += Number(o.totalPrice ?? 0);
@@ -243,7 +247,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
             revenue={newCustRev}
             count={newCustCount}
             share={periodTotal > 0 ? 100 - reorderShare : 0}
-            href="/orders?source=SHEET"
+            href="/orders?source=new"
           />
           <SourceKpi
             source={OrderSource.CRM_REORDER}

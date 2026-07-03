@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { upsertProduct, toggleProductActive, deleteProduct } from './actions';
+import { useToast, useConfirm } from '@/components/ui/Feedback';
 
 type Product = {
   id: string; name: string; shortDesc: string | null;
@@ -62,6 +63,8 @@ export default function ProductManager({
   const [showForm, setShowForm] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [msg, setMsg] = useState('');
+  const toast = useToast();
+  const confirm = useConfirm();
 
   function openAdd() {
     setForm(EMPTY_FORM);
@@ -86,10 +89,14 @@ export default function ProductManager({
 
   function handleSave() {
     startTransition(async () => {
-      await upsertProduct(form);
-      setShowForm(false);
-      setMsg('บันทึกแล้ว');
-      window.location.reload();
+      try {
+        await upsertProduct(form);
+        setShowForm(false);
+        toast.success('บันทึกสินค้าแล้ว');
+        window.location.reload();
+      } catch {
+        toast.error('บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง');
+      }
     });
   }
 
@@ -100,12 +107,17 @@ export default function ProductManager({
     });
   }
 
-  function handleDelete(id: string) {
-    if (!confirm('ลบสินค้านี้?')) return;
+  async function handleDelete(id: string) {
+    if (!(await confirm({ title: 'ลบสินค้านี้?', message: 'การลบไม่สามารถย้อนกลับได้', danger: true, confirmLabel: 'ลบ' }))) return;
     startTransition(async () => {
-      await deleteProduct(id);
-      setProducts(prev => prev.filter(p => p.id !== id));
-      setShowForm(false);
+      try {
+        await deleteProduct(id);
+        setProducts(prev => prev.filter(p => p.id !== id));
+        setShowForm(false);
+        toast.success('ลบสินค้าแล้ว');
+      } catch {
+        toast.error('ลบไม่สำเร็จ ลองใหม่อีกครั้ง');
+      }
     });
   }
 

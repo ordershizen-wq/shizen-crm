@@ -1,7 +1,8 @@
 import { prisma } from './prisma';
 import { SyncStatus } from '@prisma/client';
 
-type ProductRow = { name: string; quantity: number; unitPrice: number };
+// ราคาเก็บเป็นยอดรวมต่อออเดอร์ (order.totalPrice) — สินค้าเก็บแค่ชื่อ+จำนวน
+type ProductRow = { name: string; quantity: number };
 
 /**
  * ส่งออเดอร์ที่สร้างใน CRM (source=CRM_REORDER) → Google Sheet ผ่าน Apps Script Web App

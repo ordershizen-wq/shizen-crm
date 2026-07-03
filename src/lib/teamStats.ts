@@ -1,6 +1,6 @@
 import { prisma } from './prisma';
-import { OrderSource } from '@prisma/client';
 import type { CurrentUser } from './auth';
+import { getFirstOrderMap, isAcquisitionOrder } from './acquisitionSplit';
 
 export type SalesStats = {
   userId: string;
@@ -9,9 +9,9 @@ export type SalesStats = {
   teamName: string | null;
   totalRevenue: number;
   totalOrders: number;
-  newCustRevenue: number;       // จาก Sheet (acquisition)
+  newCustRevenue: number;       // ออเดอร์แรกของเบอร์ (acquisition)
   newCustOrders: number;
-  reorderRevenue: number;       // จาก CRM (retention)
+  reorderRevenue: number;       // ออเดอร์ซ้ำของเบอร์ (retention)
   reorderOrders: number;
   tasksDone: number;
   monthlyTarget: number;
@@ -72,12 +72,12 @@ export async function getLeaderboard(user: CurrentUser, monthValue?: string): Pr
   const scopedIds = await getScopedUserIds(user);
   const userWhere = scopedIds === null ? {} : { id: { in: scopedIds } };
   const orderWhere = {
-    createdAt: { gte: start, lt: end },
+    date: { gte: start, lt: end },
     ...(scopedIds === null ? {} : { salesRepId: { in: scopedIds } }),
   };
 
   // ดึง users ในขอบเขต + orders ในช่วงเดือน + tasks ที่ DONE
-  const [users, orderAggBySalesRep, ordersBySalesRepSource, tasksByUser] = await Promise.all([
+  const [users, orderAggBySalesRep, monthOrders, tasksByUser, firstOrderMap] = await Promise.all([
     prisma.sheetUser.findMany({
       where: { ...userWhere, isActive: 'ACTIVE', role: { not: 'PACKER' } },
       select: {
@@ -94,11 +94,9 @@ export async function getLeaderboard(user: CurrentUser, monthValue?: string): Pr
       _sum: { totalPrice: true },
       _count: { _all: true },
     }),
-    prisma.sheetOrder.groupBy({
-      by: ['salesRepId', 'source'],
+    prisma.sheetOrder.findMany({
       where: orderWhere,
-      _sum: { totalPrice: true },
-      _count: { _all: true },
+      select: { salesRepId: true, phone: true, date: true, createdAt: true, totalPrice: true },
     }),
     prisma.customerTask.groupBy({
       by: ['completedById'],
@@ -109,17 +107,22 @@ export async function getLeaderboard(user: CurrentUser, monthValue?: string): Pr
       },
       _count: { _all: true },
     }),
+    getFirstOrderMap(),
   ]);
 
   // Build lookup maps
   const orderMap = new Map(orderAggBySalesRep.map(r => [r.salesRepId, r]));
   const taskMap = new Map(tasksByUser.map(t => [t.completedById, t._count._all]));
 
-  type SourceKey = `${string}|${OrderSource}`;
-  const sourceMap = new Map<SourceKey, { _sum: { totalPrice: unknown }; _count: { _all: number } }>();
-  for (const r of ordersBySalesRepSource) {
-    if (!r.salesRepId) continue;
-    sourceMap.set(`${r.salesRepId}|${r.source}`, r);
+  // แยกยอดใหม่/รีออเดอร์ต่อเซลส์ ด้วยนิยาม "ออเดอร์แรกของเบอร์" (ไม่พึ่ง source)
+  const splitMap = new Map<string, { newR: number; newC: number; reR: number; reC: number }>();
+  for (const o of monthOrders) {
+    if (!o.salesRepId) continue;
+    const s = splitMap.get(o.salesRepId) ?? { newR: 0, newC: 0, reR: 0, reC: 0 };
+    const amt = Number(o.totalPrice ?? 0);
+    if (isAcquisitionOrder(o, firstOrderMap)) { s.newR += amt; s.newC++; }
+    else { s.reR += amt; s.reC++; }
+    splitMap.set(o.salesRepId, s);
   }
 
   const rows: SalesStats[] = users.map(u => {
@@ -127,10 +130,7 @@ export async function getLeaderboard(user: CurrentUser, monthValue?: string): Pr
     const totalRevenue = Number(agg?._sum.totalPrice ?? 0);
     const totalOrders = agg?._count._all ?? 0;
 
-    const sheetRow = sourceMap.get(`${u.id}|${OrderSource.SHEET}`);
-    const crmRow = sourceMap.get(`${u.id}|${OrderSource.CRM_REORDER}`);
-    const newCustRevenue = Number(sheetRow?._sum.totalPrice ?? 0);
-    const reorderRevenue = Number(crmRow?._sum.totalPrice ?? 0);
+    const s = splitMap.get(u.id) ?? { newR: 0, newC: 0, reR: 0, reC: 0 };
 
     const target = Number(u.monthlySales ?? 0) || 50000;
     const goalPercent = target > 0 ? (totalRevenue / target) * 100 : 0;
@@ -142,10 +142,10 @@ export async function getLeaderboard(user: CurrentUser, monthValue?: string): Pr
       teamName: u.team?.name ?? null,
       totalRevenue,
       totalOrders,
-      newCustRevenue,
-      newCustOrders: sheetRow?._count._all ?? 0,
-      reorderRevenue,
-      reorderOrders: crmRow?._count._all ?? 0,
+      newCustRevenue: s.newR,
+      newCustOrders: s.newC,
+      reorderRevenue: s.reR,
+      reorderOrders: s.reC,
       tasksDone: taskMap.get(u.id) ?? 0,
       monthlyTarget: target,
       goalPercent,

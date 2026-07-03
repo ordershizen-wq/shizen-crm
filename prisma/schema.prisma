@@ -43,10 +43,12 @@ enum MissionStatus {
   ENDED
 }
 
-// SHEET       = ลงผ่าน Google Sheet (ลูกค้าใหม่ — Acquisition team)
-// CRM_REORDER = ลงผ่านเว็บ CRM โดยตรง (รีออเดอร์ลูกค้าเก่า — Retention team)
+// SHEET       = ลงผ่าน Google Sheet (ลูกค้าใหม่เก่า — legacy/ช่วงเปลี่ยนผ่าน)
+// CRM_NEW     = ลงผ่านเว็บ CRM โดยตรง — ลูกค้าใหม่ (Acquisition)
+// CRM_REORDER = ลงผ่านเว็บ CRM โดยตรง — รีออเดอร์ลูกค้าเก่า (Retention)
 enum OrderSource {
   SHEET
+  CRM_NEW
   CRM_REORDER
 }
 
@@ -121,6 +123,8 @@ model SheetOrder {
   gender          String?
   ageRange        String?
   province        String?
+  // ประเทศลูกค้า — "ไทย" = ในประเทศ (มี province) / อื่น = ต่างประเทศ (province = null)
+  country         String?     @default("ไทย")
   isReturned      Boolean     @default(false)
   birthYear       Int?
   createdAt       DateTime    @default(now())
@@ -143,6 +147,7 @@ model SheetOrder {
   team     SheetTeam? @relation(fields: [teamId], references: [id])
 
   @@index([createdAt])
+  @@index([date])
   @@index([phone])
   @@index([status])
   @@index([salesRepId])
@@ -150,9 +155,12 @@ model SheetOrder {
   @@index([source])
   @@index([syncStatus])
   @@index([salesRepId, createdAt])
+  @@index([salesRepId, date])
   @@index([salesRepId, phone])
   @@index([phone, createdAt])
+  @@index([phone, date])
   @@index([source, createdAt])
+  @@index([teamId, date])
   @@map("sheet_orders")
 }
 
@@ -255,6 +263,10 @@ enum TaskType {
   CALL         // โทรหา
   REPEAT_BUY   // เตือนซื้อซ้ำ
   DELIVERY     // ตามของ
+  PAYMENT      // ทวงชำระ / เก็บเงิน
+  REVIEW       // ขอรีวิว / รูปผลลัพธ์
+  UPSELL       // เสนอโปร / อัพเซล
+  ADVICE       // แนะนำวิธีกิน / ปรึกษา
   CUSTOM
 }
 

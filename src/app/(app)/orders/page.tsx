@@ -8,7 +8,7 @@ type SearchParams = Promise<{ status?: string; q?: string; source?: string }>;
 
 const SOURCE_TABS: { value: string; label: string; icon: string }[] = [
   { value: 'all',         label: 'ทุกที่มา',    icon: 'ri-stack-line' },
-  { value: 'SHEET',       label: 'ลูกค้าใหม่',  icon: 'ri-user-add-line' },
+  { value: 'new',         label: 'ลูกค้าใหม่',  icon: 'ri-user-add-line' },
   { value: 'CRM_REORDER', label: 'รีออเดอร์',   icon: 'ri-repeat-line' },
 ];
 
@@ -35,10 +35,14 @@ const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }>
 export default async function OrdersPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const statusFilter = params.status && params.status !== 'all' ? params.status : undefined;
-  const sourceFilter: OrderSource | undefined =
-    params.source === 'SHEET' || params.source === 'CRM_REORDER'
-      ? params.source
-      : undefined;
+  // ที่มา: 'new' = ลูกค้าใหม่ (SHEET เก่า + CRM_NEW) · 'CRM_REORDER' = รีออเดอร์
+  const sourceParam = params.source;
+  const sourceWhere =
+    sourceParam === 'new'         ? { source: { in: [OrderSource.SHEET, OrderSource.CRM_NEW] } }
+    : sourceParam === 'CRM_REORDER' ? { source: OrderSource.CRM_REORDER }
+    : sourceParam === 'CRM_NEW'      ? { source: OrderSource.CRM_NEW }
+    : sourceParam === 'SHEET'        ? { source: OrderSource.SHEET }
+    : {};
   const q = params.q?.trim().toLowerCase();
 
   const user = (await getCurrentUser())!;
@@ -47,7 +51,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
   const where = {
     ...teamFilter,
     ...(statusFilter ? { status: statusFilter as never } : {}),
-    ...(sourceFilter ? { source: sourceFilter } : {}),
+    ...sourceWhere,
   };
 
   const [orders, allCount, countPerStatus, countPerSource] = await Promise.all([
@@ -95,7 +99,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
 
   return (
     <>
-      <div className="page-header flex-between mb-4">
+      <div className="page-header flex-between mb-4" style={{ alignItems: 'center' }}>
         <div>
           <h1 className="page-title">ออเดอร์ทั้งหมด</h1>
           <p className="text-sm text-muted mt-1">
@@ -103,6 +107,11 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
             {user.role === 'MEMBER' && ` (เฉพาะของฉัน)`}
           </p>
         </div>
+        {user.role !== 'ADMIN' && (
+          <Link href="/orders/new" className="btn btn-primary" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+            <i className="ri-add-line"></i> กรอกออเดอร์ใหม่
+          </Link>
+        )}
       </div>
 
       {/* Source filter (ที่มา) */}
@@ -111,10 +120,13 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
           <i className="ri-filter-line"></i> ที่มา:
         </span>
         {SOURCE_TABS.map(opt => {
+          const newCount = (sourceCountMap.get(OrderSource.SHEET) ?? 0) + (sourceCountMap.get(OrderSource.CRM_NEW) ?? 0);
           const count = opt.value === 'all'
             ? allCount
-            : (sourceCountMap.get(opt.value as OrderSource) ?? 0);
-          const active = (!sourceFilter && opt.value === 'all') || sourceFilter === opt.value;
+            : opt.value === 'new'
+              ? newCount
+              : (sourceCountMap.get(opt.value as OrderSource) ?? 0);
+          const active = ((!sourceParam || sourceParam === 'all') && opt.value === 'all') || sourceParam === opt.value;
           const href = buildSourceHref({ source: opt.value, status: statusFilter, q });
           return (
             <Link
@@ -147,7 +159,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
           const count = opt.value === 'all' ? allCount : (countMap.get(opt.value as never) ?? 0);
           const active = (!statusFilter && opt.value === 'all') || statusFilter === opt.value;
           const href = buildSourceHref({
-            source: sourceFilter ?? 'all',
+            source: sourceParam ?? 'all',
             status: opt.value,
             q,
           });

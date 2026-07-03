@@ -2,12 +2,19 @@
 // Single source of truth reused by TasksList, TaskDetail, TaskDrawer, TasksKanban.
 
 export const TYPE_LABEL: Record<string, { label: string; icon: string; color: string; bg: string }> = {
-  FOLLOW_UP:  { label: 'ตามอาการ',     icon: 'ri-stethoscope-line', color: '#0ea5e9', bg: '#EFF6FF' },
-  CALL:       { label: 'โทรหา',          icon: 'ri-phone-line',        color: '#10b981', bg: '#ECFDF5' },
+  FOLLOW_UP:  { label: 'ตามอาการ',     icon: 'ri-stethoscope-line',   color: '#0ea5e9', bg: '#EFF6FF' },
+  CALL:       { label: 'โทรหา',          icon: 'ri-phone-line',         color: '#10b981', bg: '#ECFDF5' },
   REPEAT_BUY: { label: 'เตือนซื้อซ้ำ',    icon: 'ri-repeat-line',        color: '#f59e0b', bg: '#FFFBEB' },
   DELIVERY:   { label: 'ตามของ',         icon: 'ri-truck-line',         color: '#8b5cf6', bg: '#F5F3FF' },
+  PAYMENT:    { label: 'ทวงชำระ',        icon: 'ri-hand-coin-line',     color: '#e11d48', bg: '#FFF1F2' },
+  REVIEW:     { label: 'ขอรีวิว',         icon: 'ri-star-smile-line',    color: '#db2777', bg: '#FDF2F8' },
+  UPSELL:     { label: 'เสนอโปร',        icon: 'ri-price-tag-3-line',   color: '#c026d3', bg: '#FCF4FF' },
+  ADVICE:     { label: 'แนะนำวิธีกิน',    icon: 'ri-lightbulb-flash-line', color: '#0d9488', bg: '#F0FDFA' },
   CUSTOM:     { label: 'อื่นๆ',           icon: 'ri-bookmark-line',      color: '#64748b', bg: '#F1F5F9' },
 };
+
+// ลำดับประเภทงานตาม customer journey — ใช้เป็นตัวเลือกใน dropdown ทุกที่
+export const TYPE_ORDER = ['CALL', 'PAYMENT', 'DELIVERY', 'ADVICE', 'FOLLOW_UP', 'REVIEW', 'UPSELL', 'REPEAT_BUY', 'CUSTOM'];
 
 export const PRIORITY_LABEL: Record<string, { label: string; color: string; bg: string }> = {
   HIGH:   { label: 'ด่วน',     color: 'var(--danger)',  bg: 'var(--danger-light)' },

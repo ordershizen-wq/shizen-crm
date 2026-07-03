@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import RouteProgressBar from './RouteProgressBar';
 import HeaderSearch from './HeaderSearch';
+import { FeedbackProvider } from './ui/Feedback';
 
 type User = {
   id: string;
@@ -20,6 +21,7 @@ type Props = {
 };
 
 const COLLAPSE_KEY = 'shizen.sidebarCollapsed';
+const THEME_KEY = 'shizen.theme';
 
 export default function AppShell({ user, children, atRiskCount = 0, taskCount = 0 }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false); // mobile drawer
@@ -27,13 +29,16 @@ export default function AppShell({ user, children, atRiskCount = 0, taskCount = 
   const [tabletRail, setTabletRail] = useState(false);   // auto rail at 769-1024
   const [hydrated, setHydrated] = useState(false);
   const [searchPlaceholder, setSearchPlaceholder] = useState('ค้นหาลูกค้า, ออเดอร์, เบอร์โทร...');
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    // restore preference
+    // restore sidebar preference
     try {
       const saved = localStorage.getItem(COLLAPSE_KEY);
       if (saved === '1') setCollapsed(true);
     } catch {}
+    // sync dark state from html class (set by FOUC script in layout.tsx)
+    setIsDark(document.documentElement.classList.contains('dark'));
     setHydrated(true);
   }, []);
 
@@ -55,6 +60,13 @@ export default function AppShell({ user, children, atRiskCount = 0, taskCount = 
       try { localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0'); } catch {}
       return next;
     });
+  };
+
+  const toggleTheme = () => {
+    const next = !isDark;
+    document.documentElement.classList.toggle('dark', next);
+    try { localStorage.setItem(THEME_KEY, next ? 'dark' : 'light'); } catch {}
+    setIsDark(next);
   };
 
   const effectiveCollapsed = hydrated && (collapsed || tabletRail);
@@ -114,15 +126,18 @@ export default function AppShell({ user, children, atRiskCount = 0, taskCount = 
             )}
             <button
               className="header-icon-btn"
-              title="แจ้งเตือน"
-              aria-label="แจ้งเตือน"
+              onClick={toggleTheme}
+              title={isDark ? 'สลับ Light Mode' : 'สลับ Dark Mode'}
+              aria-label={isDark ? 'สลับ Light Mode' : 'สลับ Dark Mode'}
             >
-              <i className="ri-notification-3-line"></i>
+              <i className={hydrated && isDark ? 'ri-sun-line' : 'ri-moon-line'}></i>
             </button>
           </div>
         </header>
 
-        <div className="page-content fade-in">{children}</div>
+        <div className="page-content fade-in">
+          <FeedbackProvider>{children}</FeedbackProvider>
+        </div>
       </div>
     </div>
   );

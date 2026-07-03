@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { completeTask, skipTask, reopenTask, deleteTask, updateTask } from './actions';
 import { typeInfo, PRIORITY_LABEL } from './taskLabels';
+import { useToast, useConfirm } from '@/components/ui/Feedback';
 
 export type TaskItem = {
   id: string;
@@ -30,6 +31,8 @@ const callable = (phone: string) => /^[0-9+\-\s]{6,}$/.test(phone);
 /** เนื้อหารายละเอียดงาน — ใช้ได้ทั้งแบบ pane (desktop) และ drawer (มือถือ) */
 export default function TaskDetail({ task, onClose }: { task: TaskItem; onClose: () => void }) {
   const router = useRouter();
+  const toast = useToast();
+  const confirm = useConfirm();
   // หมายเหตุ: parent render ด้วย key={task.id} → component remount เมื่อสลับงาน, resultNote รีเซ็ตเอง
   const [resultNote, setResultNote] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -45,13 +48,21 @@ export default function TaskDetail({ task, onClose }: { task: TaskItem; onClose:
   const dueText = diff < 0 ? `เลย ${-diff} วัน` : diff === 0 ? 'วันนี้' : diff === 1 ? 'พรุ่งนี้' : `อีก ${diff} วัน`;
   const dueOverdue = diff < 0;
 
-  const run = (fn: () => Promise<unknown>, close: boolean) => {
-    startTransition(async () => { await fn(); if (close) onClose(); else router.refresh(); });
+  const run = (fn: () => Promise<unknown>, close: boolean, successMsg?: string) => {
+    startTransition(async () => {
+      try {
+        await fn();
+        if (successMsg) toast.success(successMsg);
+        if (close) onClose(); else router.refresh();
+      } catch {
+        toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
+      }
+    });
   };
 
-  const handleDelete = () => {
-    if (!confirm('ลบงานนี้?')) return;
-    run(() => deleteTask({ taskId: task.id }), true);
+  const handleDelete = async () => {
+    if (!(await confirm({ title: 'ลบงานนี้?', message: 'การลบไม่สามารถย้อนกลับได้', danger: true, confirmLabel: 'ลบ' }))) return;
+    run(() => deleteTask({ taskId: task.id }), true, 'ลบงานแล้ว');
   };
 
   return (
@@ -65,16 +76,16 @@ export default function TaskDetail({ task, onClose }: { task: TaskItem; onClose:
           <span className="t2-tag" style={{ background: pi.bg, color: pi.color }}>{pi.label}</span>
         )}
         {task.status === 'IN_PROGRESS' && (
-          <span className="t2-tag" style={{ background: '#fef3c7', color: '#b45309' }}><i className="ri-loader-4-line"></i> กำลังติดตาม</span>
+          <span className="t2-tag t2-tag--in-progress" style={{ background: '#fef3c7', color: '#b45309' }}><i className="ri-loader-4-line"></i> กำลังติดตาม</span>
         )}
         {task.status === 'WAITING_REPLY' && (
-          <span className="t2-tag" style={{ background: '#ede9fe', color: '#6d28d9' }}><i className="ri-chat-3-line"></i> รอลูกค้าตอบ</span>
+          <span className="t2-tag t2-tag--waiting" style={{ background: '#ede9fe', color: '#6d28d9' }}><i className="ri-chat-3-line"></i> รอลูกค้าตอบ</span>
         )}
         {task.status === 'DONE' && (
           <span className="t2-tag" style={{ background: 'var(--success-light)', color: 'var(--success)' }}><i className="ri-check-line"></i> เสร็จแล้ว</span>
         )}
         {task.status === 'SKIPPED' && (
-          <span className="t2-tag" style={{ background: '#f1f5f9', color: '#64748b' }}>ข้ามแล้ว</span>
+          <span className="t2-tag t2-tag--skipped" style={{ background: '#f1f5f9', color: '#64748b' }}>ข้ามแล้ว</span>
         )}
         <button onClick={onClose} className="t2-detail-x" aria-label="ปิด"><i className="ri-close-line"></i></button>
       </div>
@@ -163,15 +174,15 @@ export default function TaskDetail({ task, onClose }: { task: TaskItem; onClose:
         {isActive ? (
           <>
             <button className="t2-df-btn del" disabled={isPending} onClick={handleDelete} title="ลบงาน"><i className="ri-delete-bin-line"></i></button>
-            <button className="t2-df-btn skip" disabled={isPending} onClick={() => run(() => skipTask({ taskId: task.id, resultNote }), true)}>
+            <button className="t2-df-btn skip" disabled={isPending} onClick={() => run(() => skipTask({ taskId: task.id, resultNote }), true, 'ข้ามงานแล้ว')}>
               <i className="ri-skip-forward-line"></i> ข้าม
             </button>
-            <button className="t2-df-btn done" disabled={isPending} onClick={() => run(() => completeTask({ taskId: task.id, resultNote }), true)}>
+            <button className="t2-df-btn done" disabled={isPending} onClick={() => run(() => completeTask({ taskId: task.id, resultNote }), true, 'ทำงานเสร็จแล้ว')}>
               {isPending ? <><i className="ri-loader-4-line"></i> กำลังบันทึก</> : <><i className="ri-check-line"></i> ทำเสร็จ</>}
             </button>
           </>
         ) : (
-          <button className="t2-df-btn reopen" disabled={isPending} onClick={() => run(() => reopenTask({ taskId: task.id }), true)}>
+          <button className="t2-df-btn reopen" disabled={isPending} onClick={() => run(() => reopenTask({ taskId: task.id }), true, 'เปิดงานใหม่แล้ว')}>
             <i className="ri-restart-line"></i> เปิดใหม่
           </button>
         )}

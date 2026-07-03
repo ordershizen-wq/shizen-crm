@@ -49,18 +49,18 @@ export async function createTask(input: {
   priority?: string;
   assignedToId?: string | null;
   orderId?: string | null;
-}) {
+}): Promise<{ error: string } | void> {
   const user = await getCurrentUser();
-  if (!user) throw new Error('Unauthorized');
-  if (!input.title.trim()) throw new Error('กรุณาระบุชื่องาน');
-  if (!input.customerPhone.trim()) throw new Error('ไม่พบเบอร์ลูกค้า');
-  if (!input.dueDate) throw new Error('กรุณาระบุวันที่');
+  if (!user) return { error: 'ไม่ได้เข้าสู่ระบบ' };
+  if (!input.title.trim()) return { error: 'กรุณาระบุชื่องาน' };
+  if (!input.customerPhone.trim()) return { error: 'ไม่พบเบอร์ลูกค้า' };
+  if (!input.dueDate) return { error: 'กรุณาระบุวันที่' };
 
   const due = new Date(input.dueDate);
-  if (isNaN(due.getTime())) throw new Error('วันที่ไม่ถูกต้อง');
+  if (isNaN(due.getTime())) return { error: 'วันที่ไม่ถูกต้อง' };
 
   const access = await canModifyCustomer(user, input.customerPhone.trim());
-  if (!access.ok) throw new Error(access.reason);
+  if (!access.ok) return { error: access.reason };
 
   const assignedToId = await resolveAssignedToId(user, input.assignedToId);
 

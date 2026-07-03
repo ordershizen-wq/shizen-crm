@@ -4,16 +4,10 @@ import { useState, useTransition, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import TaskDrawer, { type DrawerTask } from './TaskDrawer';
 import { updateTask, completeTask } from './actions';
+import { useToast } from '@/components/ui/Feedback';
+import { TYPE_LABEL, TYPE_ORDER } from './taskLabels';
 
 type GroupBy = 'time' | 'type' | 'assignee' | 'workflow';
-
-const TYPE_LABEL: Record<string, { label: string; icon: string; color: string; bg: string }> = {
-  FOLLOW_UP:  { label: 'ตามอาการ',     icon: 'ri-stethoscope-line',  color: '#0ea5e9', bg: '#e0f2fe' },
-  CALL:       { label: 'โทรหา',          icon: 'ri-phone-line',         color: '#10b981', bg: '#d1fae5' },
-  REPEAT_BUY: { label: 'เตือนซื้อซ้ำ',    icon: 'ri-repeat-line',         color: '#f59e0b', bg: '#fef3c7' },
-  DELIVERY:   { label: 'ตามของ',         icon: 'ri-truck-line',          color: '#8b5cf6', bg: '#ede9fe' },
-  CUSTOM:     { label: 'อื่นๆ',           icon: 'ri-bookmark-line',       color: '#64748b', bg: '#f1f5f9' },
-};
 
 const PRIORITY_LABEL: Record<string, { label: string; color: string; bg: string }> = {
   HIGH:   { label: 'ด่วน',     color: 'var(--danger)',  bg: 'var(--danger-light)' },
@@ -37,8 +31,6 @@ const TIME_COLUMNS: Column[] = [
   { id: 'done',    title: 'เสร็จแล้ว',      icon: 'ri-checkbox-circle-line',  color: '#2FA084', bg: '#E6F4EE' },
 ];
 
-const TYPE_COLUMN_ORDER = ['FOLLOW_UP', 'CALL', 'REPEAT_BUY', 'DELIVERY', 'CUSTOM'] as const;
-
 const WORKFLOW_COLUMNS: Column[] = [
   { id: 'PENDING',       title: 'รอทำ',          icon: 'ri-inbox-line',           color: '#64748b', bg: '#f1f5f9' },
   { id: 'IN_PROGRESS',   title: 'กำลังติดตาม',    icon: 'ri-loader-4-line',         color: '#b45309', bg: '#fef3c7' },
@@ -46,7 +38,7 @@ const WORKFLOW_COLUMNS: Column[] = [
   { id: 'DONE',          title: 'เสร็จแล้ว',      icon: 'ri-checkbox-circle-line',  color: '#2FA084', bg: '#E6F4EE' },
 ];
 
-const TYPE_COLUMNS: Column[] = TYPE_COLUMN_ORDER.map(t => ({
+const TYPE_COLUMNS: Column[] = TYPE_ORDER.map(t => ({
   id: t,
   title: TYPE_LABEL[t].label,
   icon: TYPE_LABEL[t].icon,
@@ -128,6 +120,7 @@ function columnIdOf(t: DrawerTask, groupBy: GroupBy): string | null {
 
 export default function TasksKanban({ tasks, groupBy }: { tasks: DrawerTask[]; groupBy: GroupBy }) {
   const router = useRouter();
+  const toast = useToast();
   const [selected, setSelected] = useState<DrawerTask | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
@@ -219,6 +212,7 @@ export default function TasksKanban({ tasks, groupBy }: { tasks: DrawerTask[]; g
           const n = new Map(prev); n.delete(taskId); return n;
         }), 600);
       } catch {
+        toast.error('ย้ายงานไม่สำเร็จ ลองใหม่อีกครั้ง');
         setOptimistic(prev => {
           const n = new Map(prev); n.delete(taskId); return n;
         });
@@ -232,11 +226,13 @@ export default function TasksKanban({ tasks, groupBy }: { tasks: DrawerTask[]; g
     startTransition(async () => {
       try {
         await completeTask({ taskId });
+        toast.success('ทำงานเสร็จแล้ว');
         router.refresh();
         setTimeout(() => setCompletedIds(prev => {
           const n = new Set(prev); n.delete(taskId); return n;
         }), 800);
       } catch {
+        toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
         setCompletedIds(prev => {
           const n = new Set(prev); n.delete(taskId); return n;
         });
@@ -441,9 +437,9 @@ function KanbanCard({
 
       <div className="kanban-card-title">
         {task.status === 'DONE' && <i className="ri-checkbox-circle-fill" style={{ color: 'var(--success)', marginRight: 4 }}></i>}
-        {task.status === 'SKIPPED' && <i className="ri-skip-forward-line" style={{ color: '#64748b', marginRight: 4 }}></i>}
-        {groupBy !== 'workflow' && task.status === 'IN_PROGRESS' && <i className="ri-loader-4-line" style={{ color: '#b45309', marginRight: 4 }}></i>}
-        {groupBy !== 'workflow' && task.status === 'WAITING_REPLY' && <i className="ri-chat-3-line" style={{ color: '#6d28d9', marginRight: 4 }}></i>}
+        {task.status === 'SKIPPED' && <i className="ri-skip-forward-line kanban-icon--skipped" style={{ color: '#64748b', marginRight: 4 }}></i>}
+        {groupBy !== 'workflow' && task.status === 'IN_PROGRESS' && <i className="ri-loader-4-line kanban-icon--in-progress" style={{ color: '#b45309', marginRight: 4 }}></i>}
+        {groupBy !== 'workflow' && task.status === 'WAITING_REPLY' && <i className="ri-chat-3-line kanban-icon--waiting" style={{ color: '#6d28d9', marginRight: 4 }}></i>}
         {task.title}
       </div>
 

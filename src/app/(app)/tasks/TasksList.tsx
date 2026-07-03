@@ -6,6 +6,7 @@ import TaskDetail, { type TaskItem } from './TaskDetail';
 import TaskDrawer from './TaskDrawer';
 import { completeTask, updateTask } from './actions';
 import { typeInfo, PRIORITY_LABEL, dueLabel, timeBucket, TIME_BUCKET_META, type TimeBucket } from './taskLabels';
+import { useToast } from '@/components/ui/Feedback';
 
 const callable = (phone: string) => /^[0-9+\-\s]{6,}$/.test(phone);
 const BUCKET_ORDER: TimeBucket[] = ['overdue', 'today', 'week', 'later'];
@@ -25,6 +26,7 @@ function useIsDesktop() {
 
 export default function TasksList({ tasks, doneToday, total }: { tasks: TaskItem[]; doneToday: number; total: number }) {
   const router = useRouter();
+  const toast = useToast();
   const isDesktop = useIsDesktop();
   const [selectedId, setSelectedId] = useState<string | null>(tasks[0]?.id ?? null);
   const [drawerId, setDrawerId] = useState<string | null>(null);
@@ -51,7 +53,15 @@ export default function TasksList({ tasks, doneToday, total }: { tasks: TaskItem
     if (!isDesktop) setDrawerId(t.id);
   };
 
-  const quick = (fn: () => Promise<unknown>) => startTransition(async () => { await fn(); router.refresh(); });
+  const quick = (fn: () => Promise<unknown>, successMsg?: string) => startTransition(async () => {
+    try {
+      await fn();
+      if (successMsg) toast.success(successMsg);
+      router.refresh();
+    } catch {
+      toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
+    }
+  });
 
   const renderRow = (t: TaskItem) => {
     const ti = typeInfo(t.type);
@@ -81,11 +91,11 @@ export default function TasksList({ tasks, doneToday, total }: { tasks: TaskItem
               <a className="t2-qbtn call" href={`tel:${t.customerPhone}`} title="โทร"><i className="ri-phone-line"></i></a>
             )}
             <button className="t2-qbtn snooze" title="เลื่อนไป 1 วัน" disabled={isPending}
-              onClick={() => quick(() => updateTask({ taskId: t.id, dueDate: nextDue.toISOString() }))}>
+              onClick={() => quick(() => updateTask({ taskId: t.id, dueDate: nextDue.toISOString() }), 'เลื่อนงานไป 1 วันแล้ว')}>
               <i className="ri-time-line"></i>
             </button>
             <button className="t2-qbtn done" title="เสร็จ" disabled={isPending}
-              onClick={() => quick(() => completeTask({ taskId: t.id }))}>
+              onClick={() => quick(() => completeTask({ taskId: t.id }), 'ทำงานเสร็จแล้ว')}>
               <i className="ri-check-line"></i>
             </button>
           </div>

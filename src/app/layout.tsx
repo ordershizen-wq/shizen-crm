@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import './legacy.css';
+import './dark-overrides.css';
 
 export const metadata: Metadata = {
   title: 'CRM Shizen',
@@ -13,8 +14,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th">
+    <html lang="th" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{__html: `(function(){try{var t=localStorage.getItem('shizen.theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');}}catch(e){}})();`}} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link

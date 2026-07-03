@@ -124,8 +124,8 @@ export default async function AdminUsersPage() {
         </div>
       </div>
 
-      <div className="card p-4 mt-3" style={{ background: 'var(--blue-light)', border: '1px solid #93c5fd' }}>
-        <div className="fw-700 mb-2" style={{ fontSize: 14, color: '#1e40af' }}>
+      <div className="card p-4 mt-3 admin-info-card" style={{ background: 'var(--blue-light)', border: '1px solid #93c5fd' }}>
+        <div className="fw-700 mb-2 admin-info-card-title" style={{ fontSize: 14, color: '#1e40af' }}>
           <i className="ri-information-line"></i> วิธีรีเซ็ตรหัสผ่าน
         </div>
         <ol style={{ paddingLeft: '1.25rem', margin: 0, fontSize: 13, color: 'var(--text-dark)', lineHeight: 1.6 }}>

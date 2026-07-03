@@ -2,8 +2,12 @@ import { getCurrentUser, getOrderFilter } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { calculateStage, STAGE_LABELS, STAGE_ICONS, type CustomerStage } from '@/lib/customer';
+import EmptyState from '@/components/EmptyState';
+import CustomerSearch from './CustomerSearch';
 
-type SearchParams = Promise<{ stage?: string; q?: string; grade?: string }>;
+type SearchParams = Promise<{ stage?: string; q?: string; grade?: string; page?: string }>;
+
+const PAGE_SIZE = 60;
 
 type CustomerRow = {
   phone: string;
@@ -116,6 +120,14 @@ export default async function CustomersPage({ searchParams }: { searchParams: Se
   };
   for (const c of customers) stageCounts[c.stage] += 1;
 
+  const hasActiveFilter = Boolean((stageFilter && stageFilter !== 'all') || gradeFilter || searchQuery);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(Math.max(1, parseInt(params.page ?? '1', 10) || 1), totalPages);
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+
   return (
     <>
       <div className="page-header flex-between mb-4">
@@ -128,20 +140,8 @@ export default async function CustomersPage({ searchParams }: { searchParams: Se
         </div>
       </div>
 
-      {/* Search box */}
-      <form className="search-wrap mb-3" style={{ width: '100%' }}>
-        <i className="ri-search-line"></i>
-        <input
-          type="text"
-          name="q"
-          defaultValue={searchQuery ?? ''}
-          placeholder="ค้นหาชื่อ/เบอร์..."
-          className="search-input"
-          style={{ width: '100%' }}
-        />
-        {stageFilter && <input type="hidden" name="stage" value={stageFilter} />}
-        {gradeFilter && <input type="hidden" name="grade" value={gradeFilter} />}
-      </form>
+      {/* Search box — live + clear */}
+      <CustomerSearch initialQuery={searchQuery ?? ''} stage={stageFilter} grade={gradeFilter} />
 
       {/* Filter by Stage */}
       <div className="card p-3 mb-3 r-tabs-scroll" style={{ alignItems: 'center' }}>
@@ -194,32 +194,65 @@ export default async function CustomersPage({ searchParams }: { searchParams: Se
 
       {/* Customer Grid */}
       {filtered.length === 0 ? (
-        <div className="card p-4 text-center" style={{ padding: '3rem' }}>
-          <i className="ri-user-search-line" style={{ fontSize: 48, color: 'var(--text-light)' }}></i>
-          <p className="text-muted mt-2">ไม่พบลูกค้าที่ตรงกับเงื่อนไข</p>
-        </div>
+        <EmptyState
+          icon="ri-user-search-line"
+          title="ไม่พบลูกค้าที่ตรงกับเงื่อนไข"
+          description={hasActiveFilter ? 'ลองล้างตัวกรองหรือเปลี่ยนคำค้นหา' : 'ยังไม่มีข้อมูลลูกค้าในระบบ'}
+          action={hasActiveFilter ? { label: 'ล้างตัวกรอง', href: '/customers', icon: 'ri-refresh-line' } : undefined}
+        />
       ) : (
         <div className="customer-grid">
-          {filtered.slice(0, 100).map(c => (
+          {pageItems.map(c => (
             <CustomerCard key={c.phone} customer={c} />
           ))}
         </div>
       )}
 
-      {filtered.length > 100 && (
-        <p className="text-center text-sm text-muted mt-4">
-          แสดง 100 จาก {filtered.length.toLocaleString()} คน — กรุณาใช้ตัวกรองเพื่อค้นหาเฉพาะกลุ่ม
-        </p>
+      {totalPages > 1 && (
+        <nav className="pagination-bar" aria-label="หน้า">
+          <PageLink
+            disabled={currentPage <= 1}
+            href={buildHref({ stage: stageFilter, grade: gradeFilter, q: searchQuery, page: currentPage - 1 })}
+            icon="ri-arrow-left-s-line" label="ก่อนหน้า"
+          />
+          <span className="pagination-info">
+            หน้า {currentPage} / {totalPages}
+            <span className="pagination-total"> · {filtered.length.toLocaleString()} คน</span>
+          </span>
+          <PageLink
+            disabled={currentPage >= totalPages}
+            href={buildHref({ stage: stageFilter, grade: gradeFilter, q: searchQuery, page: currentPage + 1 })}
+            icon="ri-arrow-right-s-line" label="ถัดไป" iconRight
+          />
+        </nav>
       )}
     </>
   );
 }
 
-function buildHref({ stage, grade, q }: { stage?: string; grade?: string; q?: string }) {
+function PageLink({ disabled, href, icon, label, iconRight }: {
+  disabled: boolean; href: string; icon: string; label: string; iconRight?: boolean;
+}) {
+  if (disabled) {
+    return (
+      <span className="pagination-btn is-disabled" aria-disabled="true">
+        {!iconRight && <i className={icon}></i>}{label}{iconRight && <i className={icon}></i>}
+      </span>
+    );
+  }
+  return (
+    <Link href={href} className="pagination-btn" scroll={false}>
+      {!iconRight && <i className={icon}></i>}{label}{iconRight && <i className={icon}></i>}
+    </Link>
+  );
+}
+
+function buildHref({ stage, grade, q, page }: { stage?: string; grade?: string; q?: string; page?: number }) {
   const p = new URLSearchParams();
   if (stage && stage !== 'all') p.set('stage', stage);
   if (grade && grade !== 'all') p.set('grade', grade);
   if (q) p.set('q', q);
+  if (page && page > 1) p.set('page', String(page));
   const qs = p.toString();
   return `/customers${qs ? `?${qs}` : ''}`;
 }
