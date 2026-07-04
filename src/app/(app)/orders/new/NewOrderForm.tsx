@@ -3,7 +3,10 @@
 import { useState, useTransition, useRef } from 'react';
 import Link from 'next/link';
 import { createOrder, lookupCustomer, type NewOrderProduct } from '../actions';
-import { GENDER_OPTIONS, AGE_RANGES, PROVINCES, COUNTRIES, THAILAND } from '@/lib/demographics';
+import {
+  GENDER_OPTIONS, AGE_RANGES, PROVINCES, COUNTRIES, THAILAND,
+  GENDER_VALUES, AGE_RANGE_VALUES, PROVINCE_VALUES, COUNTRY_VALUES,
+} from '@/lib/demographics';
 import { toYmd, MAX_BACKDATE_DAYS } from '@/lib/orderDate';
 import { CHANNELS, matchChannel } from '@/lib/channels';
 
@@ -88,15 +91,23 @@ export default function NewOrderForm({ productSuggestions }: Props) {
           const matched = matchChannel(found.channel);
           if (matched) setChannel(matched);
         }
-        setGender(prev => prev || found.gender || '');
-        setAgeRange(prev => prev || found.ageRange || '');
+        // กรองผ่านชุดค่ามาตรฐานก่อน autofill กัน legacy data (เช่น "ญ") ที่ format ไม่ตรง
+        // — ถ้าไม่ผ่านให้เป็น '' ให้ผู้ใช้เลือกใหม่ (ปุ่มจะไม่ไฮไลต์ + submit ไม่ได้เหมือนเดิม)
+        const validGender = found.gender && GENDER_VALUES.has(found.gender) ? found.gender : '';
+        const validAgeRange = found.ageRange && AGE_RANGE_VALUES.has(found.ageRange) ? found.ageRange : '';
+        const validCountry = found.country && COUNTRY_VALUES.has(found.country) ? found.country : '';
+        const validProvince = found.province && PROVINCE_VALUES.has(found.province) ? found.province : '';
+        setGender(prev => prev || validGender);
+        setAgeRange(prev => prev || validAgeRange);
         // ลูกค้าเก่าต่างประเทศ → สลับโหมด + เลือกประเทศให้ / ในประเทศ → เลือกจังหวัด
-        if (found.country && found.country !== THAILAND) {
+        // (validCountry กรองผ่าน COUNTRY_VALUES แล้วซึ่งไม่มี THAILAND อยู่ในเซ็ต จึงเทียบ !== THAILAND ไม่จำเป็นอีก
+        //  แต่ country ที่กรองไม่ผ่าน → validCountry === '' → fallback โหมดในประเทศ ตามค่า default เดิมของฟอร์ม)
+        if (validCountry) {
           setGeoMode('INTL');
-          setCountry(prev => prev || found.country || '');
+          setCountry(prev => prev || validCountry);
         } else {
           setGeoMode('TH');
-          setProvince(prev => prev || found.province || '');
+          setProvince(prev => prev || validProvince);
         }
       } else {
         setCustomer({ status: 'new' });

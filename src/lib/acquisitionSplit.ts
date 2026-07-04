@@ -11,45 +11,63 @@ import { prisma } from './prisma';
 // ใช้ order.date (วันที่ปิดการขายจริง — เซลส์เลือกลงย้อนหลังได้ ดู orderDate.ts)
 // ไม่ใช่ createdAt (เวลาพิมพ์เข้าระบบ) กันเคสลงย้อนหลังทำให้ลำดับ "ใครมาก่อน" ผิด
 // createdAt ยังเก็บไว้เป็น audit trail แยกต่างหาก ไม่ถูกแก้ไข
+//
+// order.date ถูก normalize เป็นเที่ยงวันเสมอ (ดู orderDate.ts) ทำให้หลายออเดอร์ของเบอร์
+// เดียวกันในวันเดียวกันมี effectiveTime ชนกันได้ — จึงระบุ "ออเดอร์แรก" ด้วย id จริง
+// ของแถวนั้น ไม่ใช่แค่เทียบเวลา (เลือก MIN เวลาก่อน, เท่ากัน tie-break ด้วย createdAt,
+// เท่ากันอีก tie-break ด้วย id)
 
-type DatedOrder = { phone: string | null; date: Date | null; createdAt: Date };
+type DatedOrder = { id: string; phone: string | null; date: Date | null; createdAt: Date };
+type FirstOrder = { id: string; t: number };
 
 function effectiveTime(order: { date: Date | null; createdAt: Date }): number {
   return (order.date ?? order.createdAt).getTime();
 }
 
 /**
- * แผนที่ เบอร์ → เวลาออเดอร์แรกสุดของเบอร์นั้น (ทั้งหมดตลอดกาล, epoch ms)
+ * แผนที่ เบอร์ → ออเดอร์แรกสุดของเบอร์นั้น (ทั้งหมดตลอดกาล) เก็บทั้ง id และเวลา (epoch ms)
  * ใช้เป็นแหล่งความจริงเดียวสำหรับตัดสิน new-vs-reorder ทุกที่
  *
  * ดึงมาคำนวณ MIN ฝั่ง JS แทน Prisma _min เพราะต้อง coalesce(date, createdAt)
  * ต่อแถวก่อนหา MIN ซึ่ง Prisma aggregate ทำที่ระดับ DB ไม่ได้
+ *
+ * เลือก "ออเดอร์แรก" แบบ deterministic: effectiveTime ต่ำสุดก่อน,
+ * เท่ากัน → createdAt ต่ำสุด, เท่ากันอีก → id ต่ำสุด
  */
-export async function getFirstOrderMap(): Promise<Map<string, number>> {
+export async function getFirstOrderMap(): Promise<Map<string, FirstOrder>> {
   const rows = await prisma.sheetOrder.findMany({
     where: { phone: { not: null } },
-    select: { phone: true, date: true, createdAt: true },
+    select: { id: true, phone: true, date: true, createdAt: true },
   });
-  const map = new Map<string, number>();
+  // เก็บ createdAt คู่กับ id/t ระหว่างคำนวณ เพื่อใช้ tie-break โดยไม่ต้องปนกับ type ที่ return
+  const best = new Map<string, { id: string; t: number; createdAtMs: number }>();
   for (const r of rows) {
     if (!r.phone) continue;
     const t = effectiveTime(r);
-    const cur = map.get(r.phone);
-    if (cur === undefined || t < cur) map.set(r.phone, t);
+    const createdAtMs = r.createdAt.getTime();
+    const cur = best.get(r.phone);
+    const isEarlier =
+      !cur ||
+      t < cur.t ||
+      (t === cur.t && createdAtMs < cur.createdAtMs) ||
+      (t === cur.t && createdAtMs === cur.createdAtMs && r.id < cur.id);
+    if (isEarlier) best.set(r.phone, { id: r.id, t, createdAtMs });
   }
+  const map = new Map<string, FirstOrder>();
+  for (const [phone, v] of best) map.set(phone, { id: v.id, t: v.t });
   return map;
 }
 
 /**
- * ออเดอร์นี้เป็น "ลูกค้าใหม่" (acquisition = ออเดอร์แรกสุดของเบอร์) หรือไม่
+ * ออเดอร์นี้เป็น "ลูกค้าใหม่" (acquisition = ออเดอร์แรกสุดของเบอร์ ระบุด้วย id) หรือไม่
  *  - ไม่มีเบอร์ → แยกไม่ได้ นับเป็นใหม่ (กันยอดหายจากยอดรวม)
- *  - มีเบอร์   → ใหม่ก็ต่อเมื่อเวลาตรงกับออเดอร์แรกสุดของเบอร์
+ *  - มีเบอร์   → ใหม่ก็ต่อเมื่อ id ตรงกับออเดอร์แรกสุดของเบอร์
  */
 export function isAcquisitionOrder(
   order: DatedOrder,
-  firstOrderMap: Map<string, number>,
+  firstOrderMap: Map<string, FirstOrder>,
 ): boolean {
   if (!order.phone) return true;
   const first = firstOrderMap.get(order.phone);
-  return first === undefined || first === effectiveTime(order);
+  return first === undefined || first.id === order.id;
 }

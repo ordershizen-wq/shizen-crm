@@ -374,7 +374,7 @@ export async function getTeamBattle(): Promise<TeamBattleRow[]> {
     prisma.sheetTeam.findMany({ select: { id: true, name: true } }),
     prisma.sheetOrder.findMany({
       where: { date: { gte: start, lt: end } },
-      select: { teamId: true, phone: true, date: true, createdAt: true, totalPrice: true },
+      select: { id: true, teamId: true, phone: true, date: true, createdAt: true, totalPrice: true },
     }),
     prisma.sheetUser.groupBy({
       by: ['teamId'],
@@ -431,8 +431,8 @@ export async function getAcquisitionFunnel(): Promise<FunnelData> {
   const firstOrderMap = await getFirstOrderMap();
   let newCount = 0;
   const startMs = start.getTime(), endMs = end.getTime();
-  for (const ms of firstOrderMap.values()) {
-    if (ms >= startMs && ms < endMs) newCount++;
+  for (const { t } of firstOrderMap.values()) {
+    if (t >= startMs && t < endMs) newCount++;
   }
 
   // total + repeat + vip

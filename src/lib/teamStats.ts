@@ -96,7 +96,7 @@ export async function getLeaderboard(user: CurrentUser, monthValue?: string): Pr
     }),
     prisma.sheetOrder.findMany({
       where: orderWhere,
-      select: { salesRepId: true, phone: true, date: true, createdAt: true, totalPrice: true },
+      select: { id: true, salesRepId: true, phone: true, date: true, createdAt: true, totalPrice: true },
     }),
     prisma.customerTask.groupBy({
       by: ['completedById'],

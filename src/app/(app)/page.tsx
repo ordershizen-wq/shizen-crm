@@ -53,7 +53,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
     aggregateOrdersByPhone(orderFilter),
     prisma.sheetOrder.findMany({
       where: filteredWhere,
-      select: { phone: true, date: true, createdAt: true, totalPrice: true },
+      select: { id: true, phone: true, date: true, createdAt: true, totalPrice: true },
     }),
     getFirstOrderMap(),
   ]);
