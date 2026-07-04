@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>คู่มือใช้งาน Agent — Shizen CRM</title>
+<style>
+  :root {
+    --primary: #6366F1;
+    --primary-dark: #4F46E5;
+    --text-dark: #1e293b;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --border-light: #f1f5f9;
+    --success: #16a34a;
+    --success-light: #dcfce7;
+    --danger: #dc2626;
+    --danger-light: #fee2e2;
+    --warning: #d39e00;
+    --warning-light: #fef3c7;
+    --bg: #f8fafc;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Noto Sans Thai', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text-dark);
+    margin: 0;
+    line-height: 1.7;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+  header .badge {
+    display: inline-block;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+    letter-spacing: 0.02em;
+  }
+  h1 { font-size: 28px; margin: 0 0 8px; }
+  header p { color: var(--text-muted); font-size: 15px; margin: 0; }
+
+  section { margin-bottom: 2.5rem; }
+  h2 {
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1rem;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border);
+  }
+  h2 .num {
+    background: var(--text-dark);
+    color: #fff;
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .analogy {
+    background: linear-gradient(135deg, #eef2ff, #f5f3ff);
+    border: 1px solid #ddd6fe;
+    border-radius: 14px;
+    padding: 1.5rem;
+    font-size: 15.5px;
+  }
+  .analogy strong { color: var(--primary-dark); }
+
+  .dont-do {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  @media (max-width: 640px) { .dont-do { grid-template-columns: 1fr; } }
+  .box {
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+    font-size: 14px;
+  }
+  .box.bad { background: var(--danger-light); border: 1px solid #fecaca; }
+  .box.good { background: var(--success-light); border: 1px solid #bbf7d0; }
+  .box .label { font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; display: block; }
+  .box.bad .label { color: var(--danger); }
+  .box.good .label { color: var(--success); }
+  .box code, .prompt code { display: block; background: rgba(0,0,0,0.04); padding: 8px 10px; border-radius: 8px; font-size: 13px; margin-top: 6px; white-space: pre-wrap; }
+
+  .agent-card {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    background: #fff;
+  }
+  .agent-card .head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .agent-card .emoji { font-size: 22px; }
+  .agent-card .name { font-weight: 700; font-size: 16px; }
+  .agent-card .role { font-size: 13px; color: var(--text-muted); }
+  .prompt {
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13.5px;
+    margin: 8px 0;
+    font-family: 'Consolas', monospace;
+    white-space: pre-wrap;
+  }
+  .why { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  .why strong { color: var(--text-dark); }
+
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 1rem 0;
+  }
+  .flow .step {
+    background: var(--border-light);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .flow .arrow { color: var(--text-muted); font-size: 18px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  th { background: var(--border-light); font-weight: 700; font-size: 13px; }
+  tr:last-child td { border-bottom: none; }
+
+  .tip {
+    background: var(--warning-light);
+    border-left: 4px solid var(--warning);
+    padding: 0.9rem 1.1rem;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-top: 1rem;
+  }
+  .tip strong { color: #92400e; }
+
+  footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="badge">SHIZEN CRM · คู่มือภายใน</span>
+    <h1>🤖 ใช้ Agent ให้เป็น ใช้ให้คุ้ม</h1>
+    <p>คู่มือฉบับเข้าใจง่าย สำหรับ 3 agent ที่สร้างไว้ในโปรเจ็คนี้</p>
+  </header>
+
+  <section>
+    <h2><span class="num">1</span> Agent คืออะไร (เข้าใจแบบง่ายที่สุด)</h2>
+    <div class="analogy">
+      นึกภาพว่า Claude เป็นพนักงาน 1 คนที่ <strong>ความจำสั้นมาก</strong> — ทุกครั้งที่เริ่มคุยใหม่ ต้องอ่านทุกอย่างใหม่หมด
+      <br><br>
+      <strong>Agent คือการจ้างพนักงานเฉพาะทางเพิ่ม</strong> ที่มี "สมุดจดกฎประจำตัว" (ไฟล์ .md) ติดตัวมาตลอด
+      พอเรียกใช้ครั้งไหน มันจำกฎเฉพาะด้านได้ทันที ไม่ต้องอธิบายซ้ำ
+      <br><br>
+      ในโปรเจ็คนี้มี 3 คน: <strong>🧪 qa-tester</strong> (ทดสอบเว็บ), <strong>🗄️ db-specialist</strong> (งานฐานข้อมูล), <strong>🎨 ui-builder</strong> (สร้าง/แก้ UI)
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">2</span> กฎเหล็กข้อเดียวที่ต้องจำ: Agent ไม่รู้ว่าเราคุยอะไรกันมา</h2>
+    <p style="font-size:15px">Agent <strong>เริ่มต้นด้วยความจำเป็นศูนย์</strong> — มันไม่เห็นบทสนทนาที่กำลังคุยอยู่นี้เลย
+    รู้แค่ 2 อย่าง: (1) สิ่งที่เขียนไว้ในไฟล์ของมันเอง (2) คำสั่งที่พิมพ์ตอนเรียกครั้งนั้น</p>
+
+    <div class="dont-do">
+      <div class="box bad">
+        <span class="label">❌ สั่งสั้นเกินไป</span>
+        Agent จะไม่รู้ว่า "ที่เพิ่งแก้" คืออะไร ไฟล์ไหน เปลี่ยนอะไรมา
+        <code>"ให้ qa-tester เทสหน่อย"</code>
+      </div>
+      <div class="box good">
+        <span class="label">✅ ให้บริบทครบ</span>
+        บอกหน้า/ไฟล์ + สิ่งที่เพิ่งเปลี่ยน + อยากได้ผลแบบไหน
+        <code>"ทดสอบหน้า /orders/new โฟกัสปุ่มลงย้อนหลังกับ channel ที่เพิ่งเปลี่ยนเป็นชุด TikTok/FB โปรไฟล์ ทดสอบมือถือ+desktop แล้วลบ test data ทิ้งด้วย"</code>
+      </div>
+    </div>
+
+    <div class="tip"><strong>สูตรจำง่าย 3 ข้อ:</strong> (1) งานคืออะไร/ไฟล์ไหน (2) เพิ่งมีอะไรเปลี่ยน (3) อยากได้ผลลัพธ์แบบไหน</div>
+  </section>
+
+  <section>
+    <h2><span class="num">3</span> ตัวอย่างสั่งงานจริง — ทีละตัว</h2>
+
+    <div class="agent-card">
+      <div class="head"><span class="emoji">🧪</span><div><div class="name">qa-tester</div><div class="role">ทดสอบเว็บจริงผ่าน browser ก่อน commit</div></div></div>
+      <div class="prompt">ให้ qa-tester ทดสอบหน้า /tasks ว่า modal ตั้งงาน 9 ประเภทที่เพิ่งเพิ่มใหม่
+(ทวงชำระ/ขอรีวิว/เสนอโปร/แนะนำวิธีกิน ฯลฯ) เปิดได้ครบทุกประเภท กดบันทึกงานได้จริง
+ทดสอบบนมือถือ 390px ก่อนเป็นหลัก แล้วค่อยเช็ค desktop</div>
+      <div class="why"><strong>ทำไมสั่งแบบนี้:</strong> บอกฟีเจอร์ชัด (9 ประเภทใหม่) + ลำดับความสำคัญ (มือถือก่อน) — agent ไม่ต้องเดาว่าจะเทสอะไรก่อน</div>
+    </div>
+
+    <div class="agent-card">
+      <div class="head"><span class="emoji">🗄️</span><div><div class="name">db-specialist</div><div class="role">งาน schema / backfill / query วิเคราะห์ข้อมูล</div></div></div>
+      <div class="prompt">ให้ db-specialist เช็คว่าตอนนี้มีเบอร์โทรลูกค้ารูปแบบเพี้ยน (มีขีด/เว้นวรรค/คำนำหน้า)
+หลงเหลืออยู่อีกไหม หลังจาก backfill ไปรอบก่อน — ถ้าเจอให้รายงานจำนวนก่อน อย่าเพิ่งแก้อะไร</div>
+      <div class="why"><strong>ทำไมสั่งแบบนี้:</strong> ระบุ "อย่าเพิ่งแก้" ชัดเจน (dry-run) — งาน DB ต้องขอ approve ก่อนเขียนจริงเสมอ</div>
+    </div>
+
+    <div class="agent-card">
+      <div class="head"><span class="emoji">🎨</span><div><div class="name">ui-builder</div><div class="role">สร้าง/แก้หน้า UI ตาม design system</div></div></div>
+      <div class="prompt">ให้ ui-builder เพิ่มปุ่ม "ส่งออก Excel" ในหน้า /orders ตรง filter bar
+ใช้ style เดียวกับปุ่ม "กรอกออเดอร์ใหม่" ที่มีอยู่แล้ว ต้องใช้งานได้ดีบนมือถือด้วย</div>
+      <div class="why"><strong>ทำไมสั่งแบบนี้:</strong> ชี้ตำแหน่งชัด + อ้างอิงของเดิมที่มีอยู่ (ให้ agent เลียนแบบ pattern แทนคิดใหม่)</div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">4</span> รัน Agent หลายตัวพร้อมกัน (Parallel)</h2>
+    <p style="font-size:15px">ถ้างาน 2 อย่าง<strong>ไม่ต้องรอกัน</strong> (คนละไฟล์ คนละเรื่อง) สั่งพร้อมกันได้ในข้อความเดียว — เร็วกว่ารอทีละคน</p>
+
+    <div class="card">
+      <strong>ตัวอย่างจากงานจริงที่ทำได้:</strong>
+      <div class="flow">
+        <div class="step">🎨 ui-builder<br><small>เพิ่มหน้า export UI</small></div>
+        <span class="arrow">‖</span>
+        <div class="step">🗄️ db-specialist<br><small>เตรียม query ยอดขายสำหรับ export</small></div>
+      </div>
+      <p style="font-size:14px;color:var(--text-muted);margin:0">ทั้งสองงานไม่ได้รอผลกันและกัน → สั่งพร้อมกันได้ ผมจะเรียก Agent tool 2 ครั้งในคำตอบเดียว</p>
+    </div>
+
+    <div class="tip">⚠️ <strong>เมื่อไหร่ห้าม parallel:</strong> ถ้างาน B ต้องใช้ผลจากงาน A (เช่น "เช็คว่า schema พอไหมก่อน แล้วค่อยสร้างฟอร์ม") ต้องรันเรียงกัน ไม่ใช่พร้อมกัน — บอกผมได้เลยว่า "งานนี้ต้องรอกันไหม" ถ้าไม่แน่ใจ</div>
+  </section>
+
+  <section>
+    <h2><span class="num">5</span> Background Agent (รันเบื้องหลัง)</h2>
+    <p style="font-size:15px">งานที่ <strong>ใช้เวลานาน</strong> (เทสยาว ๆ, audit ใหญ่ ๆ) สั่งให้รันเบื้องหลังได้ — คุณคุยงานอื่นกับผมต่อไปพลางระหว่างรอ พอเสร็จจะมีแจ้งเตือนอัตโนมัติ</p>
+
+    <div class="card">
+      <strong>ตัวอย่างที่เหมาะกับ background:</strong>
+      <ul style="font-size:14px; margin:8px 0 0; padding-left:1.2rem">
+        <li>"ให้ qa-tester ทดสอบทุกหน้าในระบบแบบละเอียด รันเบื้องหลังได้เลย ระหว่างนี้เรามาคุยเรื่องฟีเจอร์ถัดไปกัน"</li>
+        <li>"ให้ db-specialist ไล่เช็คข้อมูลทั้ง 966 ออเดอร์หาความผิดปกติ ใช้เวลานานได้ ไม่ต้องรีบ"</li>
+      </ul>
+      <p style="font-size:13px;color:var(--text-muted);margin:10px 0 0">
+      <strong>ไม่เหมาะกับ background:</strong> งานที่ต้องรู้ผลก่อนถึงจะสั่งงานต่อได้ (เช่น "เช็คก่อนว่าแก้ได้ไหม แล้วฉันจะบอกว่าทำต่อยังไง")</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">6</span> สรุปเปรียบเทียบ: เมื่อไหร่ใช้ Agent vs ให้ Claude หลักทำเอง</h2>
+    <table>
+      <tr><th>สถานการณ์</th><th>ใช้ Agent</th><th>ให้ทำเองในแชทนี้</th></tr>
+      <tr><td>งานสั้น ต่อเนื่องจากที่คุยอยู่</td><td></td><td>✅</td></tr>
+      <tr><td>งานแยกชัดเจน มีขอบเขตจบในตัว</td><td>✅</td><td></td></tr>
+      <tr><td>อยากประหยัด context ของบทสนทนาหลัก</td><td>✅</td><td></td></tr>
+      <tr><td>ต้องตัดสินใจต่อเนื่องแบบ real-time</td><td></td><td>✅</td></tr>
+      <tr><td>งานใช้เวลานาน อยากทำอย่างอื่นคู่กัน</td><td>✅ (background)</td><td></td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2><span class="num">7</span> สรุปสั้น ๆ ก่อนจบ</h2>
+    <div class="analogy">
+      1. เรียกชื่อ agent ตรง ๆ ในคำสั่ง เช่น "ให้ qa-tester...", "ให้ db-specialist..."<br>
+      2. ให้บริบทเสมอ — ห้ามคิดว่า agent รู้เหมือนที่เราคุยกันมา<br>
+      3. งานไม่พึ่งพากัน → สั่งพร้อมกันได้ (parallel)<br>
+      4. งานยาว/ไม่รีบ → สั่งเบื้องหลังได้ (background)<br>
+      5. ไม่แน่ใจว่าควรใช้ agent ไหม/สั่งแบบไหน → ถามผมได้เสมอ ผมช่วยแปลคำสั่งให้
+    </div>
+  </section>
+
+  <footer>
+    ไฟล์นี้เป็นคู่มือส่วนตัว ไม่ใช่โค้ดแอป — ลบทิ้งได้ตลอดเวลาถ้าไม่ต้องการแล้ว<br>
+    สร้างเมื่อ 2026-07-04 · Shizen CRM
+  </footer>
+
+</div>
+</body>
+</html>
