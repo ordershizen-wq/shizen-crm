@@ -35,7 +35,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
 
   const filteredWhere = { ...orderFilter, ...rangeWhere };
 
-  const [totalOrders, revenue, recentOrders, prevAgg, phoneAggs, splitOrders, firstOrderMap] = await Promise.all([
+  // ยิงทุก query ในระลอกเดียว (Promise.all เดียว) — DB อยู่ไกล (pooler) ค่า latency
+  // ต่อ query ~0.5s เป็นต้นทุนหลัก การรวมเป็นระลอกเดียวจึงเร็วกว่าทยอยยิงหลายรอบมาก
+  const [
+    totalOrders, revenue, recentOrders, prevAgg, phoneAggs, splitOrders,
+    firstOrderMap, focus, adminFocus, leaderboard,
+  ] = await Promise.all([
     prisma.sheetOrder.count({ where: filteredWhere }),
     prisma.sheetOrder.aggregate({ where: filteredWhere, _sum: { totalPrice: true } }),
     prisma.sheetOrder.findMany({
@@ -56,6 +61,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
       select: { id: true, phone: true, date: true, createdAt: true, totalPrice: true },
     }),
     getFirstOrderMap(),
+    isAdmin ? Promise.resolve(null) : getTodaysFocus(user),
+    isAdmin ? getAdminFocus() : Promise.resolve(null),
+    getLeaderboard(user),
   ]);
 
   // แยกลูกค้าใหม่ (ออเดอร์แรกของเบอร์) vs รีออเดอร์ — นิยามเดียวทั้ง Dashboard
@@ -69,21 +77,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
   const periodTotal = newCustRev + reorderRev;
   const reorderShare = periodTotal > 0 ? (reorderRev / periodTotal) * 100 : 0;
 
-  const chartOrders = dateRange.start && dateRange.end
-    ? await prisma.sheetOrder.findMany({
-        where: filteredWhere,
-        select: { totalPrice: true, date: true, createdAt: true },
-      })
-    : await prisma.sheetOrder.findMany({
-        where: { ...orderFilter, date: { gte: new Date(Date.now() - 30 * 86400000) } },
-        select: { totalPrice: true, date: true, createdAt: true },
-      });
-
-  const [focus, adminFocus, leaderboard] = await Promise.all([
-    isAdmin ? Promise.resolve(null) : getTodaysFocus(user),
-    isAdmin ? getAdminFocus() : Promise.resolve(null),
-    getLeaderboard(user),
-  ]);
+  // กราฟใช้ชุดข้อมูลเดียวกับ splitOrders (แถวเดียวกัน filter เดียวกัน) — ไม่ต้องยิงซ้ำ
+  // range='all' (ไม่มีช่วงวันที่): splitOrders = ทุกออเดอร์ตลอดกาล ต้องกรองเหลือ 30 วันล่าสุด
+  // ก่อนป้อนเข้ากราฟ เพราะ bucket ใช้ key แบบ วัน+เดือน (ไม่มีปี) — ถ้าไม่กรอง ออเดอร์
+  // ข้ามปีที่ตรง วัน+เดือน กันจะถูกนับรวม bucket เดียวกันผิด
+  const nowMs = Date.now();
+  const chartOrders = dateRange.start
+    ? splitOrders
+    : splitOrders.filter(o => (o.date ?? o.createdAt).getTime() >= nowMs - 30 * 86400000);
 
   const totalRevenue = Number(revenue._sum.totalPrice ?? 0);
   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
@@ -122,7 +123,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
     }
   } else {
     for (let i = 29; i >= 0; i--) {
-      const d = new Date(Date.now() - i * 86400000);
+      const d = new Date(nowMs - i * 86400000);
       const key = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
       dailyMap.set(key, { revenue: 0, orders: 0 });
     }

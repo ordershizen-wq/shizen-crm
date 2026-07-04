@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { prisma } from './prisma';
 
 // ─────────────────────────────────────────────────────────────
@@ -33,8 +34,12 @@ function effectiveTime(order: { date: Date | null; createdAt: Date }): number {
  *
  * เลือก "ออเดอร์แรก" แบบ deterministic: effectiveTime ต่ำสุดก่อน,
  * เท่ากัน → createdAt ต่ำสุด, เท่ากันอีก → id ต่ำสุด
+ *
+ * ห่อด้วย React cache() → ต่อ 1 request จะยิง query ตารางออเดอร์แค่ครั้งเดียว
+ * แม้ถูกเรียกหลายที่ (เช่น หน้า Dashboard + getLeaderboard ภายใน request เดียวกัน)
+ * ประหยัด round-trip DB ที่แพง (~0.7s/ครั้ง) โดยไม่แคชข้ามคำขอ (ข้อมูลยังสดเสมอ)
  */
-export async function getFirstOrderMap(): Promise<Map<string, FirstOrder>> {
+export const getFirstOrderMap = cache(async function getFirstOrderMap(): Promise<Map<string, FirstOrder>> {
   const rows = await prisma.sheetOrder.findMany({
     where: { phone: { not: null } },
     select: { id: true, phone: true, date: true, createdAt: true },
@@ -56,7 +61,7 @@ export async function getFirstOrderMap(): Promise<Map<string, FirstOrder>> {
   const map = new Map<string, FirstOrder>();
   for (const [phone, v] of best) map.set(phone, { id: v.id, t: v.t });
   return map;
-}
+});
 
 /**
  * ออเดอร์นี้เป็น "ลูกค้าใหม่" (acquisition = ออเดอร์แรกสุดของเบอร์ ระบุด้วย id) หรือไม่
