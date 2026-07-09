@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Sidebar from './Sidebar';
 import RouteProgressBar from './RouteProgressBar';
 import HeaderSearch from './HeaderSearch';
+import QuickOrderModal from './QuickOrderModal';
 import { FeedbackProvider } from './ui/Feedback';
+import { getProductSuggestions } from '@/app/(app)/orders/actions';
 
 type User = {
   id: string;
@@ -71,7 +73,29 @@ export default function AppShell({ user, children, atRiskCount = 0, taskCount = 
 
   const effectiveCollapsed = hydrated && (collapsed || tabletRail);
 
+  const [quickOrderOpen, setQuickOrderOpen] = useState(false);
+  const [quickOrderPhone, setQuickOrderPhone] = useState<string | undefined>(undefined);
+  const [productSuggestions, setProductSuggestions] = useState<string[]>([]);
+  const [suggestionsLoaded, setSuggestionsLoaded] = useState(false);
+
+  const openQuickOrder = useCallback((phone?: string) => {
+    setQuickOrderPhone(phone);
+    setQuickOrderOpen(true);
+    setSidebarOpen(false);
+    if (!suggestionsLoaded) {
+      getProductSuggestions()
+        .then(list => { setProductSuggestions(list); setSuggestionsLoaded(true); })
+        .catch(() => {});
+    }
+  }, [suggestionsLoaded]);
+
+  const closeQuickOrder = useCallback(() => {
+    setQuickOrderOpen(false);
+    setQuickOrderPhone(undefined);
+  }, []);
+
   return (
+    <FeedbackProvider>
     <div className={`app-wrapper${effectiveCollapsed ? ' sidebar-collapsed' : ''}${tabletRail ? ' tablet-rail' : ''}`}>
       <RouteProgressBar />
       <Sidebar
@@ -82,6 +106,7 @@ export default function AppShell({ user, children, atRiskCount = 0, taskCount = 
         taskCount={taskCount}
         collapsed={effectiveCollapsed}
         onToggleCollapse={toggleCollapse}
+        onQuickOrder={() => openQuickOrder()}
       />
 
       {sidebarOpen && (
@@ -110,7 +135,11 @@ export default function AppShell({ user, children, atRiskCount = 0, taskCount = 
             <i className={collapsed ? 'ri-menu-unfold-line' : 'ri-menu-fold-line'}></i>
           </button>
 
-          <HeaderSearch placeholder={searchPlaceholder} />
+          <HeaderSearch
+            placeholder={searchPlaceholder}
+            canCreateOrder={user.role !== 'ADMIN'}
+            onQuickOrder={phone => openQuickOrder(phone)}
+          />
 
           <div className="header-actions">
             {atRiskCount > 0 && (
@@ -136,9 +165,20 @@ export default function AppShell({ user, children, atRiskCount = 0, taskCount = 
         </header>
 
         <div className="page-content fade-in">
-          <FeedbackProvider>{children}</FeedbackProvider>
+          {children}
         </div>
       </div>
+
+      {user.role !== 'ADMIN' && (
+        <button type="button" className="fab-new-order" aria-label="ลงออเดอร์" onClick={() => openQuickOrder()}>
+          <i className="ri-add-line"></i>
+        </button>
+      )}
+
+      {user.role !== 'ADMIN' && (
+        <QuickOrderModal open={quickOrderOpen} phone={quickOrderPhone} productSuggestions={productSuggestions} onClose={closeQuickOrder} />
+      )}
     </div>
+    </FeedbackProvider>
   );
 }

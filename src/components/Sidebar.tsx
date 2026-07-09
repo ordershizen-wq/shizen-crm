@@ -29,6 +29,7 @@ type Props = {
   taskCount?: number;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  onQuickOrder?: () => void;
 };
 
 type NavItem = {
@@ -66,7 +67,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default function Sidebar({
   user, isOpen = false, onClose, atRiskCount = 0, taskCount = 0,
-  collapsed = false, onToggleCollapse,
+  collapsed = false, onToggleCollapse, onQuickOrder,
 }: Props) {
   const pathname = usePathname();
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href);
@@ -103,6 +104,22 @@ export default function Sidebar({
           </button>
         )}
       </div>
+
+      {/* CTA: ลงออเดอร์ (ซ่อนจาก ADMIN) */}
+      {user.role !== 'ADMIN' && (
+        <div className="sidebar-cta-wrap">
+          <button
+            type="button"
+            className="sidebar-cta"
+            onClick={() => onQuickOrder?.()}
+            title={collapsed ? 'ลงออเดอร์' : undefined}
+            data-tooltip={collapsed ? 'ลงออเดอร์' : undefined}
+          >
+            <i className="ri-add-line"></i>
+            {showText && <span>ลงออเดอร์</span>}
+          </button>
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="sidebar-menu">

@@ -3,7 +3,11 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import NewOrderForm from './NewOrderForm';
 
-export default async function NewOrderPage() {
+export default async function NewOrderPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ phone?: string | string[] }>;
+}) {
   const user = (await getCurrentUser())!;
 
   // ADMIN ไม่ลงออเดอร์เอง
@@ -20,6 +24,10 @@ export default async function NewOrderPage() {
     );
   }
 
+  const sp = await searchParams;
+  const rawPhone = Array.isArray(sp.phone) ? sp.phone[0] : sp.phone;
+  const initialPhone = (rawPhone ?? '').trim();
+
   const products = await prisma.product.findMany({
     where: { isActive: true },
     orderBy: { sortOrder: 'asc' },
@@ -29,7 +37,7 @@ export default async function NewOrderPage() {
   return (
     <>
       <PageHead />
-      <NewOrderForm productSuggestions={products.map(p => p.name)} />
+      <NewOrderForm productSuggestions={products.map(p => p.name)} initialPhone={initialPhone} />
     </>
   );
 }

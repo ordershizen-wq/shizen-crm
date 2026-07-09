@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useRef } from 'react';
+import { useState, useTransition, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { createOrder, lookupCustomer, type NewOrderProduct } from '../actions';
 import {
@@ -12,6 +12,10 @@ import { CHANNELS, matchChannel } from '@/lib/channels';
 
 type Props = {
   productSuggestions: string[];   // ชื่อสินค้าที่ active ใน Product master
+  initialPhone?: string;
+  embedded?: boolean;                          // ใช้ใน modal (ตัด chrome .card)
+  onDirtyChange?: (dirty: boolean) => void;
+  onSuccess?: () => void;
 };
 
 // คำนวณครั้งเดียวตอนโหลดโมดูล (ไม่เรียกใน render เพื่อเลี่ยง react-hooks/purity)
@@ -28,7 +32,7 @@ type CustomerState =
   | { status: 'new' }
   | { status: 'existing'; orderCount: number };
 
-export default function NewOrderForm({ productSuggestions }: Props) {
+export default function NewOrderForm({ productSuggestions, initialPhone, embedded = false, onDirtyChange, onSuccess }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ orderId: string; synced: boolean; isExisting: boolean; phone: string } | null>(null);
@@ -63,6 +67,16 @@ export default function NewOrderForm({ productSuggestions }: Props) {
     totalPrice > 0 &&
     gender !== '' && ageRange !== '' && geoOk &&
     orderDate !== '';
+
+  // channel/geoMode ไม่นับ — เป็น default ไม่ใช่ input ผู้ใช้
+  const dirty =
+    !success && (
+      phone.trim() !== '' || name.trim() !== '' || address.trim() !== '' ||
+      note.trim() !== '' || totalPrice > 0 ||
+      gender !== '' || ageRange !== '' || province !== '' || country !== '' ||
+      items.some(it => it.name.trim() !== '')
+    );
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
 
   const selectTH = () => { setGeoMode('TH'); setCountry(''); };
   const selectINTL = () => { setGeoMode('INTL'); setProvince(''); };
@@ -115,6 +129,17 @@ export default function NewOrderForm({ productSuggestions }: Props) {
     }, 450);
   };
 
+  // Prefill เบอร์จาก ?phone= (ทางลัดจากผลค้นหา) → reuse auto-detect ทั้งชุด
+  const didPrefill = useRef(false);
+  useEffect(() => {
+    if (didPrefill.current) return;
+    didPrefill.current = true;
+    const p = (initialPhone ?? '').trim();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- ตั้งใจ trigger auto-detect ครั้งเดียวตอน mount จาก prefill
+    if (p.length >= 8) onPhoneChange(p);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const addItem = () => setItems(prev => [...prev, { id: nextId(), name: '', quantity: 1 }]);
   const removeItem = (id: string) => setItems(prev => prev.filter(i => i.id !== id));
   const updateItem = (id: string, patch: Partial<LineItem>) =>
@@ -147,6 +172,7 @@ export default function NewOrderForm({ productSuggestions }: Props) {
         return;
       }
       setSuccess({ orderId: res.orderId, synced: res.synced, isExisting: res.isExisting, phone: res.phone });
+      onSuccess?.();
     });
   };
 
@@ -161,7 +187,10 @@ export default function NewOrderForm({ productSuggestions }: Props) {
 
   if (success) {
     return (
-      <div className="card p-4" style={{ textAlign: 'center', maxWidth: 520, margin: '0 auto' }}>
+      <div
+        className={embedded ? '' : 'card p-4'}
+        style={embedded ? { textAlign: 'center' } : { textAlign: 'center', maxWidth: 520, margin: '0 auto' }}
+      >
         <div style={{
           width: 64, height: 64, borderRadius: '50%', margin: '0 auto 1rem',
           background: success.synced ? 'var(--success-light)' : 'var(--warning-light)',
@@ -194,7 +223,10 @@ export default function NewOrderForm({ productSuggestions }: Props) {
   }
 
   return (
-    <div className="card p-4" style={{ maxWidth: 640, margin: '0 auto' }}>
+    <div
+      className={embedded ? '' : 'card p-4'}
+      style={embedded ? undefined : { maxWidth: 640, margin: '0 auto' }}
+    >
       {/* โหมด: ในประเทศ / ต่างประเทศ */}
       <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem' }}>
         <button

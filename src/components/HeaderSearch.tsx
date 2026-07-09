@@ -17,7 +17,7 @@ const STATUS_LABEL: Record<string, string> = {
   OTHER: 'อื่นๆ',
 };
 
-export default function HeaderSearch({ placeholder }: { placeholder: string }) {
+export default function HeaderSearch({ placeholder, canCreateOrder = false, onQuickOrder }: { placeholder: string; canCreateOrder?: boolean; onQuickOrder?: (phone: string) => void }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult>(EMPTY);
   const [open, setOpen] = useState(false);
@@ -146,22 +146,37 @@ export default function HeaderSearch({ placeholder }: { placeholder: string }) {
                     const i = idx;
                     const active = activeIndex === i;
                     return (
-                      <Link
+                      <div
                         key={c.phone}
-                        href={`/customers/${c.phone}`}
-                        onClick={() => setOpen(false)}
-                        style={{ ...rowStyle, background: active ? 'var(--primary-tint)' : '#fff' }}
+                        style={{ ...rowStyle, padding: 0, background: active ? 'var(--primary-tint)' : '#fff' }}
                       >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div className="fw-600" style={{ fontSize: 14, color: 'var(--text-dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {c.name || 'ไม่ระบุชื่อ'}
+                        <Link
+                          href={`/customers/${c.phone}`}
+                          onClick={() => setOpen(false)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0, padding: '0.6rem 0.85rem', textDecoration: 'none', color: 'inherit' }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div className="fw-600" style={{ fontSize: 14, color: 'var(--text-dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {c.name || 'ไม่ระบุชื่อ'}
+                            </div>
+                            <div className="text-sm text-muted">
+                              <i className="ri-phone-line"></i> {c.phone}
+                            </div>
                           </div>
-                          <div className="text-sm text-muted">
-                            <i className="ri-phone-line"></i> {c.phone}
-                          </div>
-                        </div>
-                        <span style={badgeStyle}>{c.orderCount} ออเดอร์</span>
-                      </Link>
+                          <span style={badgeStyle}>{c.orderCount} ออเดอร์</span>
+                        </Link>
+                        {canCreateOrder && (
+                          <button
+                            type="button"
+                            onClick={() => { setOpen(false); onQuickOrder?.(c.phone); }}
+                            className="search-reorder-btn"
+                            title="ลงออเดอร์"
+                            aria-label={`ลงออเดอร์ให้ ${c.name || c.phone}`}
+                          >
+                            <i className="ri-shopping-cart-2-line"></i>
+                          </button>
+                        )}
+                      </div>
                     );
                   })}
                 </div>

@@ -54,6 +54,13 @@ html.dark .sidebar-rail-expand:hover {
   color: #22E5A0;
 }
 
+/* CTA ลงออเดอร์ — เงา neon เขียวใน dark */
+html.dark .sidebar-cta { box-shadow: 0 2px 12px rgba(34, 229, 160, 0.28); }
+html.dark .sidebar-cta:hover { box-shadow: 0 4px 16px rgba(34, 229, 160, 0.40); }
+
+/* FAB — เงา neon เขียวใน dark */
+html.dark .fab-new-order { box-shadow: 0 6px 20px rgba(34, 229, 160, 0.40); }
+
 /* user profile mini card ใน sidebar */
 html.dark .user-profile-sm {
   border-top-color: rgba(255, 255, 255, 0.07);

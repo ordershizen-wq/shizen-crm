@@ -159,3 +159,13 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
 
   return { ok: true, orderId: order.id, synced: syncResult.ok, isExisting, phone };
 }
+
+/** ชื่อสินค้า active สำหรับ datalist ใน Quick Order Modal (mirror query ของ orders/new/page.tsx) */
+export async function getProductSuggestions(): Promise<string[]> {
+  const products = await prisma.product.findMany({
+    where: { isActive: true },
+    orderBy: { sortOrder: 'asc' },
+    select: { name: true },
+  });
+  return products.map(p => p.name);
+}
