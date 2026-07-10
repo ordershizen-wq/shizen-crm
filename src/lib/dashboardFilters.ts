@@ -134,20 +134,22 @@ export function resolveCustomRange(from: Date, to: Date, _now: Date = new Date()
 
 /**
  * resolve ช่วงเวลาจาก search params รวม preset + custom ไว้ที่เดียว
- * ถ้า range=custom แต่วันที่ไม่ถูกต้อง → fallback เป็น 'month'
+ * ถ้า range=custom แต่วันที่ไม่ถูกต้อง → fallback เป็น `fallback` (ค่าเริ่มต้น 'month' — ใช้โดย Dashboard/Insights)
+ * หน้าอื่นที่อยากได้ default ต่างออกไป (เช่น /print/customers ที่ไม่ส่ง param = ทั้งหมด) ส่ง fallback='all' ได้
  */
 export function resolveRange(
   params: { range?: string; from?: string; to?: string },
   now: Date = new Date(),
+  fallback: RangeKey = 'month',
 ): { range: RangeKey; dateRange: DateRange; from?: string; to?: string } {
-  const range = parseRange(params.range, 'month');
+  const range = parseRange(params.range, fallback);
   if (range === 'custom') {
     const from = parseDateParam(params.from);
     const to = parseDateParam(params.to);
     if (from && to && from.getTime() <= to.getTime()) {
       return { range: 'custom', dateRange: resolveCustomRange(from, to, now), from: params.from, to: params.to };
     }
-    return { range: 'month', dateRange: resolveDateRange('month', now) };
+    return { range: fallback, dateRange: resolveDateRange(fallback, now) };
   }
   return { range, dateRange: resolveDateRange(range, now) };
 }

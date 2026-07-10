@@ -4,11 +4,13 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import EmptyState from '@/components/EmptyState';
 import PrintButton from './PrintButton';
+import PrintFilters from './PrintFilters';
+import { resolveRange, resolveCustomRange, toYmd } from '@/lib/dashboardFilters';
 
 // จงใจอยู่นอก route group (app) — ไม่ต้องการ sidebar/shell ตอนพิมพ์
 // middleware กัน auth ให้ทุก route อยู่แล้ว (ดู src/middleware.ts)
 
-type SearchParams = Promise<{ rep?: string }>;
+type SearchParams = Promise<{ rep?: string; range?: string; from?: string; to?: string }>;
 
 type ProductJsonItem = { name?: string; quantity?: number };
 
@@ -26,6 +28,14 @@ export default async function PrintCustomersPage({ searchParams }: { searchParam
   const params = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect('/login');
+
+  // ช่วงเวลา — default 'all' (ต่างจาก Dashboard ที่ default 'month') เพื่อไม่ให้พฤติกรรม
+  // เดิมเปลี่ยนตอนไม่ส่ง param มา (หน้านี้เคยรวมออเดอร์ทั้งชีพเสมอ)
+  const { range, dateRange, from, to } = resolveRange(
+    { range: params.range, from: params.from, to: params.to },
+    new Date(),
+    'all',
+  );
 
   // ─────────────────────────────────────────────
   // สิทธิ์เลือกพนักงาน:
@@ -67,17 +77,35 @@ export default async function PrintCustomersPage({ searchParams }: { searchParam
   }
 
   let customers: PrintCustomerRow[] = [];
+  // จำนวนลูกค้าทั้งหมด (all-time ไม่กรองช่วงเวลา) ไว้โชว์เทียบตอน filter active
+  // null = range 'all' (ไม่ต้อง query ซ้ำ เพราะ customers.length ก็คือ all-time อยู่แล้ว)
+  let allTimeCount: number | null = null;
 
   if (selectedRepId) {
-    const baseWhere = { salesRepId: selectedRepId, phone: { not: null } };
+    // ฟิลด์ที่ใช้กรองช่วงเวลา = `date` (วันขายจริง) — เหมือนกับที่หน้า Dashboard ใช้
+    // (src/app/(app)/page.tsx: rangeWhere = { date: { gte, lt } }) เพื่อให้ตัวเลขตรงกัน
+    const rangeWhere = dateRange.start && dateRange.end
+      ? { date: { gte: dateRange.start, lt: dateRange.end } }
+      : {};
+    const baseWhere = { salesRepId: selectedRepId, phone: { not: null }, ...rangeWhere };
 
-    const phoneRows = await prisma.sheetOrder.groupBy({
-      by: ['phone'],
-      where: baseWhere,
-      _count: { _all: true },
-      _sum: { totalPrice: true },
-      _max: { createdAt: true },
-    });
+    const [phoneRows, allTimeRows] = await Promise.all([
+      prisma.sheetOrder.groupBy({
+        by: ['phone'],
+        where: baseWhere,
+        _count: { _all: true },
+        _sum: { totalPrice: true },
+        _max: { createdAt: true },
+      }),
+      // จำนวนลูกค้าทั้งหมด (ไม่กรองช่วงเวลา) ไว้โชว์เทียบตอน filter active
+      range !== 'all'
+        ? prisma.sheetOrder.groupBy({
+            by: ['phone'],
+            where: { salesRepId: selectedRepId, phone: { not: null } },
+          })
+        : Promise.resolve(null),
+    ]);
+    allTimeCount = allTimeRows ? allTimeRows.length : null;
 
     const phones = phoneRows.map(r => r.phone).filter((p): p is string => !!p);
 
@@ -118,34 +146,63 @@ export default async function PrintCustomersPage({ searchParams }: { searchParam
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
 
+  // ป้ายช่วงเวลาแบบเต็ม เช่น "เดือนนี้ (1 ก.ค. – 31 ก.ค. 69)" — 'all'/'custom' ไม่ต้องมีวงเล็บซ้ำ
+  // เพราะ dateRange.label ของสองกรณีนี้อธิบายตัวเองครบอยู่แล้ว ('ทั้งหมด' ไม่มีวันที่, custom มีวันที่ในตัว)
+  // ใช้ resolveCustomRange (ของเดิม) คำนวณข้อความช่วงวันแทนการเขียน format logic เอง
+  const rangeSpanText = range !== 'all' && range !== 'custom' && dateRange.start && dateRange.end
+    ? ` (${resolveCustomRange(dateRange.start, new Date(dateRange.end.getTime() - 86400000)).label})`
+    : '';
+
+  // ข้อความ empty state ตอนกรองแล้วไม่มีออเดอร์เลย — ชวนลองสลับกลับเป็น "ทั้งหมด" ถ้ายังมีลูกค้าที่ช่วงอื่น
+  // allTimeCount null (range='all') หรือ 0 (ไม่มีลูกค้าเลยจริงๆ) → ใช้ข้อความเดิม ไม่ต้องชวนสลับ
+  const emptyStateMessage = allTimeCount
+    ? `ไม่มีออเดอร์ในช่วงที่เลือก (${dateRange.label}${rangeSpanText}) — ลูกค้าทั้งหมดของพนักงานคนนี้มี ${allTimeCount.toLocaleString('th-TH')} คน ลองเปลี่ยนช่วงเป็น "ทั้งหมด"`
+    : 'ยังไม่มีลูกค้าของพนักงานคนนี้ในระบบ';
+
   return (
     <div className="print-page">
-      <div className="no-print print-toolbar page-header">
-        {canPick ? (
-          <form method="get" className="print-toolbar-form">
-            <label htmlFor="rep-select" className="text-sm fw-600" style={{ color: 'var(--text-muted)' }}>
-              พนักงานขาย
-            </label>
-            <select id="rep-select" name="rep" defaultValue={selectedRepId ?? ''} className="form-select">
-              <option value="">— เลือกพนักงาน —</option>
-              {repOptions.map(r => (
-                <option key={r.id} value={r.id}>{r.fullName}</option>
-              ))}
-            </select>
-            <button type="submit" className="btn btn-secondary">
-              <i className="ri-search-line"></i> แสดงรายชื่อ
-            </button>
-          </form>
-        ) : (
-          <h1 className="page-title" style={{ fontSize: 18 }}>รายชื่อลูกค้าสำหรับพิมพ์</h1>
-        )}
+      <div className="no-print print-toolbar">
+        <div className="page-header" style={{ marginBottom: 0 }}>
+          {canPick ? (
+            <form method="get" className="print-toolbar-form">
+              <label htmlFor="rep-select" className="text-sm fw-600" style={{ color: 'var(--text-muted)' }}>
+                พนักงานขาย
+              </label>
+              <select id="rep-select" name="rep" defaultValue={selectedRepId ?? ''} className="form-select">
+                <option value="">— เลือกพนักงาน —</option>
+                {repOptions.map(r => (
+                  <option key={r.id} value={r.id}>{r.fullName}</option>
+                ))}
+              </select>
+              {/* คงช่วงเวลาที่เลือกไว้ไม่ให้หายตอนสลับพนักงาน */}
+              {range !== 'all' && <input type="hidden" name="range" value={range} />}
+              {range === 'custom' && from && <input type="hidden" name="from" value={from} />}
+              {range === 'custom' && to && <input type="hidden" name="to" value={to} />}
+              <button type="submit" className="btn btn-secondary">
+                <i className="ri-search-line"></i> แสดงรายชื่อ
+              </button>
+            </form>
+          ) : (
+            <h1 className="page-title" style={{ fontSize: 18 }}>รายชื่อลูกค้าสำหรับพิมพ์</h1>
+          )}
 
-        <div className="print-toolbar-actions page-header-actions">
-          {selectedRepId && <PrintButton />}
-          <Link href="/customers" className="btn btn-ghost">
-            <i className="ri-arrow-left-line"></i> กลับ
-          </Link>
+          <div className="print-toolbar-actions page-header-actions">
+            {selectedRepId && <PrintButton />}
+            <Link href="/customers" className="btn btn-ghost">
+              <i className="ri-arrow-left-line"></i> กลับ
+            </Link>
+          </div>
         </div>
+
+        {selectedRepId && (
+          <PrintFilters
+            rep={selectedRepId}
+            range={range}
+            rangeLabel={dateRange.label}
+            initialFrom={from ?? (dateRange.start ? toYmd(dateRange.start) : undefined)}
+            initialTo={to ?? (dateRange.end ? toYmd(new Date(dateRange.end.getTime() - 86400000)) : undefined)}
+          />
+        )}
       </div>
 
       {!selectedRepId ? (
@@ -160,12 +217,19 @@ export default async function PrintCustomersPage({ searchParams }: { searchParam
             <div>
               <h2 className="print-sheet-title">รายชื่อลูกค้า — {selectedRepName}</h2>
               <div className="print-sheet-meta">พิมพ์เมื่อ {printedAt}</div>
+              <div className="print-sheet-meta">ช่วงเวลา: {dateRange.label}{rangeSpanText}</div>
             </div>
-            <div className="print-sheet-meta">รวม {customers.length.toLocaleString('th-TH')} คน</div>
+            <div className="print-sheet-meta">
+              {allTimeCount !== null
+                ? `รวม ${customers.length.toLocaleString('th-TH')} คน (จากลูกค้าทั้งหมด ${allTimeCount.toLocaleString('th-TH')} คน)`
+                : `รวม ${customers.length.toLocaleString('th-TH')} คน`}
+            </div>
           </div>
 
           {customers.length === 0 ? (
-            <p style={{ color: '#777', fontSize: 13 }}>ยังไม่มีลูกค้าของพนักงานคนนี้ในระบบ</p>
+            <p style={{ color: '#777', fontSize: 13 }}>
+              {emptyStateMessage}
+            </p>
           ) : (
             <div className="print-table-scroll">
               <table className="print-table">
