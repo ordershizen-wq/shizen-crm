@@ -138,6 +138,11 @@ export default async function CustomersPage({ searchParams }: { searchParams: Se
             {user.role === 'MEMBER' && ` (เฉพาะของฉัน)`}
           </p>
         </div>
+        <div className="page-header-actions">
+          <Link href="/print/customers" target="_blank" rel="noreferrer" className="btn btn-secondary">
+            <i className="ri-printer-line"></i> พิมพ์รายชื่อ
+          </Link>
+        </div>
       </div>
 
       {/* Search box — live + clear */}

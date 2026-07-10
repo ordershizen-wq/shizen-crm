@@ -5294,3 +5294,146 @@ html.dark .legacy-body {
   font-feature-settings: 'tnum' on, 'lnum' on;
 }
 .pagination-total { color: var(--text-light); font-weight: 500; }
+
+/* ═══════════════════════════════════════════
+   PRINT — ใบรายชื่อลูกค้า (/print/customers)
+   หน้าอยู่นอก (app) shell — ไม่มี sidebar
+═══════════════════════════════════════════ */
+.print-page {
+  min-height: 100vh;
+  padding: 1.25rem var(--container-pad) 3rem;
+}
+
+.print-toolbar {
+  margin-bottom: 1.25rem;
+}
+.print-toolbar-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+.print-toolbar-form select { min-width: 220px; }
+@media (max-width: 640px) {
+  .print-toolbar-form { width: 100%; }
+  .print-toolbar-form select { min-width: 0; flex: 1 1 160px; }
+  .print-toolbar-form label { flex-basis: 100%; }
+}
+
+/* ── กระดาษ preview: ขาวเสมอ ไม่ตามธีม (แม้ dark mode) ── */
+.print-sheet {
+  background: #fff;
+  color: #1a1a1a;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  padding: clamp(1rem, 4vw, 1.5rem);
+  max-width: 900px;
+  margin-inline: auto;
+}
+
+.print-sheet-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  border-bottom: 2px solid #1a1a1a;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+}
+.print-sheet-title { font-size: 18px; font-weight: 700; margin: 0; color: #1a1a1a; }
+.print-sheet-meta { font-size: 12.5px; color: #555; }
+
+/* ── ตาราง: บนจอ scroll แนวนอนได้บนมือถือ, ตอนพิมพ์ไหลปกติ ── */
+.print-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.print-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.print-table th,
+.print-table td {
+  border: 1px solid #ccc;
+  padding: 0.5rem 0.55rem;
+  vertical-align: top;
+  text-align: left;
+  color: #1a1a1a;
+}
+.print-table th {
+  background: #f3f3f6;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #444;
+}
+.print-table td.print-col-num { text-align: center; color: #888; }
+.print-table td.print-col-total {
+  text-align: right;
+  font-weight: 700;
+  white-space: nowrap;
+  font-feature-settings: 'tnum' on, 'lnum' on;
+}
+.print-cust-phone { color: #666; font-size: 11.5px; margin-top: 2px; }
+.print-order-sub { color: #888; font-size: 11px; margin-top: 2px; }
+
+.print-note-cell { width: 28%; }
+.print-note-line {
+  border-bottom: 1px dashed #ccc;
+  height: 17px;
+}
+.print-note-line:last-child { border-bottom: none; }
+
+/* ═══════════════════════════════════════════
+   @page + @media print
+═══════════════════════════════════════════ */
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+@media print {
+  .no-print { display: none !important; }
+
+  html, body {
+    background: #fff !important;
+  }
+
+  .print-page {
+    padding: 0;
+    min-height: 0;
+  }
+
+  .print-sheet {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .print-table-scroll { overflow: visible; }
+
+  .print-table {
+    font-size: 11px;
+    min-width: 0;
+  }
+  .print-table th,
+  .print-table td {
+    border-color: #999;
+    padding: 4px 6px;
+  }
+  .print-table th {
+    background: transparent !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print-table tr { break-inside: avoid; }
+  .print-table thead { display: table-header-group; }
+}
