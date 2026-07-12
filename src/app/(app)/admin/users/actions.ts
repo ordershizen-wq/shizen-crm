@@ -1,6 +1,5 @@
 'use server';
 
-import bcrypt from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
@@ -12,8 +11,8 @@ export type ResetResult =
 /**
  * Admin reset รหัสผ่านของผู้ใช้คนอื่น
  * - ต้องเป็น ADMIN
- * - hash รหัสใหม่ด้วย bcrypt
- * - คืนค่ารหัสใหม่กลับไปให้ admin บอกพนักงาน (รหัสนี้ไม่ถูกเก็บ raw ใน DB)
+ * - เก็บรหัสใหม่แบบ plaintext (ระบบภายใน แอดมินดูรหัสได้ที่ตารางผู้ใช้)
+ * - คืนค่ารหัสใหม่กลับไปให้ admin บอกพนักงาน
  */
 export async function resetUserPassword(
   targetUserId: string,
@@ -38,11 +37,10 @@ export async function resetUserPassword(
     return { ok: false, error: 'PACKER ไม่มีสิทธิ์ใช้ CRM' };
   }
 
-  const hash = await bcrypt.hash(newPassword, 10);
   await prisma.sheetUser.update({
     where: { id: targetUserId },
     data: {
-      password: hash,
+      password: newPassword,
       passwordChangedAt: new Date(),
     },
   });

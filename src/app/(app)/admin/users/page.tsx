@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import ResetPasswordButton from './ResetPasswordButton';
+import PasswordCell from './PasswordCell';
 import { resetUserPassword } from './actions';
 
 const ROLE_LABEL: Record<string, string> = {
@@ -53,6 +54,7 @@ export default async function AdminUsersPage() {
               <tr>
                 <th>ชื่อ</th>
                 <th>รหัสพนักงาน</th>
+                <th>รหัสผ่าน</th>
                 <th>บทบาท</th>
                 <th>ทีม</th>
                 <th>เปลี่ยนรหัสล่าสุด</th>
@@ -74,6 +76,9 @@ export default async function AdminUsersPage() {
                     <td data-label="ชื่อ" className="fw-600">{u.fullName}</td>
                     <td data-label="รหัสพนักงาน" style={{ fontFamily: 'monospace' }}>
                       {u.employeeId ?? <span className="text-muted">—</span>}
+                    </td>
+                    <td data-label="รหัสผ่าน">
+                      <PasswordCell password={u.password} />
                     </td>
                     <td data-label="บทบาท">
                       <span style={{
@@ -129,10 +134,10 @@ export default async function AdminUsersPage() {
           <i className="ri-information-line"></i> วิธีรีเซ็ตรหัสผ่าน
         </div>
         <ol style={{ paddingLeft: '1.25rem', margin: 0, fontSize: 13, color: 'var(--text-dark)', lineHeight: 1.6 }}>
-          <li>กดปุ่ม "รีเซ็ตรหัส" ที่แถวของพนักงาน</li>
-          <li>กรอกรหัสใหม่ (≥ 6 ตัวอักษร) — ระบบจะเข้ารหัสให้อัตโนมัติ</li>
+          <li>ดูรหัสปัจจุบันของแต่ละคนได้ที่คอลัมน์ “รหัสผ่าน” (กดไอคอนรูปตา)</li>
+          <li>ถ้าต้องตั้งใหม่ กดปุ่ม “รีเซ็ตรหัส” ที่แถวของพนักงาน แล้วกรอกรหัสใหม่ (≥ 6 ตัวอักษร)</li>
           <li>แจ้งรหัสใหม่ให้พนักงานเพื่อ login</li>
-          <li>พนักงานสามารถเปลี่ยนเองได้ภายหลังที่หน้า "เปลี่ยนรหัสผ่าน"</li>
+          <li>พนักงานสามารถเปลี่ยนเองได้ภายหลังที่หน้า “เปลี่ยนรหัสผ่าน”</li>
         </ol>
       </div>
     </>

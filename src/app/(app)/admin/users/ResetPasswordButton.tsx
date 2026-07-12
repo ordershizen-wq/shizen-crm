@@ -142,7 +142,7 @@ export default function ResetPasswordButton({ userId, userName, employeeId, acti
                 </div>
                 <p className="reset-modal-warn">
                   <i className="ri-information-line"></i>
-                  แจ้งรหัสนี้ให้พนักงาน — รหัสนี้จะไม่แสดงอีก
+                  แจ้งรหัสนี้ให้พนักงาน — ดูย้อนหลังได้ที่คอลัมน์ “รหัสผ่าน” ในตาราง
                 </p>
                 <div className="reset-modal-actions">
                   <button type="button" onClick={close} className="login-submit" style={{ flex: 1 }}>

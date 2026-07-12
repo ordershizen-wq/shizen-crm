@@ -50,7 +50,11 @@ export async function loginWithCredentials(
     return { ok: false, error: 'รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง' };
   }
 
-  const match = await bcrypt.compare(password, user.password);
+  // ระบบภายในบริษัท: รหัสจาก AppScript เก็บเป็น plaintext → เทียบตรง ๆ
+  // ส่วนรหัสที่เคยตั้งผ่านเว็บรุ่นก่อนเป็น bcrypt hash ($2...) → เทียบด้วย bcrypt (ไม่ให้บัญชีเดิมพัง)
+  const match = user.password.startsWith('$2')
+    ? await bcrypt.compare(password, user.password)
+    : password === user.password;
   if (!match) {
     return { ok: false, error: 'รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง' };
   }
@@ -85,8 +89,8 @@ export async function updateCustomerNote(phone: string, note: string) {
 
 /**
  * เปลี่ยนรหัสผ่านของผู้ใช้ปัจจุบัน
- * - verify รหัสเดิม
- * - hash ใหม่ + clear mustChangePassword flag
+ * - verify รหัสเดิม (รองรับทั้ง plaintext และ bcrypt hash เดิม)
+ * - เก็บรหัสใหม่แบบ plaintext (ระบบภายใน แอดมินต้องดูรหัสได้)
  */
 export async function changeMyPassword(
   currentPassword: string,
@@ -103,14 +107,15 @@ export async function changeMyPassword(
   }
 
   if (!user.password) return { ok: false, error: 'บัญชีนี้ยังไม่ได้ตั้งรหัส' };
-  const match = await bcrypt.compare(currentPassword, user.password);
+  const match = user.password.startsWith('$2')
+    ? await bcrypt.compare(currentPassword, user.password)
+    : currentPassword === user.password;
   if (!match) return { ok: false, error: 'รหัสผ่านปัจจุบันไม่ถูกต้อง' };
 
-  const newHash = await bcrypt.hash(newPassword, 10);
   await prisma.sheetUser.update({
     where: { id: user.id },
     data: {
-      password: newHash,
+      password: newPassword,
       passwordChangedAt: new Date(),
     },
   });
